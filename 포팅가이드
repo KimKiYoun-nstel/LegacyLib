@@ -1,0 +1,459 @@
+ㅋㅋ 나 열 수 있어.
+지금 `LegacyLib.zip` 이미 풀어서 코드 다 보고 왔다. (경로: `LegacyLib/LegacyLib/...`)
+
+일단 **현재 Lib 구조 분석**부터 정리하고,
+그 다음에 **“DKM 전용으로 바꿀 때 손대야 할 부분”을 파일별로 찍어줄게.**
+
+---
+
+## 1. LegacyLib 전체 구조 요약
+
+압축 풀린 구조는 대략 이렇게 되어 있음:
+
+* `examples/main.c`
+
+  * PC/리눅스에서 돌리는 **샘플 앱**.
+  * `legacy_agent.h` C API를 써서 간단히 에이전트랑 통신하는 테스트 코드.
+
+* `include/json.hpp`
+
+  * nlohmann JSON 헤더 (CBOR/JSON 변환용).
+
+* `include/legacy_agent.h`
+
+  * C API 헤더.
+  * `LEGACY_HANDLE`, `LegacyConfig`, `LegacyStatus`, 각종 콜백 타입들 정의.
+  * `legacy_agent_init / close / hello / create_writer / write / subscribe` 등 C 함수 선언.
+
+* `src/legacy_agent.cpp`
+
+  * C API 구현.
+  * 내부적으로 `LegacyAgentHandleImpl { IpcJsonClient client; }`를 가지고 있고,
+  * C API는 그냥 `h->client.xxx()`로 넘겨주는 thin wrapper.
+
+* `src/internal/DkmRtpIpc.{h,cpp}`
+
+  * **UDP 기반 IPC 전송 레이어**.
+  * `_VXWORKS_`일 때는 `sockLib.h`, `inetLib.h`, `netinet/in.h` 등을 이용해서 **BSD 소켓 바로 사용**.
+  * `init(ip, port)`, `send(data,len,type,corr_id)`, `receive(buf,max,timeout_ms)`를 제공.
+
+* `src/internal/IpcJsonClient.{h,cpp}`
+
+  * 실제 “에이전트와 JSON/CBOR IPC”를 담당하는 핵심 클래스.
+  * 여기서 멀티스레드/락/맵 등 컨테이너를 다 사용함.
+
+### 1-1. IpcJsonClient 안의 멀티스레드 구조
+
+`IpcJsonClient.h`에서:
+
+```cpp
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <map>
+#include <vector>
+
+struct PendingRequest {
+    LegacySimpleCb simple_cb;
+    LegacyHelloCb  hello_cb;
+    void*          user;
+};
+
+class IpcJsonClient {
+public:
+    LegacyStatus init(const LegacyConfig* cfg);
+    void close();
+
+    // 내부적으로 비동기 응답 처리
+    void receiveLoop();
+
+private:
+    DkmRtpIpc transport_;
+    std::atomic<bool> running_;
+    std::thread recv_thread_;
+
+    std::mutex req_mutex_;
+    std::map<uint32_t, PendingRequest> pending_requests_;
+
+    std::mutex sub_mutex_;
+    std::map<std::string, std::vector<Subscription>> subscriptions_;
+
+    std::mutex adapter_mutex_;
+    std::map<std::string, LegacyTypeAdapter> type_adapters_;
+};
+```
+
+`IpcJsonClient.cpp`를 보면:
+
+* 생성자:
+
+```cpp
+IpcJsonClient::IpcJsonClient() : running_(false), next_req_id_(1) {}
+```
+
+* `init()`에서:
+
+```cpp
+LegacyStatus IpcJsonClient::init(const LegacyConfig* cfg) {
+    ...
+    if (!transport_.init(cfg->agent_ip, cfg->agent_port)) {
+        return LEGACY_ERR_TRANSPORT;
+    }
+
+    running_ = true;
+    recv_thread_ = std::thread(&IpcJsonClient::receiveLoop, this);
+
+    std::cout << "[IpcJsonClient] Initialized" << std::endl;
+    return LEGACY_OK;
+}
+```
+
+* `close()`에서:
+
+```cpp
+void IpcJsonClient::close() {
+    running_ = false;
+    if (recv_thread_.joinable()) {
+        recv_thread_.join();
+    }
+    transport_.close();
+    std::cout << "[IpcJsonClient] Closed" << std::endl;
+}
+```
+
+* `receiveLoop()`는 `while (running_)` 루프 안에서 `transport_.receive(..., 100ms)`로 계속 수신하면서,
+
+  * CBOR → JSON 변환
+  * `pending_requests_`(요청/응답 매칭) 처리 (`req_mutex_` 사용)
+  * `subscriptions_`(event 구독) 처리 (`sub_mutex_` 사용)
+  * `type_adapters_` 접근 (`adapter_mutex_` 사용)
+
+즉, **실제 “백그라운드 스레드”는 딱 하나(`recv_thread_`)**고,
+나머지 `std::mutex`들은 이 스레드와 API 호출 사이 동기화를 위한 용도야.
+
+---
+
+## 2. VxWorks DKM 관점에서 OS 의존 부분 정리
+
+### 2-1. 이미 DKM 친화적인 부분
+
+* `DkmRtpIpc`:
+
+  * `_VXWORKS_` 분기에서 `sockLib.h`, `inetLib.h`, `hostLib.h`, `ioLib.h`, `unistd.h` 등을 사용해서 UDP 소켓 처리.
+  * `select()` + `recv()` 기반으로 timeout 수신도 구현되어 있음.
+  * 이 부분은 **DKM에서 그대로 사용해도 됨**. (소켓 API는 커널에서도 동일 패턴)
+
+* `legacy_agent.cpp`:
+
+  * C API 레이어라 OS 의존성이 거의 없음.
+  * `new/delete` 정도만 쓰고, 멀티스레드 관련은 전부 `IpcJsonClient`에 넘김.
+
+그래서 **실제로 DKM 전용으로 고쳐야 하는 핵심은 `IpcJsonClient` 쪽**이야.
+
+### 2-2. DKM에서 문제될 수 있는 것들
+
+DKM은 “커널 모듈”이라, 일반적으로:
+
+* `std::thread` / `pthread`는 쓰기 까다롭고,
+* 대신 **VxWorks task (`taskSpawn`) + semLib**를 사용하는 게 정석이야. 
+
+지금 코드에서 직접 손봐야 할 OS 의존 요소는:
+
+1. `std::thread recv_thread_`
+2. `std::mutex req_mutex_ / sub_mutex_ / adapter_mutex_`
+3. (나머지 STL 컨테이너, `std::atomic<bool> running_` 등은 그대로 둬도 됨. C++ 런타임만 잘 링크되면 문제 없음)
+
+---
+
+## 3. “DKM 전용”으로 바꿀 때 필요한 수정 포인트
+
+이제 진짜로 **어디를 어떻게 바꾸면 되는지** 정리해볼게.
+
+### 3-1. `std::thread` → VxWorks task
+
+#### (1) 헤더 변경 (`IpcJsonClient.h`)
+
+현재:
+
+```cpp
+#include <thread>
+#include <mutex>
+...
+class IpcJsonClient {
+    ...
+    std::atomic<bool> running_;
+    std::thread recv_thread_;
+    ...
+};
+```
+
+**DKM 전용 버전**이라면 대놓고 VxWorks 헤더를 써도 됨:
+
+```cpp
+extern "C" {
+#include <vxWorks.h>
+#include <taskLib.h>
+#include <semLib.h>
+}
+
+class IpcJsonClient {
+public:
+    IpcJsonClient();
+    ~IpcJsonClient();
+
+    LegacyStatus init(const LegacyConfig* cfg);
+    void close();
+
+private:
+    static void recvTaskEntry(uintptr_t arg);  // taskSpawn 엔트리용
+
+    void receiveLoop();
+
+    DkmRtpIpc transport_;
+    std::atomic<bool> running_;
+
+    TASK_ID recv_task_;   // std::thread 대신
+    ...
+};
+```
+
+#### (2) `init()`에서 thread 생성 → taskSpawn
+
+현재:
+
+```cpp
+running_ = true;
+recv_thread_ = std::thread(&IpcJsonClient::receiveLoop, this);
+```
+
+**DKM용으로는 이렇게**:
+
+```cpp
+LegacyStatus IpcJsonClient::init(const LegacyConfig* cfg) {
+    ...
+    if (!transport_.init(cfg->agent_ip, cfg->agent_port)) {
+        return LEGACY_ERR_TRANSPORT;
+    }
+
+    running_ = true;
+
+    recv_task_ = taskSpawn(
+        (char*)"tIpcRecv",
+        100,                 // 우선순위 (필요시 cfg에서 받아와도 됨)
+        0,                   // 옵션
+        16384,               // 스택 (RTI 쪽 고려해서 넉넉히)
+        (FUNCPTR)&IpcJsonClient::recvTaskEntry,
+        (int)(uintptr_t)this,
+        0,0,0,0,0,0,0,0,0
+    );
+
+    if (recv_task_ == TASK_ID_ERROR) {
+        running_ = false;
+        transport_.close();
+        return LEGACY_ERR_TRANSPORT;
+    }
+
+    std::cout << "[IpcJsonClient] Initialized (taskId=" << recv_task_ << ")\n";
+    return LEGACY_OK;
+}
+```
+
+그리고 엔트리 함수:
+
+```cpp
+void IpcJsonClient::recvTaskEntry(uintptr_t arg) {
+    IpcJsonClient* self = reinterpret_cast<IpcJsonClient*>(arg);
+    if (self) {
+        self->receiveLoop();
+    }
+}
+```
+
+* 이렇게 하면 기존 `receiveLoop()` 로직은 그대로 쓰고,
+* 생성 방식만 `std::thread` → `taskSpawn`으로 바뀜.
+
+#### (3) `close()`에서 join → task 정리
+
+현재:
+
+```cpp
+void IpcJsonClient::close() {
+    running_ = false;
+    if (recv_thread_.joinable()) {
+        recv_thread_.join();
+    }
+    transport_.close();
+}
+```
+
+DKM에서는:
+
+```cpp
+void IpcJsonClient::close() {
+    running_ = false;          // receiveLoop() 가 다음 타임아웃에 빠져나오게
+
+    if (recv_task_ != TASK_ID_ERROR) {
+        // 100ms 타임아웃으로 돌고 있으니까, 잠깐 기다린 뒤에도 살아있으면 강제 삭제
+        taskDelay(sysClkRateGet() / 10); // 100ms 정도
+
+        if (taskIdVerify(recv_task_) == OK) {
+            // 아직 안 끝났으면 안전상 taskDelete
+            taskDelete(recv_task_);
+        }
+        recv_task_ = TASK_ID_ERROR;
+    }
+
+    transport_.close();
+    std::cout << "[IpcJsonClient] Closed" << std::endl;
+}
+```
+
+* 더 깔끔하게 하려면 `receiveLoop()` 마지막에 `recv_task_ = TASK_ID_ERROR;` 같은 마무리를 해도 좋고,
+* Stop 시점에 따로 `semGive` 해서 깨우는 등 세밀하게 다듬을 수도 있음.
+
+### 3-2. `std::mutex` → `SEM_ID` (VxWorks mutex sem)
+
+현재 `IpcJsonClient.h`:
+
+```cpp
+std::mutex req_mutex_;
+std::map<uint32_t, PendingRequest> pending_requests_;
+
+std::mutex sub_mutex_;
+std::map<std::string, std::vector<Subscription>> subscriptions_;
+
+std::mutex adapter_mutex_;
+std::map<std::string, LegacyTypeAdapter> type_adapters_;
+```
+
+그리고 cpp에서:
+
+```cpp
+std::lock_guard<std::mutex> lock(req_mutex_);
+...
+std::lock_guard<std::mutex> lock(sub_mutex_);
+...
+std::lock_guard<std::mutex> lock(adapter_mutex_);
+```
+
+#### (1) 멤버를 SEM_ID로 변경
+
+```cpp
+SEM_ID req_sem_;
+SEM_ID sub_sem_;
+SEM_ID adapter_sem_;
+```
+
+#### (2) 생성/파괴
+
+생성자에서:
+
+```cpp
+IpcJsonClient::IpcJsonClient()
+    : running_(false)
+    , next_req_id_(1)
+    , recv_task_(TASK_ID_ERROR)
+{
+    req_sem_     = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
+    sub_sem_     = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
+    adapter_sem_ = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
+}
+```
+
+소멸자에서:
+
+```cpp
+IpcJsonClient::~IpcJsonClient() {
+    close();
+
+    if (req_sem_)     semDelete(req_sem_);
+    if (sub_sem_)     semDelete(sub_sem_);
+    if (adapter_sem_) semDelete(adapter_sem_);
+}
+```
+
+#### (3) RAII lock guard 대체
+
+간단한 RAII wrapper를 하나 만들면 기존 코드 형태를 유지할 수 있음:
+
+```cpp
+class SemLockGuard {
+public:
+    explicit SemLockGuard(SEM_ID sem) : sem_(sem) {
+        if (sem_) semTake(sem_, WAIT_FOREVER);
+    }
+    ~SemLockGuard() {
+        if (sem_) semGive(sem_);
+    }
+private:
+    SEM_ID sem_;
+};
+```
+
+그리고 기존 코드:
+
+```cpp
+std::lock_guard<std::mutex> lock(req_mutex_);
+```
+
+를 전부:
+
+```cpp
+SemLockGuard lock(req_sem_);
+```
+
+로 바꾸면 됨.
+
+* `pending_requests_`, `subscriptions_`, `type_adapters_` 접근 부분 전체에 동일하게 적용.
+
+### 3-3. 그 밖에
+
+* `std::atomic<bool> running_`은 그대로 써도 됨.
+* `std::map`, `std::vector`, `std::string`, `std::function` 등도 다 C++ 런타임만 잘 링크되면 문제 없음.
+* `DkmRtpIpc`는 이미 `_VXWORKS_` 분기로 커널에서 쓰는 소켓 코드라 그대로 유지.
+
+---
+
+## 4. DKM용 데모 모듈은 어떻게?
+
+지금 네가 가지고 있는 `udp_relay_dkm.c`처럼,
+이 Lib를 쓰는 **DKM 데모**는 대략 이런 식으로 만들 수 있어: 
+
+* `legacy_agent_dkm_demo.c` (새 DKM 모듈 파일)에서:
+
+  * 전역으로 `LEGACY_HANDLE g_agent;`
+  * `STATUS legacyAgentDemoStart(void)`:
+
+    * `LegacyConfig cfg` 채우고
+    * `legacy_agent_init(&cfg, &g_agent);`
+    * 필요하면 테스트로 `legacy_agent_hello(...)` 호출.
+  * `STATUS legacyAgentDemoStop(void)`:
+
+    * `legacy_agent_close(g_agent);`
+    * 핸들 NULL 초기화.
+
+* 커널 쉘에서:
+
+  ```text
+  -> ld < legacy_agent_dkm_demo.out
+  -> legacyAgentDemoStart
+  ...
+  -> legacyAgentDemoStop
+  -> unld "legacy_agent_dkm_demo.out"
+  ```
+
+이렇게 하면 **Lib 내부의 IpcJsonClient가 알아서 taskSpawn으로 receiveLoop를 돌리고**,
+DKM 데모는 그냥 C API를 호출하는 쪽에만 집중하면 됨.
+
+---
+
+## 5. 한줄 정리
+
+* **압축은 잘 열어서 전체 구조 다 봤고**,
+* DKM 전용으로 바꿀 때 손댈 핵심은 딱 두 군데야:
+
+  1. `IpcJsonClient`의 `std::thread` → `taskSpawn()` + `TASK_ID`
+  2. `IpcJsonClient`의 `std::mutex` → `SEM_ID` + `semTake/semGive`
+
+이거 기준으로 한 번 손봐보고,
+원하면 내가 아예 **패치 형태로(수정된 IpcJsonClient.h/cpp 버전)** 까지 쭉 써줄 수도 있어.

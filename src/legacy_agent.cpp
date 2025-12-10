@@ -1,0 +1,109 @@
+#include "legacy_agent.h"
+#include "IpcJsonClient.h"
+#include <new>
+
+struct LegacyAgentHandleImpl {
+    IpcJsonClient client;
+};
+
+extern "C" {
+
+LegacyStatus legacy_agent_init(const LegacyConfig* cfg, LEGACY_HANDLE* outHandle) {
+    if (!cfg || !outHandle) return LEGACY_ERR_PARAM;
+    
+    LegacyAgentHandleImpl* impl = new (std::nothrow) LegacyAgentHandleImpl();
+    if (!impl) return LEGACY_ERR_PARAM;
+
+    LegacyStatus status = impl->client.init(cfg);
+    if (status != LEGACY_OK) {
+        delete impl;
+        return status;
+    }
+
+    *outHandle = impl;
+    return LEGACY_OK;
+}
+
+void legacy_agent_close(LEGACY_HANDLE h) {
+    if (h) {
+        h->client.close();
+        delete h;
+    }
+}
+
+LegacyStatus legacy_agent_hello(LEGACY_HANDLE h, uint32_t timeout_ms, LegacyHelloCb cb, void* user) {
+    if (!h) return LEGACY_ERR_PARAM;
+    return h->client.sendHello(timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_create_participant(LEGACY_HANDLE h, const LegacyParticipantConfig* cfg, uint32_t timeout_ms, LegacySimpleCb cb, void* user) {
+    if (!h || !cfg) return LEGACY_ERR_PARAM;
+    return h->client.createParticipant(cfg, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_create_publisher(LEGACY_HANDLE h, const LegacyPublisherConfig* cfg, uint32_t timeout_ms, LegacySimpleCb cb, void* user) {
+    if (!h || !cfg) return LEGACY_ERR_PARAM;
+    return h->client.createPublisher(cfg, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_create_subscriber(LEGACY_HANDLE h, const LegacySubscriberConfig* cfg, uint32_t timeout_ms, LegacySimpleCb cb, void* user) {
+    if (!h || !cfg) return LEGACY_ERR_PARAM;
+    return h->client.createSubscriber(cfg, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_create_writer(LEGACY_HANDLE h, const LegacyWriterConfig* cfg, uint32_t timeout_ms, LegacySimpleCb cb, void* user) {
+    if (!h || !cfg) return LEGACY_ERR_PARAM;
+    return h->client.createWriter(cfg, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_create_reader(LEGACY_HANDLE h, const LegacyReaderConfig* cfg, uint32_t timeout_ms, LegacySimpleCb cb, void* user) {
+    if (!h || !cfg) return LEGACY_ERR_PARAM;
+    return h->client.createReader(cfg, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_clear_dds_entities(LEGACY_HANDLE h, uint32_t timeout_ms, LegacySimpleCb cb, void* user) {
+    if (!h) return LEGACY_ERR_PARAM;
+    return h->client.clearEntities(timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_get_qos_list(LEGACY_HANDLE h, bool include_builtin, bool detail, uint32_t timeout_ms, LegacyQosListCb cb, void* user) {
+    if (!h) return LEGACY_ERR_PARAM;
+    return h->client.getQosList(include_builtin, detail, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_set_qos_profile(LEGACY_HANDLE h, const LegacyQosSetOptions* opt, uint32_t timeout_ms, LegacyQosSetCb cb, void* user) {
+    if (!h || !opt) return LEGACY_ERR_PARAM;
+    return h->client.setQosProfile(opt, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_write_json(LEGACY_HANDLE h, const LegacyWriteJsonOptions* opt, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
+    if (!h || !opt) return LEGACY_ERR_PARAM;
+    return h->client.writeJson(opt, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_write_struct(LEGACY_HANDLE h, const char* topic, const char* type_name, const void* user_struct, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
+    if (!h || !topic || !type_name || !user_struct) return LEGACY_ERR_PARAM;
+    return h->client.writeStruct(topic, type_name, user_struct, timeout_ms, cb, user);
+}
+
+LegacyStatus legacy_agent_subscribe_event(LEGACY_HANDLE h, const char* topic, const char* type, LegacyEventCb cb, void* user) {
+    if (!h || !topic || !type) return LEGACY_ERR_PARAM;
+    return h->client.subscribeEvent(topic, type, cb, user);
+}
+
+LegacyStatus legacy_agent_subscribe_typed(LEGACY_HANDLE h, const char* topic, const char* type_name, LegacyTypedEventCb cb, void* user) {
+    if (!h || !topic || !type_name) return LEGACY_ERR_PARAM;
+    return h->client.subscribeTyped(topic, type_name, cb, user);
+}
+
+LegacyStatus legacy_agent_register_type_adapter(LEGACY_HANDLE h, const LegacyTypeAdapter* adapter) {
+    if (!h || !adapter) return LEGACY_ERR_PARAM;
+    return h->client.registerTypeAdapter(adapter);
+}
+
+LegacyStatus legacy_agent_unregister_type_adapter(LEGACY_HANDLE h, const char* topic, const char* type_name) {
+    if (!h || !topic || !type_name) return LEGACY_ERR_PARAM;
+    return h->client.unregisterTypeAdapter(topic, type_name);
+}
+
+} // extern "C"
