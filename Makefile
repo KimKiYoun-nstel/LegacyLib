@@ -1,12 +1,19 @@
-# Makefile for Legacy Agent
+# Makefile for LegacyLib (Legacy Agent Library)
 #
 # Usage:
 #   make                # Build for VxWorks DKM (Default)
 #   make MODE=linux     # Build for Linux (Executable + Static Lib)
+#   make config         # Show build configuration
 #
 # Prerequisites for VxWorks:
-#   - WIND_BASE, WIND_CC_SYSROOT set
+#   - Run vx_env.bat to setup environment
+#   - WIND_BASE, WIND_CC_SYSROOT, VSB_DIR must be set
 #   - wr-cc, wr-c++ in PATH
+#
+# Environment Variables (from vx_env.bat):
+#   WIND_BASE         = D:\WindRiver\vxworks\23.03
+#   WIND_CC_SYSROOT   = D:\WindRiver\workspace_test
+#   VSB_DIR           = D:\WindRiver\workspace_test
 
 MODE ?= vxworks
 
@@ -28,12 +35,32 @@ DEMO_OBJ_DKM = $(DEMO_SRC_C_DKM:.c=.o)
 
 # --- VxWorks DKM Settings ---
 ifeq ($(MODE),vxworks)
+    # Check required environment variables
+    ifndef WIND_BASE
+        $(error WIND_BASE not set. Run vx_env.bat first)
+    endif
+    
+    ifndef WIND_CC_SYSROOT
+        $(error WIND_CC_SYSROOT not set. Run vx_env.bat first)
+    endif
+    
+    VSB_DIR ?= $(WIND_CC_SYSROOT)
+    
     CC        = wr-cc
     CXX       = wr-c++
     
     # -dkm flag for Downloadable Kernel Module
-    # -D_VXWORKS_ for code conditional compilation
-    COMMON_FLAGS = -dkm -D_VXWORKS_ -Iinclude -Isrc/internal -Wall
+    # -mcpu=e6500: PowerPC e6500 (from default.conf)
+    # -D_VX_CPU=_VX_PPCE6500: CPU definition
+    # -D_WRS_KERNEL: Kernel mode
+    COMMON_FLAGS = -dkm \
+                   -mcpu=e6500 \
+                   -D_VX_CPU=_VX_PPCE6500 \
+                   -D_WRS_KERNEL \
+                   -D_VXWORKS_ \
+                   -Iinclude \
+                   -Isrc/internal \
+                   -Wall
     
     CFLAGS    = $(COMMON_FLAGS)
     CXXFLAGS  = $(COMMON_FLAGS) -std=c++11
@@ -62,9 +89,23 @@ endif
 
 # --- Rules ---
 
-.PHONY: all clean
+.PHONY: all clean config
 
-all: $(TARGETS)
+all: check-env $(TARGETS)
+
+# Check environment (VxWorks mode only)
+check-env:
+ifeq ($(MODE),vxworks)
+	@echo "=== Checking VxWorks Environment ==="
+	@if [ -z "$(WIND_BASE)" ]; then \
+		echo "ERROR: WIND_BASE not set"; \
+		echo "Please run vx_env.bat first"; \
+		exit 1; \
+	fi
+	@echo "WIND_BASE: $(WIND_BASE)"
+	@echo "VSB_DIR: $(VSB_DIR)"
+	@echo "=== Environment OK ==="
+endif
 
 ifeq ($(MODE),vxworks)
 # VxWorks Library DKM (no main, relocatable)
@@ -95,7 +136,31 @@ endif
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@echo "Cleaning..."
+	@echo "Cleaning LegacyLib..."
 	rm -f $(LIB_OBJ_CPP) $(DEMO_OBJ_LINUX) $(DEMO_OBJ_DKM)
 	rm -f $(TARGET_APP) $(TARGET_LIB) liblegacy_agent_dkm.out demo_tcp_cli_dkm.out legacy_agent_dkm.out
+	@echo "Clean complete"
+
+# Show build configuration
+config:
+	@echo "=== LegacyLib Build Configuration ==="
+	@echo "Mode: $(MODE)"
+ifeq ($(MODE),vxworks)
+	@echo "Environment:"
+	@echo "  WIND_BASE: $(WIND_BASE)"
+	@echo "  WIND_CC_SYSROOT: $(WIND_CC_SYSROOT)"
+	@echo "  VSB_DIR: $(VSB_DIR)"
+	@echo "Compiler:"
+	@echo "  CC: $(CC)"
+	@echo "  CXX: $(CXX)"
+	@echo "Flags:"
+	@echo "  CFLAGS: $(CFLAGS)"
+	@echo "  CXXFLAGS: $(CXXFLAGS)"
+	@echo "Targets:"
+	@echo "  $(TARGETS)"
+else
+	@echo "Compiler: $(CC), $(CXX)"
+	@echo "Targets: $(TARGETS)"
+endif
+	@echo "===================================="
 	-del *.out 2>nul

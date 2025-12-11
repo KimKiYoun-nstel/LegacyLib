@@ -1,0 +1,302 @@
+/*
+ * demo_app_timer.c - Periodic Timer and Scheduling
+ */
+
+#include "../include/demo_app.h"
+#include <stdio.h>
+
+#ifdef _VXWORKS_
+#include <vxWorks.h>
+#include <taskLib.h>
+#include <sysLib.h>
+#include <wdLib.h>
+#else
+// Windows/Linux threading
+#ifdef _WIN32
+#include <windows.h>
+#include <process.h>
+#else
+#include <pthread.h>
+#include <unistd.h>
+#endif
+#endif
+
+/* ========================================================================
+ * Global State
+ * ======================================================================== */
+
+#ifdef _VXWORKS_
+static WDOG_ID g_timer_wdog = NULL;
+static TASK_ID g_timer_task = TASK_ID_ERROR;
+static volatile int g_timer_running = 0;
+#else
+// Windows/Linux
+#ifdef _WIN32
+static HANDLE g_timer_thread = NULL;
+static volatile int g_timer_running = 0;
+#else
+static pthread_t g_timer_thread;
+static volatile int g_timer_running = 0;
+#endif
+#endif
+
+extern DemoAppContext* g_demo_ctx;
+
+/* ========================================================================
+ * Timer Task (VxWorks)
+ * ======================================================================== */
+
+#ifdef _VXWORKS_
+static void timerTask(void) {
+    int tick_rate = sysClkRateGet();  // System ticks per second
+    int delay_ticks = tick_rate / 1000;  // 1ms in ticks
+    
+    if (delay_ticks < 1) delay_ticks = 1;
+    
+    printf("[DemoApp Timer] Timer task started (delay=%d ticks)\n", delay_ticks);
+    
+    while (g_timer_running) {
+        if (g_demo_ctx) {
+            demo_timer_tick(g_demo_ctx);
+        }
+        taskDelay(delay_ticks);
+    }
+    
+    printf("[DemoApp Timer] Timer task exiting\n");
+}
+#else
+// Windows/Linux Timer Thread
+#ifdef _WIN32
+static unsigned int __stdcall timerThreadFunc(void* arg) {
+    (void)arg;
+    printf("[DemoApp Timer] Timer thread started (1ms interval)\n");
+    
+    while (g_timer_running) {
+        if (g_demo_ctx) {
+            demo_timer_tick(g_demo_ctx);
+        }
+        Sleep(1);  // 1ms
+    }
+    
+    printf("[DemoApp Timer] Timer thread exiting\n");
+    return 0;
+}
+#else
+static void* timerThreadFunc(void* arg) {
+    (void)arg;
+    printf("[DemoApp Timer] Timer thread started (1ms interval)\n");
+    
+    while (g_timer_running) {
+        if (g_demo_ctx) {
+            demo_timer_tick(g_demo_ctx);
+        }
+        usleep(1000);  // 1ms = 1000us
+    }
+    
+    printf("[DemoApp Timer] Timer thread exiting\n");
+    return NULL;
+}
+#endif
+#endif
+
+/* ========================================================================
+ * Timer Initialization
+ * ======================================================================== */
+
+int demo_timer_init(DemoAppContext* ctx) {
+    if (!ctx) return -1;
+    
+    printf("[DemoApp Timer] Initializing timer subsystem...\n");
+    
+    ctx->tick_count = 0;
+    ctx->last_200hz_tick = 0;
+    ctx->last_1hz_tick = 0;
+    
+#ifdef _VXWORKS_
+    // Start timer task
+    g_timer_running = 1;
+    
+    g_timer_task = taskSpawn(
+        "tDemoTimer",
+        90,         // High priority for timing
+        0,
+        32768,
+        (FUNCPTR)timerTask,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    );
+    
+    if (g_timer_task == TASK_ID_ERROR) {
+        printf("[DemoApp Timer] ERROR: Failed to spawn timer task\n");
+        g_timer_running = 0;
+        return -1;
+    }
+    
+    printf("[DemoApp Timer] Timer task spawned (taskId=%d)\n", g_timer_task);
+#else
+    // Windows/Linux thread
+    g_timer_running = 1;
+    
+#ifdef _WIN32
+    g_timer_thread = (HANDLE)_beginthreadex(NULL, 0, timerThreadFunc, NULL, 0, NULL);
+    if (g_timer_thread == NULL) {
+        printf("[DemoApp Timer] ERROR: Failed to create timer thread\n");
+        g_timer_running = 0;
+        return -1;
+    }
+    printf("[DemoApp Timer] Timer thread created\n");
+#else
+    if (pthread_create(&g_timer_thread, NULL, timerThreadFunc, NULL) != 0) {
+        printf("[DemoApp Timer] ERROR: Failed to create timer thread\n");
+        g_timer_running = 0;
+        return -1;
+    }
+    printf("[DemoApp Timer] Timer thread created\n");
+#endif
+#endif
+    
+    printf("[DemoApp Timer] Timer initialized\n");
+    return 0;
+}
+
+void demo_timer_cleanup(DemoAppContext* ctx) {
+    if (!ctx) return;
+    
+    printf("[DemoApp Timer] Cleaning up timer subsystem...\n");
+    
+    g_timer_running = 0;
+    
+#ifdef _VXWORKS_
+    if (g_timer_task != TASK_ID_ERROR) {
+        taskDelay(sysClkRateGet() / 10);  // 100ms
+        
+        if (taskIdVerify(g_timer_task) == OK) {
+            taskDelete(g_timer_task);
+        }
+        g_timer_task = TASK_ID_ERROR;
+    }
+    
+    if (g_timer_wdog) {
+        wdDelete(g_timer_wdog);
+        g_timer_wdog = NULL;
+    }
+#else
+    // Windows/Linux
+#ifdef _WIN32
+    if (g_timer_thread) {
+        WaitForSingleObject(g_timer_thread, 1000);  // Wait 1 second
+        CloseHandle(g_timer_thread);
+        g_timer_thread = NULL;
+    }
+#else
+    pthread_join(g_timer_thread, NULL);
+#endif
+#endif
+    
+    printf("[DemoApp Timer] Timer cleanup complete\n");
+}
+
+/* ========================================================================
+ * Tick Handler (Called every 1ms)
+ * ======================================================================== */
+
+void demo_timer_tick(DemoAppContext* ctx) {
+    if (!ctx) return;
+    
+    ctx->tick_count++;
+    
+    // Handle IBIT execution (IBitRunning state)
+    if (ctx->current_state == DEMO_STATE_IBIT_RUNNING) {
+        uint64_t elapsed = ctx->tick_count - ctx->bit_state.ibit_start_time;
+        
+        // IBIT duration: 3 seconds (3000ms)
+        if (elapsed >= 3000) {
+            printf("[DemoApp Timer] IBIT completed after %llu ms\n", elapsed);
+            
+            // Publish resultBIT
+            demo_msg_publish_result_bit(ctx);
+            
+            // Clear IBIT state
+            ctx->bit_state.ibit_running = false;
+            
+            // Transition back to Run state
+            extern void enter_state(DemoAppContext* ctx, DemoState new_state);
+            enter_state(ctx, DEMO_STATE_RUN);
+            
+            printf("[DemoApp Timer] Returned to Run state\n");
+        }
+        
+        return;  // Don't publish periodic messages during IBIT
+    }
+    
+    // Only process in Run state
+    if (ctx->current_state != DEMO_STATE_RUN) {
+        return;
+    }
+    
+    // Update simulation (position/velocity)
+    demo_timer_update_simulation(ctx);
+    
+    // 200Hz processing (every 5ms)
+    if ((ctx->tick_count % 5) == 0) {
+        demo_msg_publish_actuator_signal(ctx);
+    }
+    
+    // 1Hz processing (every 1000ms)
+    if ((ctx->tick_count % 1000) == 0) {
+        demo_msg_publish_cbit(ctx);
+    }
+}
+
+/* ========================================================================
+ * Simulation Update (Called every 1ms)
+ * ======================================================================== */
+
+void demo_timer_update_simulation(DemoAppContext* ctx) {
+    if (!ctx) return;
+    
+    // Simple position integration from velocity commands
+    // dt = 1ms = 0.001s
+    const float dt = 0.001f;
+    
+    ActuatorControlState* ctrl = &ctx->control_state;
+    ActuatorSignalState* sig = &ctx->signal_state;
+    
+    // Update azimuth (roundAngle) based on velocity command
+    if (ctrl->roundAngleVelocity != 0.0f) {
+        // Direct velocity control
+        sig->e1AngleVelocity = ctrl->roundAngleVelocity;
+        sig->azAngle += sig->e1AngleVelocity * dt;
+    } else {
+        // Position control - move towards A_drivingPosition
+        float error = ctrl->drivingPosition - sig->azAngle;
+        if (error > 0.01f || error < -0.01f) {
+            // Simple proportional control (P = 1.0)
+            sig->e1AngleVelocity = error * 1.0f;
+            // Limit velocity
+            if (sig->e1AngleVelocity > 10.0f) sig->e1AngleVelocity = 10.0f;
+            if (sig->e1AngleVelocity < -10.0f) sig->e1AngleVelocity = -10.0f;
+            sig->azAngle += sig->e1AngleVelocity * dt;
+        } else {
+            sig->e1AngleVelocity = 0.0f;
+        }
+    }
+    
+    // Update gyro values (simplified - just copy velocity)
+    sig->roundGyro = sig->e1AngleVelocity;
+    sig->upDownGyro = ctrl->upDownAngleVelocity;
+    
+    // Update enum status fields based on component faults
+    // Set to NORMAL if no faults, otherwise indicate fault conditions
+    BITComponentState* pbit = &ctx->bit_state.pbit_components;
+    
+    sig->energyStorage = pbit->energyStorage ? 
+        L_ChangingStatusType_DISCHARGE : L_ChangingStatusType_NORMAL;
+    sig->mainCannonFixStatus = pbit->roundMotor ? 
+        L_MainCannonFixStatusType_FIX : L_MainCannonFixStatusType_NORMAL;
+    sig->deckClearance = L_DekClearanceType_OUTSIDE;
+    sig->autoArmPositionComplement = L_ArmPositionType_NORMAL;
+    sig->manualArmPositionComple = L_ArmPositionType_NORMAL;
+    sig->mainCannonRestoreComplement = L_MainCannonReturnStatusType_RUNNING;
+    sig->armSafetyMainCannonLock = L_ArmSafetyMainCannonLock_NORMAL;
+    sig->shutdown = L_CannonDrivingDeviceShutdownType_UNKNOWN;
+}

@@ -1,0 +1,100 @@
+# Makefile.windows - Windows Build for DemoApp
+#
+# Usage:
+#   mingw32-make -f Makefile.windows         # Build Windows executable
+#   mingw32-make -f Makefile.windows clean   # Clean build artifacts
+#   mingw32-make -f Makefile.windows run     # Build and run
+#
+# Requirements:
+#   - MinGW GCC (gcc, g++)
+
+# Compiler
+CC = gcc
+CXX = g++
+
+# Output directory
+BUILD_DIR = build_win
+
+# Compiler Flags
+CFLAGS = -Wall -Wextra -O2 -I./include -I../include -DWIN32 -D_WIN32
+CXXFLAGS = -Wall -Wextra -O2 -I./include -I../include -I../src/internal -DWIN32 -D_WIN32 -std=c++11
+
+# Linker Flags
+LDFLAGS = -lws2_32
+
+# Source Files
+SRCS_C = src/demo_app_core.c \
+         src/demo_app_msg.c \
+         src/demo_app_timer.c \
+         src/demo_app_enums.c \
+         windows/demo_app_main.c
+
+# LegacyLib C++ sources
+LEGACY_SRCS_CPP = ../src/legacy_agent.cpp \
+                  ../src/internal/IpcJsonClient.cpp \
+                  ../src/internal/DkmRtpIpc.cpp
+
+# Object Files (in build directory)
+OBJS_C = $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(SRCS_C)))
+OBJS_CPP = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(notdir $(LEGACY_SRCS_CPP)))
+
+# Output
+TARGET = $(BUILD_DIR)/demo_app.exe
+
+# ========================================================================
+# Build Rules
+# ========================================================================
+
+.PHONY: all clean run
+
+all: $(BUILD_DIR) $(TARGET)
+
+$(BUILD_DIR):
+	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+
+$(TARGET): $(OBJS_C) $(OBJS_CPP)
+	@echo "Linking Windows executable: $@"
+	$(CXX) -o $@ $^ $(LDFLAGS)
+	@echo "=== Build complete: $@ ==="
+	@echo "Run:"
+	@echo "  $(TARGET) -p 23000 -h 127.0.0.1"
+
+$(BUILD_DIR)/%.o: src/%.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: windows/%.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: ../src/%.cpp
+	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: ../src/internal/%.cpp
+	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	@echo "Cleaning..."
+	@if exist $(BUILD_DIR) rmdir /S /Q $(BUILD_DIR)
+	@echo "Clean complete"
+
+run: $(TARGET)
+	@echo "Running DemoApp..."
+	$(TARGET) -p 23000 -h 127.0.0.1
+
+# Help
+help:
+	@echo "DemoApp Windows Build"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all     - Build demo_app.exe (default)"
+	@echo "  clean   - Remove build artifacts"
+	@echo "  run     - Build and run demo_app.exe"
+	@echo "  help    - Show this help"
+	@echo ""
+	@echo "Usage:"
+	@echo "  mingw32-make -f Makefile.windows"
+	@echo "  mingw32-make -f Makefile.windows clean"
+	@echo "  mingw32-make -f Makefile.windows run"

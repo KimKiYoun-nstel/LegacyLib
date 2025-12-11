@@ -1,0 +1,41 @@
+# Build outputs
+*.o
+*.out
+*.exe
+*.a
+*.so
+*.dll
+*.lib
+
+# VxWorks build artifacts
+demo_app/*.out
+demo_app/*.o
+demo_app/vxworks/*.o
+
+# Windows build directory
+demo_app/build_win/
+
+# Dependency files
+*.d
+*.dep
+
+# Editor/IDE files
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
