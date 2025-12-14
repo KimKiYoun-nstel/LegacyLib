@@ -8,6 +8,9 @@
 # Requirements:
 #   - MinGW GCC (gcc, g++)
 
+# Force cmd.exe shell (avoid VxWorks sh interference)
+SHELL = cmd.exe
+
 # Compiler
 CC = gcc
 CXX = g++
@@ -20,13 +23,16 @@ CFLAGS = -Wall -Wextra -O2 -I./include -I../include -DWIN32 -D_WIN32
 CXXFLAGS = -Wall -Wextra -O2 -I./include -I../include -I../src/internal -DWIN32 -D_WIN32 -std=c++11
 
 # Linker Flags
-LDFLAGS = -lws2_32
+LDFLAGS = -lws2_32 -lwinmm
 
 # Source Files
 SRCS_C = src/demo_app_core.c \
          src/demo_app_msg.c \
          src/demo_app_timer.c \
          src/demo_app_enums.c \
+         src/demo_app_log.c \
+         src/demo_app_cli.c \
+         windows/demo_app_tcp_win.c \
          windows/demo_app_main.c
 
 # LegacyLib C++ sources

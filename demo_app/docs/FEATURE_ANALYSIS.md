@@ -17,6 +17,7 @@
 - **목적**: 포구동장치 시뮬레이터를 통한 DDS 메시지 송수신 시연
 - **플랫폼**: VxWorks DKM / Windows Console (멀티플랫폼)
 - **Phase**: 4.5 (실제 JSON 스키마 기반 전면 재작성 완료)
+- **실행 모드**: 단계별 수동 실행 (Agent 연결 → DDS 엔티티 생성 → 시나리오 시작)
 
 ### 주요 특징
 - ✅ **7개 DDS 메시지** 송수신 (4 송신 + 3 수신)
@@ -25,6 +26,8 @@
 - ✅ **BIT 시나리오** (PBIT, CBIT, IBIT)
 - ✅ **Fault Injection** (테스트용)
 - ✅ **실제 XML 스키마** 100% 준수 (Phase 4.5)
+- ✅ **단계별 실행** (연결 → 엔티티 → 시나리오)
+- ✅ **Clean Start** (hello 이후 자동 clear entities)
 
 ---
 

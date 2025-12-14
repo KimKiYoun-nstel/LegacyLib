@@ -1,17 +1,25 @@
 /*
  * demo_app_main.c - Windows Console Entry Point
  * 
- * Standalone Windows executable for DemoApp testing
+ * TCP CLI-based Windows executable for DemoApp
+ * 
+ * Usage:
+ *   demo_app.exe [-cli_port 23000] [-log_port 24000] [-agent_host 127.0.0.1] [-agent_port 25000]
+ *   
+ *   Then connect with:
+ *     telnet localhost 23000  (for CLI commands)
+ *     telnet localhost 24000  (for log output)
  */
 
 #include "../include/demo_app.h"
+#include "../include/demo_app_log.h"
+#include "../include/demo_app_tcp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #ifdef _WIN32
 #include <windows.h>
-#include <conio.h>  // For _kbhit(), _getch()
 #else
 #include <unistd.h>
 #include <signal.h>
@@ -23,6 +31,10 @@
 
 DemoAppContext* g_demo_ctx = NULL;
 static volatile int g_running = 1;
+static int g_cli_port = 23000;
+static int g_log_port = 24000;
+static char g_agent_host[128] = "127.0.0.1";
+static int g_agent_port = 25000;
 
 /* ========================================================================
  * Signal Handler
@@ -52,89 +64,18 @@ void signalHandler(int sig) {
 void print_usage(const char* prog) {
     printf("Usage: %s [options]\n", prog);
     printf("Options:\n");
-    printf("  -p <port>     Agent port (default: 23000)\n");
-    printf("  -h <host>     Agent host (default: 127.0.0.1)\n");
-    printf("  -d <domain>   DDS domain ID (default: 0)\n");
-    printf("  -help         Show this help\n");
+    printf("  -cli_port <port>    TCP CLI server port (default: 23000)\n");
+    printf("  -log_port <port>    TCP Log server port (default: 24000)\n");
+    printf("  -agent_host <host>  DDS Agent host (default: 127.0.0.1)\n");
+    printf("  -agent_port <port>  DDS Agent port (default: 25000)\n");
+    printf("  -log_mode <mode>    Log output mode: console|redirect|both (default: both)\n");
+    printf("  -help               Show this help\n");
     printf("\nExample:\n");
-    printf("  %s -p 23000 -h 127.0.0.1 -d 0\n", prog);
-}
-
-/* ========================================================================
- * Interactive Commands
- * ======================================================================== */
-
-void print_menu(void) {
-    printf("\n=== DemoApp Commands ===\n");
-    printf("  s - Show status\n");
-    printf("  i - Start IBIT\n");
-    printf("  f - Inject fault (round/updown/sensor/power)\n");
-    printf("  c - Clear fault (component name or 'all')\n");
-    printf("  h - Show this menu\n");
-    printf("  q - Quit\n");
-    printf("========================\n");
-}
-
-void handle_command(char cmd) {
-    char component[64];
-    
-    switch (cmd) {
-        case 's':
-        case 'S':
-            if (g_demo_ctx) {
-                printf("\n=== DemoApp Status ===\n");
-                printf("State: %s\n", demo_state_name(g_demo_ctx->current_state));
-                printf("Tick Count: %llu\n", g_demo_ctx->tick_count);
-                printf("Signal Pub: %u\n", g_demo_ctx->signal_pub_count);
-                printf("CBIT Pub: %u\n", g_demo_ctx->cbit_pub_count);
-                printf("Control Rx: %u\n", g_demo_ctx->control_rx_count);
-                printf("Component Status:\n");
-                printf("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor ? "OK" : "FAULT");
-                printf("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor ? "OK" : "FAULT");
-                printf("  Base Gyro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGyro ? "OK" : "FAULT");
-                printf("  Power: %s\n", g_demo_ctx->bit_state.pbit_components.powerController ? "OK" : "FAULT");
-                printf("======================\n");
-            }
-            break;
-            
-        case 'i':
-        case 'I':
-            if (g_demo_ctx) {
-                printf("Starting IBIT...\n");
-                demo_app_trigger_ibit(g_demo_ctx, 1234, 2);  // I_BIT = 2
-            }
-            break;
-            
-        case 'f':
-        case 'F':
-            printf("Inject fault (round/updown/sensor/power/motor): ");
-            if (scanf("%63s", component) == 1) {
-                demo_app_inject_fault(g_demo_ctx, component);
-            }
-            break;
-            
-        case 'c':
-        case 'C':
-            printf("Clear fault (component or 'all'): ");
-            if (scanf("%63s", component) == 1) {
-                demo_app_clear_fault(g_demo_ctx, component);
-            }
-            break;
-            
-        case 'h':
-        case 'H':
-            print_menu();
-            break;
-            
-        case 'q':
-        case 'Q':
-            g_running = 0;
-            break;
-            
-        default:
-            printf("Unknown command. Press 'h' for help.\n");
-            break;
-    }
+    printf("  %s -cli_port 23000 -log_port 24000 -agent_host 127.0.0.1\n", prog);
+    printf("\nConnect to CLI:\n");
+    printf("  telnet localhost 23000\n");
+    printf("\nConnect to Log:\n");
+    printf("  telnet localhost 24000\n");
 }
 
 /* ========================================================================
@@ -142,32 +83,54 @@ void handle_command(char cmd) {
  * ======================================================================== */
 
 int main(int argc, char* argv[]) {
-    int agent_port = 23000;
-    const char* agent_host = "127.0.0.1";
-    int domain_id = 0;
+    LogOutputMode log_mode = LOG_MODE_BOTH;  // Default: console + redirect
     
-    printf("==============================================\n");
-    printf("  DemoApp - Windows Console Version\n");
-    printf("  Phase 4.5 - Real JSON Schema Implementation\n");
-    printf("==============================================\n\n");
+    // Initialize Winsock
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        printf("ERROR: WSAStartup failed: %d\n", WSAGetLastError());
+        return 1;
+    }
+    
+    printf("============================================\n");
+    printf("  DemoApp - Windows TCP CLI Version\n");
+    printf("============================================\n\n");
     
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
-            agent_port = atoi(argv[++i]);
+        if (strcmp(argv[i], "-cli_port") == 0 && i + 1 < argc) {
+            g_cli_port = atoi(argv[++i]);
         }
-        else if (strcmp(argv[i], "-h") == 0 && i + 1 < argc) {
-            agent_host = argv[++i];
+        else if (strcmp(argv[i], "-log_port") == 0 && i + 1 < argc) {
+            g_log_port = atoi(argv[++i]);
         }
-        else if (strcmp(argv[i], "-d") == 0 && i + 1 < argc) {
-            domain_id = atoi(argv[++i]);
+        else if (strcmp(argv[i], "-agent_host") == 0 && i + 1 < argc) {
+            strncpy(g_agent_host, argv[++i], sizeof(g_agent_host) - 1);
+            g_agent_host[sizeof(g_agent_host) - 1] = '\0';
+        }
+        else if (strcmp(argv[i], "-agent_port") == 0 && i + 1 < argc) {
+            g_agent_port = atoi(argv[++i]);
+        }
+        else if (strcmp(argv[i], "-log_mode") == 0 && i + 1 < argc) {
+            const char* mode = argv[++i];
+            if (strcmp(mode, "console") == 0) {
+                log_mode = LOG_MODE_CONSOLE;
+            } else if (strcmp(mode, "redirect") == 0) {
+                log_mode = LOG_MODE_REDIRECT;
+            } else if (strcmp(mode, "both") == 0) {
+                log_mode = LOG_MODE_BOTH;
+            } else {
+                printf("ERROR: Invalid log_mode '%s'\n", mode);
+                print_usage(argv[0]);
+                return 1;
+            }
         }
         else if (strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
         }
         else {
-            printf("Unknown option: %s\n", argv[i]);
+            printf("ERROR: Unknown option: %s\n", argv[i]);
             print_usage(argv[0]);
             return 1;
         }
@@ -181,60 +144,91 @@ int main(int argc, char* argv[]) {
     signal(SIGTERM, signalHandler);
 #endif
     
+    // Initialize log system
+    printf("Initializing log system...\n");
+    if (demo_log_init(log_mode) != 0) {
+        printf("ERROR: Failed to initialize log system\n");
+        return 1;
+    }
+    printf("Log system initialized (mode: %s)\n",
+           log_mode == LOG_MODE_CONSOLE ? "console" :
+           log_mode == LOG_MODE_REDIRECT ? "redirect" : "both");
+    
+    // Start TCP Log Server (port 24000)
+    printf("Starting TCP Log Server on port %d...\n", g_log_port);
+    if (demo_tcp_log_start(g_log_port) != 0) {
+        printf("ERROR: Failed to start TCP Log Server\n");
+        demo_log_cleanup();
+        return 1;
+    }
+    printf("TCP Log Server started on port %d\n", g_log_port);
+    
+    // Start TCP CLI Server (port 23000)
+    printf("Starting TCP CLI Server on port %d...\n", g_cli_port);
+    if (demo_tcp_cli_start(g_cli_port) != 0) {
+        printf("ERROR: Failed to start TCP CLI Server\n");
+        demo_tcp_log_stop();
+        demo_log_cleanup();
+        return 1;
+    }
+    printf("TCP CLI Server started on port %d\n", g_cli_port);
+    
     // Allocate context
     g_demo_ctx = (DemoAppContext*)malloc(sizeof(DemoAppContext));
     if (!g_demo_ctx) {
         printf("ERROR: Failed to allocate context\n");
+        demo_tcp_cli_stop();
+        demo_tcp_log_stop();
+        demo_log_cleanup();
         return 1;
     }
     
     // Initialize context
     demo_app_context_init(g_demo_ctx);
-    g_demo_ctx->domain_id = domain_id;
     
-    // Start demo application
-    printf("Starting DemoApp...\n");
-    printf("  Agent: %s:%d\n", agent_host, agent_port);
-    printf("  DDS Domain: %d\n", domain_id);
-    printf("\n");
+    printf("\n========================================\n");
+    printf("DemoApp started successfully!\n");
+    printf("----------------------------------------\n");
+    printf("CLI Port:   %d\n", g_cli_port);
+    printf("Log Port:   %d\n", g_log_port);
+    printf("Agent:      %s:%d\n", g_agent_host, g_agent_port);
+    printf("Log Mode:   %s\n",
+           log_mode == LOG_MODE_CONSOLE ? "console" :
+           log_mode == LOG_MODE_REDIRECT ? "redirect" : "both");
+    printf("----------------------------------------\n");
+    printf("Connect to CLI: telnet localhost %d\n", g_cli_port);
+    printf("Connect to Log: telnet localhost %d\n", g_log_port);
+    printf("Press Ctrl+C to exit\n");
+    printf("========================================\n\n");
     
-    if (demo_app_start(g_demo_ctx, agent_host, (uint16_t)agent_port) != 0) {
-        printf("ERROR: Failed to start DemoApp\n");
-        free(g_demo_ctx);
-        return 1;
-    }
+    LOG_INFO("DemoApp Windows TCP CLI version started\n");
+    LOG_INFO("Waiting for CLI commands...\n");
     
-    printf("\nDemoApp started successfully!\n");
-    print_menu();
-    
-    // Main loop - process keyboard input
-    printf("\nPress 'h' for commands, 'q' to quit\n");
-    
+    // Main loop - just wait for Ctrl+C
     while (g_running) {
 #ifdef _WIN32
-        if (_kbhit()) {
-            char cmd = _getch();
-            if (cmd != '\r' && cmd != '\n') {
-                handle_command(cmd);
-            }
-        }
-        Sleep(100);  // 100ms
+        Sleep(1000);  // 1 second
 #else
-        // Linux: blocking input (not ideal but simple)
-        char cmd;
-        if (read(0, &cmd, 1) > 0) {
-            handle_command(cmd);
-        }
-        usleep(100000);  // 100ms
+        sleep(1);
 #endif
     }
     
     // Cleanup
-    printf("\nStopping DemoApp...\n");
-    demo_app_stop(g_demo_ctx);
-    free(g_demo_ctx);
-    g_demo_ctx = NULL;
+    printf("\n[Main] Shutting down...\n");
     
-    printf("Goodbye!\n");
+    if (g_demo_ctx) {
+        if (g_demo_ctx->current_state != DEMO_STATE_IDLE) {
+            demo_app_stop(g_demo_ctx);
+        }
+        free(g_demo_ctx);
+        g_demo_ctx = NULL;
+    }
+    
+    demo_tcp_cli_stop();
+    demo_tcp_log_stop();
+    demo_log_cleanup();
+    
+    WSACleanup();
+    printf("[Main] Shutdown complete\n");
     return 0;
 }

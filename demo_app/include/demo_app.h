@@ -208,11 +208,33 @@ typedef struct {
     uint64_t last_200hz_tick;    // Last 200Hz update
     uint64_t last_1hz_tick;      // Last 1Hz update
     
-    // Statistics
+    // Statistics (counters)
     uint32_t signal_pub_count;   // Actuator signal publish count
     uint32_t cbit_pub_count;     // CBIT publish count
+    uint32_t pbit_pub_count;     // PBIT publish count
+    uint32_t result_pub_count;   // ResultBIT publish count
     uint32_t control_rx_count;   // Control message received count
     uint32_t speed_rx_count;     // Speed message received count
+    uint32_t runbit_rx_count;    // RunBIT message received count
+    
+    // Hz calculation (1-second window)
+    uint64_t stats_last_tick;    // Last statistics update tick
+    uint32_t signal_pub_hz;      // Current Signal publish Hz
+    uint32_t cbit_pub_hz;        // Current CBIT publish Hz
+    uint32_t pbit_pub_hz;        // Current PBIT publish Hz
+    uint32_t result_pub_hz;      // Current ResultBIT publish Hz
+    uint32_t control_rx_hz;      // Current Control receive Hz
+    uint32_t speed_rx_hz;        // Current Speed receive Hz
+    uint32_t runbit_rx_hz;       // Current RunBIT receive Hz
+    
+    // Hz calculation (previous counters)
+    uint32_t signal_pub_prev;
+    uint32_t cbit_pub_prev;
+    uint32_t pbit_pub_prev;
+    uint32_t result_pub_prev;
+    uint32_t control_rx_prev;
+    uint32_t speed_rx_prev;
+    uint32_t runbit_rx_prev;
     
 } DemoAppContext;
 
@@ -223,8 +245,17 @@ typedef struct {
 // Initialize context structure
 void demo_app_context_init(DemoAppContext* ctx);
 
-// Start demo application (Idle -> Init -> PowerOnBit -> Run)
+// Start demo application (Idle -> Init, connect to Agent, send hello+clear)
+// After this, use demo_app_create_entities() to proceed
 int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_port);
+
+// Create DDS entities (Participant, Publisher, Subscriber, Writers, Readers)
+// Must call demo_app_start() first
+int demo_app_create_entities(DemoAppContext* ctx);
+
+// Start scenario (PowerOn BIT, periodic publishing: Init -> PowerOnBit -> Run)
+// Must call demo_app_create_entities() first
+int demo_app_start_scenario(DemoAppContext* ctx);
 
 // Stop demo application
 void demo_app_stop(DemoAppContext* ctx);
@@ -268,6 +299,12 @@ int demo_msg_publish_cbit(DemoAppContext* ctx);
 int demo_msg_publish_result_bit(DemoAppContext* ctx);
 int demo_msg_publish_actuator_signal(DemoAppContext* ctx);
 
+// Test write functions (1회성 전송)
+int demo_msg_test_write_pbit(DemoAppContext* ctx);
+int demo_msg_test_write_cbit(DemoAppContext* ctx);
+int demo_msg_test_write_result_bit(DemoAppContext* ctx);
+int demo_msg_test_write_signal(DemoAppContext* ctx);
+
 /* ========================================================================
  * Timer API (demo_app_timer.c)
  * ======================================================================== */
@@ -280,6 +317,9 @@ void demo_timer_cleanup(DemoAppContext* ctx);
 
 // 1ms tick handler (call from VxWorks timer)
 void demo_timer_tick(DemoAppContext* ctx);
+
+// Check if timer is running
+int demo_timer_is_running(void);
 
 // Simulation update (position/velocity calculation)
 void demo_timer_update_simulation(DemoAppContext* ctx);

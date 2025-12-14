@@ -3,6 +3,7 @@
  */
 
 #include "../include/demo_app.h"
+#include "../include/demo_app_log.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -20,9 +21,9 @@ static void on_writer_created(LEGACY_HANDLE h, LegacyRequestId req_id,
                               const LegacySimpleResult* res, void* user) {
     const char* topic = (const char*)user;
     if (res->ok) {
-        printf("[DemoApp Msg] Writer created: %s\n", topic);
+        LOG_INFO("Writer created: %s\n", topic);
     } else {
-        printf("[DemoApp Msg] ERROR: Failed to create writer for %s: %s\n",
+        LOG_INFO("ERROR: Failed to create writer for %s: %s\n",
                topic, res->msg ? res->msg : "Unknown");
     }
 }
@@ -31,9 +32,9 @@ static void on_reader_created(LEGACY_HANDLE h, LegacyRequestId req_id,
                               const LegacySimpleResult* res, void* user) {
     const char* topic = (const char*)user;
     if (res->ok) {
-        printf("[DemoApp Msg] Reader created: %s\n", topic);
+        LOG_INFO("Reader created: %s\n", topic);
     } else {
-        printf("[DemoApp Msg] ERROR: Failed to create reader for %s: %s\n",
+        LOG_INFO("ERROR: Failed to create reader for %s: %s\n",
                topic, res->msg ? res->msg : "Unknown");
     }
 }
@@ -45,7 +46,7 @@ static void on_reader_created(LEGACY_HANDLE h, LegacyRequestId req_id,
 int demo_msg_init(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
     
-    printf("[DemoApp Msg] Initializing message handlers...\n");
+    LOG_INFO("Initializing message handlers...\n");
     
     LegacyStatus status;
     
@@ -62,7 +63,7 @@ int demo_msg_init(DemoAppContext* ctx) {
     status = legacy_agent_create_writer(ctx->agent, &pbit_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_PBIT);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to create PBIT writer\n");
+        LOG_INFO("ERROR: Failed to create PBIT writer\n");
         return -1;
     }
     
@@ -72,12 +73,12 @@ int demo_msg_init(DemoAppContext* ctx) {
         "pub1",
         TOPIC_CBIT,
         TYPE_CBIT,
-        "NstelCustomQosLib::LowFreqStatusProfile"
+        "NstelCustomQosLib::LowFrequencyStatusProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &cbit_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_CBIT);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to create CBIT writer\n");
+        LOG_INFO("ERROR: Failed to create CBIT writer\n");
         return -1;
     }
     
@@ -92,7 +93,7 @@ int demo_msg_init(DemoAppContext* ctx) {
     status = legacy_agent_create_writer(ctx->agent, &rbit_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_RESULT_BIT);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to create ResultBIT writer\n");
+        LOG_INFO("ERROR: Failed to create ResultBIT writer\n");
         return -1;
     }
     
@@ -102,12 +103,12 @@ int demo_msg_init(DemoAppContext* ctx) {
         "pub1",
         TOPIC_ACTUATOR_SIGNAL,
         TYPE_ACTUATOR_SIGNAL,
-        "NstelCustomQosLib::HighFreqPeriodicProfile"
+        "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &signal_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_ACTUATOR_SIGNAL);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to create Actuator Signal writer\n");
+        LOG_INFO("ERROR: Failed to create Actuator Signal writer\n");
         return -1;
     }
     
@@ -124,7 +125,7 @@ int demo_msg_init(DemoAppContext* ctx) {
     status = legacy_agent_create_reader(ctx->agent, &runbit_rcfg, 2000,
                                        on_reader_created, (void*)TOPIC_RUNBIT);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to create runBIT reader\n");
+        LOG_INFO("ERROR: Failed to create runBIT reader\n");
         return -1;
     }
     
@@ -132,7 +133,7 @@ int demo_msg_init(DemoAppContext* ctx) {
     status = legacy_agent_subscribe_event(ctx->agent, TOPIC_RUNBIT, TYPE_RUNBIT,
                                          demo_msg_on_runbit, ctx);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to subscribe to runBIT\n");
+        LOG_INFO("ERROR: Failed to subscribe to runBIT\n");
         return -1;
     }
     
@@ -142,12 +143,12 @@ int demo_msg_init(DemoAppContext* ctx) {
         "sub1",
         TOPIC_ACTUATOR_CONTROL,
         TYPE_ACTUATOR_CONTROL,
-        "NstelCustomQosLib::HighFreqPeriodicProfile"
+        "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &control_rcfg, 2000,
                                        on_reader_created, (void*)TOPIC_ACTUATOR_CONTROL);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to create Actuator Control reader\n");
+        LOG_INFO("ERROR: Failed to create Actuator Control reader\n");
         return -1;
     }
     
@@ -156,7 +157,7 @@ int demo_msg_init(DemoAppContext* ctx) {
                                          TYPE_ACTUATOR_CONTROL,
                                          demo_msg_on_actuator_control, ctx);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to subscribe to Actuator Control\n");
+        LOG_INFO("ERROR: Failed to subscribe to Actuator Control\n");
         return -1;
     }
     
@@ -166,12 +167,12 @@ int demo_msg_init(DemoAppContext* ctx) {
         "sub1",
         TOPIC_VEHICLE_SPEED,
         TYPE_VEHICLE_SPEED,
-        "NstelCustomQosLib::LowFreqVehicleProfile"
+        "NstelCustomQosLib::LowFrequencyVehicleProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &speed_rcfg, 2000,
                                        on_reader_created, (void*)TOPIC_VEHICLE_SPEED);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to create Vehicle Speed reader\n");
+        LOG_INFO("ERROR: Failed to create Vehicle Speed reader\n");
         return -1;
     }
     
@@ -180,7 +181,7 @@ int demo_msg_init(DemoAppContext* ctx) {
                                          TYPE_VEHICLE_SPEED,
                                          demo_msg_on_vehicle_speed, ctx);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to subscribe to Vehicle Speed\n");
+        LOG_INFO("ERROR: Failed to subscribe to Vehicle Speed\n");
         return -1;
     }
     
@@ -189,14 +190,14 @@ int demo_msg_init(DemoAppContext* ctx) {
     taskDelay(sysClkRateGet());  // 1 second
     #endif
     
-    printf("[DemoApp Msg] All message handlers initialized (7 topics)\n");
+    LOG_INFO("All message handlers initialized (7 topics)\n");
     return 0;
 }
 
 void demo_msg_cleanup(DemoAppContext* ctx) {
     if (!ctx) return;
     
-    printf("[DemoApp Msg] Cleaning up message handlers...\n");
+    LOG_INFO("Cleaning up message handlers...\n");
     
     // TODO Phase 3: Unsubscribe and delete writers
 }
@@ -208,6 +209,8 @@ void demo_msg_cleanup(DemoAppContext* ctx) {
 void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
     DemoAppContext* ctx = (DemoAppContext*)user;
     if (!ctx || !evt) return;
+        ctx->speed_rx_count++;
+        ctx->runbit_rx_count++;
     
     const char* json = evt->data_json;
     if (!json) return;
@@ -243,6 +246,8 @@ void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
 void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
     DemoAppContext* ctx = (DemoAppContext*)user;
     if (!ctx || !evt) return;
+    
+    ctx->control_rx_count++;
     
     const char* json = evt->data_json;
     if (!json) return;
@@ -310,7 +315,7 @@ void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void*
     
     // Log only every 100 messages (reduce verbosity)
     if ((ctx->control_rx_count % 100) == 0) {
-        printf("[DemoApp Msg] Actuator Control: driving=%.2f, updown=%.2f, mode=%d (rx=%u)\n",
+        LOG_RX("Actuator Control: driving=%.2f, updown=%.2f, mode=%d (rx=%u)\n",
                ctrl->drivingPosition,
                ctrl->upDownPosition,
                (int)ctrl->operationMode,
@@ -335,7 +340,7 @@ void demo_msg_on_vehicle_speed(LEGACY_HANDLE h, const LegacyEvent* evt, void* us
     ctx->speed_state.last_update_time = ctx->tick_count;
     ctx->speed_rx_count++;
     
-    printf("[DemoApp Msg] Vehicle Speed: A_speed=%.2f m/s (rx=%u)\n",
+    LOG_RX("Vehicle Speed: A_speed=%.2f m/s (rx=%u)\n",
            ctx->speed_state.speed, ctx->speed_rx_count);
 }
 
@@ -350,17 +355,11 @@ void demo_msg_on_vehicle_speed(LEGACY_HANDLE h, const LegacyEvent* evt, void* us
 static void on_write_complete(LEGACY_HANDLE h, LegacyRequestId req_id,
                               const LegacySimpleResult* res, void* user) {
     const char* msg_type = (const char*)user;
-    if (res->ok) {
-        // Suppress verbose logging for high-frequency messages
-        if (strcmp(msg_type, "CBIT") == 0 || strcmp(msg_type, "Signal") == 0) {
-            // Silent success for periodic messages
-        } else {
-            printf("[DemoApp Msg] Published %s successfully\n", msg_type);
-        }
-    } else {
-        printf("[DemoApp Msg] ERROR: Failed to publish %s: %s\n",
+    if (!res->ok) {
+        LOG_INFO("ERROR: Failed to publish %s: %s\n",
                msg_type, res->msg ? res->msg : "Unknown");
     }
+    // Success is silent - actual logs are in publish functions with LOG_TX
 }
 
 /* ========================================================================
@@ -435,12 +434,13 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
     LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 2000,
                                                   on_write_complete, (void*)"PBIT");
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to send PBIT write request\n");
+        LOG_INFO("ERROR: Failed to send PBIT write request\n");
         return -1;
     }
     
     ctx->bit_state.pbit_completed = true;
-    printf("[DemoApp Msg] PBIT published\n");
+    ctx->pbit_pub_count++;
+    LOG_TX("PBIT published\n");
     return 0;
 }
 
@@ -508,7 +508,7 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
         cbit_json,
         ctx->domain_id,
         "pub1",
-        "NstelCustomQosLib::LowFreqStatusProfile"
+        "NstelCustomQosLib::LowFrequencyStatusProfile"
     };
     
     LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 1000,
@@ -518,6 +518,7 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
     }
     
     ctx->cbit_pub_count++;
+    LOG_TX("CBIT published (count=%u)\n", ctx->cbit_pub_count);
     return 0;
 }
 
@@ -589,9 +590,11 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
                                                   on_write_complete, (void*)"ResultBIT");
     
     if (status != LEGACY_OK) {
-        printf("[DemoApp Msg] ERROR: Failed to publish resultBIT\n");
+        LOG_INFO("ERROR: Failed to publish resultBIT\n");
         return -1;
     }
+    
+    ctx->result_pub_count++;
     
     // Calculate overall result
     bool has_fault = result->upDownMotor || result->roundMotor || result->upDownAmp ||
@@ -599,7 +602,7 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
                      result->vehicleForwardGyro || result->powerController ||
                      result->energyStorage || result->directPower || result->cableLoop;
     
-    printf("[DemoApp Msg] Published resultBIT: ref=%u, result=%s\n",
+    LOG_TX("resultBIT published: ref=%u, result=%s\n",
            ctx->bit_state.ibit_reference_num,
            has_fault ? "FAIL" : "PASS");
     
@@ -663,7 +666,7 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         signal_json,
         ctx->domain_id,
         "pub1",
-        "NstelCustomQosLib::HighFreqPeriodicProfile"
+        "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
     
     LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 500,
@@ -673,5 +676,43 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     }
     
     ctx->signal_pub_count++;
+    if ((ctx->signal_pub_count % 200) == 0) {  // Log every 200 messages (1 second)
+        LOG_TX("Actuator Signal published (count=%u, 200Hz)\n", ctx->signal_pub_count);
+    }
     return 0;
+}
+
+/* ========================================================================
+ * Test Write Functions (1회성 전송)
+ * ======================================================================== */
+
+int demo_msg_test_write_pbit(DemoAppContext* ctx) {
+    if (!ctx || !ctx->agent) return -1;
+    
+    printf("[DemoApp Test] Sending PBIT test message...\n");
+    return demo_msg_publish_pbit(ctx);
+}
+
+int demo_msg_test_write_cbit(DemoAppContext* ctx) {
+    if (!ctx || !ctx->agent) return -1;
+    
+    printf("[DemoApp Test] Sending CBIT test message...\n");
+    return demo_msg_publish_cbit(ctx);
+}
+
+int demo_msg_test_write_result_bit(DemoAppContext* ctx) {
+    if (!ctx || !ctx->agent) return -1;
+    
+    // Set dummy reference number for test
+    ctx->bit_state.ibit_reference_num = 999;
+    
+    printf("[DemoApp Test] Sending resultBIT test message (ref=999)...\n");
+    return demo_msg_publish_result_bit(ctx);
+}
+
+int demo_msg_test_write_signal(DemoAppContext* ctx) {
+    if (!ctx || !ctx->agent) return -1;
+    
+    printf("[DemoApp Test] Sending Actuator Signal test message...\n");
+    return demo_msg_publish_actuator_signal(ctx);
 }

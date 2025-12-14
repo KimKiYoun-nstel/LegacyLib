@@ -15,6 +15,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <process.h>
+#include <mmsystem.h>  // For timeBeginPeriod/timeEndPeriod
+#pragma comment(lib, "winmm.lib")
 #else
 #include <pthread.h>
 #include <unistd.h>
@@ -51,9 +53,18 @@ static void timerTask(void) {
     int tick_rate = sysClkRateGet();  // System ticks per second
     int delay_ticks = tick_rate / 1000;  // 1ms in ticks
     
-    if (delay_ticks < 1) delay_ticks = 1;
+    if (delay_ticks < 1) {
+        delay_ticks = 1;
+        printf("[DemoApp Timer] WARNING: System tick rate is %d Hz (<%d Hz required for 1ms)\n", 
+               tick_rate, 1000);
+        printf("[DemoApp Timer] Timer will run at %d ms interval instead\n", 
+               1000 / tick_rate);
+    }
     
-    printf("[DemoApp Timer] Timer task started (delay=%d ticks)\n", delay_ticks);
+    printf("[DemoApp Timer] Timer task started\n");
+    printf("[DemoApp Timer]   System tick rate: %d Hz\n", tick_rate);
+    printf("[DemoApp Timer]   Delay ticks: %d (%.1f ms)\n", 
+           delay_ticks, (float)delay_ticks * 1000.0f / tick_rate);
     
     while (g_timer_running) {
         if (g_demo_ctx) {
@@ -69,15 +80,39 @@ static void timerTask(void) {
 #ifdef _WIN32
 static unsigned int __stdcall timerThreadFunc(void* arg) {
     (void)arg;
-    printf("[DemoApp Timer] Timer thread started (1ms interval)\n");
+    
+    // Set Windows timer resolution to 1ms
+    TIMECAPS tc;
+    timeGetDevCaps(&tc, sizeof(TIMECAPS));
+    UINT wTimerRes = min(max(tc.wPeriodMin, 1), tc.wPeriodMax);
+    timeBeginPeriod(wTimerRes);
+    
+    printf("[DemoApp Timer] Timer thread started (1ms interval, resolution=%ums)\n", wTimerRes);
+    
+    LARGE_INTEGER freq, start, now;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&start);
+    
+    uint64_t tick = 0;
     
     while (g_timer_running) {
-        if (g_demo_ctx) {
-            demo_timer_tick(g_demo_ctx);
+        // Calculate elapsed time in ms
+        QueryPerformanceCounter(&now);
+        uint64_t elapsed_ms = ((now.QuadPart - start.QuadPart) * 1000) / freq.QuadPart;
+        
+        // Process all ticks that should have happened
+        while (tick < elapsed_ms && g_timer_running) {
+            if (g_demo_ctx) {
+                demo_timer_tick(g_demo_ctx);
+            }
+            tick++;
         }
-        Sleep(1);  // 1ms
+        
+        // Sleep for remaining time (at least 1ms)
+        Sleep(1);
     }
     
+    timeEndPeriod(wTimerRes);
     printf("[DemoApp Timer] Timer thread exiting\n");
     return 0;
 }
@@ -196,6 +231,14 @@ void demo_timer_cleanup(DemoAppContext* ctx) {
 }
 
 /* ========================================================================
+ * Timer Status Query
+ * ======================================================================== */
+
+int demo_timer_is_running(void) {
+    return g_timer_running;
+}
+
+/* ========================================================================
  * Tick Handler (Called every 1ms)
  * ======================================================================== */
 
@@ -203,6 +246,27 @@ void demo_timer_tick(DemoAppContext* ctx) {
     if (!ctx) return;
     
     ctx->tick_count++;
+    
+    // Update Hz statistics every 1 second (1000ms)
+    if ((ctx->tick_count - ctx->stats_last_tick) >= 1000) {
+        ctx->signal_pub_hz = ctx->signal_pub_count - ctx->signal_pub_prev;
+        ctx->cbit_pub_hz = ctx->cbit_pub_count - ctx->cbit_pub_prev;
+        ctx->pbit_pub_hz = ctx->pbit_pub_count - ctx->pbit_pub_prev;
+        ctx->result_pub_hz = ctx->result_pub_count - ctx->result_pub_prev;
+        ctx->control_rx_hz = ctx->control_rx_count - ctx->control_rx_prev;
+        ctx->speed_rx_hz = ctx->speed_rx_count - ctx->speed_rx_prev;
+        ctx->runbit_rx_hz = ctx->runbit_rx_count - ctx->runbit_rx_prev;
+        
+        ctx->signal_pub_prev = ctx->signal_pub_count;
+        ctx->cbit_pub_prev = ctx->cbit_pub_count;
+        ctx->pbit_pub_prev = ctx->pbit_pub_count;
+        ctx->result_pub_prev = ctx->result_pub_count;
+        ctx->control_rx_prev = ctx->control_rx_count;
+        ctx->speed_rx_prev = ctx->speed_rx_count;
+        ctx->runbit_rx_prev = ctx->runbit_rx_count;
+        
+        ctx->stats_last_tick = ctx->tick_count;
+    }
     
     // Handle IBIT execution (IBitRunning state)
     if (ctx->current_state == DEMO_STATE_IBIT_RUNNING) {

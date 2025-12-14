@@ -78,6 +78,33 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->signal_state.armSafetyMainCannonLock = L_ArmSafetyMainCannonLock_NORMAL;
     ctx->signal_state.shutdown = L_CannonDrivingDeviceShutdownType_UNKNOWN;
     
+    // Initialize statistics
+    ctx->tick_count = 0;
+    ctx->stats_last_tick = 0;
+    ctx->signal_pub_count = 0;
+    ctx->cbit_pub_count = 0;
+    ctx->pbit_pub_count = 0;
+    ctx->result_pub_count = 0;
+    ctx->control_rx_count = 0;
+    ctx->speed_rx_count = 0;
+    ctx->runbit_rx_count = 0;
+    
+    ctx->signal_pub_hz = 0;
+    ctx->cbit_pub_hz = 0;
+    ctx->pbit_pub_hz = 0;
+    ctx->result_pub_hz = 0;
+    ctx->control_rx_hz = 0;
+    ctx->speed_rx_hz = 0;
+    ctx->runbit_rx_hz = 0;
+    
+    ctx->signal_pub_prev = 0;
+    ctx->cbit_pub_prev = 0;
+    ctx->pbit_pub_prev = 0;
+    ctx->result_pub_prev = 0;
+    ctx->control_rx_prev = 0;
+    ctx->speed_rx_prev = 0;
+    ctx->runbit_rx_prev = 0;
+    
     printf("[DemoApp Core] Context initialized with default values\n");
 }
 
@@ -118,6 +145,19 @@ static void on_entity_created(LEGACY_HANDLE h, LegacyRequestId req_id,
     } else {
         printf("[DemoApp Core] ERROR: Failed to create %s: %s\n",
                entity_name ? entity_name : "Unknown",
+               res->msg ? res->msg : "Unknown error");
+    }
+}
+
+static void on_entity_cleared(LEGACY_HANDLE h, LegacyRequestId req_id,
+                              const LegacySimpleResult* res, void* user) {
+    (void)h;
+    (void)req_id;
+    (void)user;
+    if (res->ok) {
+        printf("[DemoApp Core] DDS entities cleared\n");
+    } else {
+        printf("[DemoApp Core] WARNING: Failed to clear entities: %s\n",
                res->msg ? res->msg : "Unknown error");
     }
 }
@@ -227,23 +267,64 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     taskDelay(sysClkRateGet() / 2);  // 500ms
     #endif
     
+    // Clear existing DDS entities (clean slate)
+    printf("[DemoApp Core] Clearing existing DDS entities...\n");
+    status = legacy_agent_clear_dds_entities(ctx->agent, 2000,
+                                             on_entity_cleared, (void*)"ClearEntities");
+    if (status != LEGACY_OK) {
+        printf("[DemoApp Core] WARNING: Failed to clear DDS entities\n");
+    }
+    
+    // Wait for clear response
+    #ifdef _VXWORKS_
+    taskDelay(sysClkRateGet() / 2);  // 500ms
+    #endif
+    
+    printf("[DemoApp Core] Agent connection established\n");
+    printf("[DemoApp Core] Ready to create DDS entities\n");
+    printf("[DemoApp Core] Use 'demoAppCreateEntities()' to proceed\n");
+    return 0;
+}
+
+int demo_app_create_entities(DemoAppContext* ctx) {
+    if (!ctx) return -1;
+    
+    if (ctx->current_state != DEMO_STATE_INIT) {
+        printf("[DemoApp Core] ERROR: Cannot create entities from state %s\n",
+               demo_state_name(ctx->current_state));
+        printf("[DemoApp Core] Run 'demoAppStart()' first\n");
+        return -1;
+    }
+    
+    printf("[DemoApp Core] Creating DDS entities...\n");
+    
     // Create DDS entities (Participant, Publisher, Subscriber)
     if (create_dds_entities(ctx) != 0) {
         printf("[DemoApp Core] ERROR: Failed to create DDS entities\n");
-        legacy_agent_close(ctx->agent);
-        ctx->agent = NULL;
-        enter_state(ctx, DEMO_STATE_IDLE);
         return -1;
     }
     
     // Initialize message handlers (Writers/Readers)
     if (demo_msg_init(ctx) != 0) {
         printf("[DemoApp Core] ERROR: Failed to initialize message handlers\n");
-        legacy_agent_close(ctx->agent);
-        ctx->agent = NULL;
-        enter_state(ctx, DEMO_STATE_IDLE);
         return -1;
     }
+    
+    printf("[DemoApp Core] DDS entities created successfully\n");
+    printf("[DemoApp Core] Use 'demoAppStartScenario()' to begin simulation\n");
+    return 0;
+}
+
+int demo_app_start_scenario(DemoAppContext* ctx) {
+    if (!ctx) return -1;
+    
+    if (ctx->current_state != DEMO_STATE_INIT) {
+        printf("[DemoApp Core] ERROR: Cannot start scenario from state %s\n",
+               demo_state_name(ctx->current_state));
+        return -1;
+    }
+    
+    printf("[DemoApp Core] Starting scenario...\n");
     
     // Transition: Init -> PowerOnBit
     enter_state(ctx, DEMO_STATE_POWERON_BIT);
@@ -267,14 +348,11 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     // Initialize timer subsystem (start periodic tasks)
     if (demo_timer_init(ctx) != 0) {
         printf("[DemoApp Core] ERROR: Failed to initialize timer\n");
-        legacy_agent_close(ctx->agent);
-        ctx->agent = NULL;
-        enter_state(ctx, DEMO_STATE_IDLE);
         return -1;
     }
     
-    printf("[DemoApp Core] Demo application started successfully\n");
-    printf("[DemoApp Core] Periodic publishing started: 200Hz Signal, 1Hz CBIT\n");
+    printf("[DemoApp Core] Scenario started successfully\n");
+    printf("[DemoApp Core] Periodic publishing: 200Hz Signal, 1Hz CBIT\n");
     return 0;
 }
 
@@ -345,7 +423,7 @@ int demo_app_trigger_ibit(DemoAppContext* ctx, uint32_t reference_num, int type)
     
     ctx->bit_state.ibit_running = true;
     ctx->bit_state.ibit_reference_num = reference_num;
-    ctx->bit_state.ibit_type = type;
+    ctx->bit_state.ibit_type = (T_BITType)type;
     
     // Get current tick count as timestamp (milliseconds)
     ctx->bit_state.ibit_start_time = ctx->tick_count;

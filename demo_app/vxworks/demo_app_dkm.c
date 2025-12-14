@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../include/demo_app.h"
+#include "../include/demo_app_log.h"
 
 /* ========================================================================
  * External Functions
@@ -82,8 +83,195 @@ STATUS demoAppStart(int cli_port, const char* agent_ip) {
     printf("[DemoApp DKM] CLI Port: %d\n", g_cli_port);
     printf("[DemoApp DKM] Agent IP: %s\n", g_agent_ip);
     printf("[DemoApp DKM] Connect with: telnet <target_ip> %d\n", g_cli_port);
-    printf("[DemoApp DKM] Use 'demo_init' command to start demo\n");
+    printf("[DemoApp DKM] Use shell commands:\n");
+    printf("[DemoApp DKM]   demoAppConnect()        - Connect to Agent\n");
+    printf("[DemoApp DKM]   demoAppDisconnect()     - Disconnect and reset\n");
+    printf("[DemoApp DKM]   demoAppCreateEntities() - Create DDS entities\n");
+    printf("[DemoApp DKM]   demoAppStartScenario()  - Start simulation\n");
+    printf("[DemoApp DKM]   demoAppStopScenario()   - Stop simulation\n");
+    printf("[DemoApp DKM]   demoAppTestWrite(\"topic\") - 1-shot write test\n");
+    printf("[DemoApp DKM]   demoAppLogMode(\"mode\")   - Set log output mode\n");
+    printf("[DemoApp DKM]   demoAppStatus()         - Show status\n");
+    printf("[DemoApp DKM]   demoAppStop()           - Shutdown\n");
     
+    return OK;
+}
+
+/**
+ * Connect to Agent (send hello + clear)
+ * 
+ * @return OK on success, ERROR on failure
+ */
+STATUS demoAppConnect(void) {
+    if (!g_demo_ctx) {
+        printf("[DemoApp DKM] Not initialized. Run demoAppStart() first\n");
+        return ERROR;
+    }
+    
+    // Connect to Agent
+    if (demo_app_start(g_demo_ctx, g_agent_ip, 23000) != 0) {
+        printf("[DemoApp DKM] Failed to connect to Agent\n");
+        return ERROR;
+    }
+    
+    printf("[DemoApp DKM] Connected to Agent successfully\n");
+    return OK;
+}
+
+/**
+ * Disconnect from Agent and reset state to Idle
+ * 
+ * @return OK on success, ERROR on failure
+ */
+STATUS demoAppDisconnect(void) {
+    if (!g_demo_ctx) {
+        printf("[DemoApp DKM] Not initialized\n");
+        return ERROR;
+    }
+    
+    demo_app_stop(g_demo_ctx);
+    printf("[DemoApp DKM] Disconnected, state reset to Idle\n");
+    return OK;
+}
+
+/**
+ * Create DDS entities
+ * 
+ * @return OK on success, ERROR on failure
+ */
+STATUS demoAppCreateEntities(void) {
+    if (!g_demo_ctx) {
+        printf("[DemoApp DKM] Not initialized. Run demoAppStart() first\n");
+        return ERROR;
+    }
+    
+    if (demo_app_create_entities(g_demo_ctx) != 0) {
+        printf("[DemoApp DKM] Failed to create DDS entities\n");
+        return ERROR;
+    }
+    
+    printf("[DemoApp DKM] DDS entities created successfully\n");
+    return OK;
+}
+
+/**
+ * Start scenario (PBIT + periodic publishing)
+ * 
+ * @return OK on success, ERROR on failure
+ */
+STATUS demoAppStartScenario(void) {
+    if (!g_demo_ctx) {
+        printf("[DemoApp DKM] Not initialized. Run demoAppStart() first\n");
+        return ERROR;
+    }
+    
+    if (demo_app_start_scenario(g_demo_ctx) != 0) {
+        printf("[DemoApp DKM] Failed to start scenario\n");
+        return ERROR;
+    }
+    
+    printf("[DemoApp DKM] Scenario started successfully\n");
+    return OK;
+}
+
+/**
+ * Stop scenario (stop periodic publishing)
+ * 
+ * @return OK on success, ERROR on failure
+ */
+STATUS demoAppStopScenario(void) {
+    if (!g_demo_ctx) {
+        printf("[DemoApp DKM] Not initialized\n");
+        return ERROR;
+    }
+    
+    demo_app_stop(g_demo_ctx);
+    printf("[DemoApp DKM] Scenario stopped\n");
+    return OK;
+}
+
+/**
+ * Test write - send a single message (no scenario needed)
+ * 
+ * @param topic  Topic name: "pbit", "cbit", "result_bit", "signal", or "all"
+ * @return OK on success, ERROR on failure
+ */
+STATUS demoAppTestWrite(const char* topic) {
+    if (!g_demo_ctx) {
+        printf("[DemoApp DKM] Not initialized\n");
+        return ERROR;
+    }
+    
+    if (g_demo_ctx->current_state != DEMO_STATE_RUN && 
+        g_demo_ctx->current_state != DEMO_STATE_POWERON_BIT) {
+        printf("[DemoApp DKM] ERROR: Must create entities first\n");
+        return ERROR;
+    }
+    
+    if (!topic || !*topic) {
+        printf("[DemoApp DKM] Usage: demoAppTestWrite(\"pbit|cbit|result_bit|signal|all\")\n");
+        return ERROR;
+    }
+    
+    int result = 0;
+    if (strcmp(topic, "pbit") == 0) {
+        result = demo_msg_test_write_pbit(g_demo_ctx);
+        printf("[DemoApp DKM] Test write: PBIT %s\n", result == 0 ? "sent" : "failed");
+    } else if (strcmp(topic, "cbit") == 0) {
+        result = demo_msg_test_write_cbit(g_demo_ctx);
+        printf("[DemoApp DKM] Test write: CBIT %s\n", result == 0 ? "sent" : "failed");
+    } else if (strcmp(topic, "result_bit") == 0) {
+        result = demo_msg_test_write_result_bit(g_demo_ctx);
+        printf("[DemoApp DKM] Test write: resultBIT %s\n", result == 0 ? "sent" : "failed");
+    } else if (strcmp(topic, "signal") == 0) {
+        result = demo_msg_test_write_signal(g_demo_ctx);
+        printf("[DemoApp DKM] Test write: Actuator Signal %s\n", result == 0 ? "sent" : "failed");
+    } else if (strcmp(topic, "all") == 0) {
+        int r1 = demo_msg_test_write_pbit(g_demo_ctx);
+        taskDelay(sysClkRateGet() / 10);  // 100ms delay
+        int r2 = demo_msg_test_write_cbit(g_demo_ctx);
+        taskDelay(sysClkRateGet() / 10);
+        int r3 = demo_msg_test_write_result_bit(g_demo_ctx);
+        taskDelay(sysClkRateGet() / 10);
+        int r4 = demo_msg_test_write_signal(g_demo_ctx);
+        result = (r1 | r2 | r3 | r4);
+        printf("[DemoApp DKM] Test write: All 4 messages %s\n", result == 0 ? "sent" : "failed");
+    } else {
+        printf("[DemoApp DKM] ERROR: Unknown topic '%s'\n", topic);
+        printf("[DemoApp DKM] Valid topics: pbit, cbit, result_bit, signal, all\n");
+        return ERROR;
+    }
+    
+    return (result == 0) ? OK : ERROR;
+}
+
+/**
+ * Set log output mode
+ * 
+ * @param mode  "console", "redirect", or "both"
+ * @return OK on success, ERROR on failure
+ */
+STATUS demoAppLogMode(const char* mode) {
+    if (!mode || !*mode) {
+        printf("[DemoApp DKM] Usage: demoAppLogMode(\"console|redirect|both\")\n");
+        return ERROR;
+    }
+    
+    LogOutputMode log_mode;
+    if (strcmp(mode, "console") == 0) {
+        log_mode = LOG_MODE_CONSOLE;
+    } else if (strcmp(mode, "redirect") == 0) {
+        log_mode = LOG_MODE_REDIRECT;
+    } else if (strcmp(mode, "both") == 0) {
+        log_mode = LOG_MODE_BOTH;
+    } else {
+        printf("[DemoApp DKM] ERROR: Invalid mode '%s'\n", mode);
+        printf("[DemoApp DKM] Valid modes: console, redirect, both\n");
+        return ERROR;
+    }
+    
+    demo_log_set_mode(log_mode);
+    printf("[DemoApp DKM] Log mode set to: %s\n", mode);
     return OK;
 }
 

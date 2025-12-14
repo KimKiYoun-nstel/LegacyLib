@@ -93,12 +93,19 @@ static void print_help(void) {
         "\n=== DemoApp CLI Commands ===\n"
         "  help                : Show this help\n"
         "  status              : Show current state and statistics\n"
-        "  demo_init           : Initialize demo (Idle->Init->PowerOnBit->Run)\n"
+        "\n[3-Step Execution]\n"
+        "  connect [ip] [port] : Connect to Agent (hello + clear)\n"
+        "  create_entities     : Create DDS entities\n"
+        "  start_scenario      : Start scenario (PBIT + timers)\n"
+        "\n[Legacy Commands]\n"
+        "  demo_init           : Run all 3 steps automatically\n"
         "  demo_start          : Alias for demo_init\n"
         "  demo_stop           : Stop demo (->Idle)\n"
+        "\n[Testing]\n"
         "  run_ibit <ref> <type> : Trigger IBIT manually\n"
         "  fault_inject <comp> : Inject fault (azimuth|updown|sensor)\n"
         "  fault_clear <comp>  : Clear fault (azimuth|updown|sensor|all)\n"
+        "\n[Misc]\n"
         "  quit                : Disconnect client\n"
         "=============================\n"
     );
@@ -125,6 +132,51 @@ static void process_command(char* line) {
     }
     else if (strcmp(cmd, "help") == 0) {
         print_help();
+    }
+    else if (strcmp(cmd, "connect") == 0) {
+        if (!g_demo_ctx) {
+            demo_cli_print("DemoApp context not initialized\n");
+            return;
+        }
+        
+        const char* agent_ip = (token_count >= 2) ? tokens[1] : "127.0.0.1";
+        int agent_port = (token_count >= 3) ? atoi(tokens[2]) : 25000;
+        
+        int ret = demo_app_start(g_demo_ctx, agent_ip, agent_port);
+        if (ret == 0) {
+            demo_cli_print("Connected to Agent at %s:%d\n", agent_ip, agent_port);
+            demo_cli_print("Next: run 'create_entities' command\n");
+        } else {
+            demo_cli_print("Failed to connect to Agent\n");
+        }
+    }
+    else if (strcmp(cmd, "create_entities") == 0) {
+        if (!g_demo_ctx) {
+            demo_cli_print("DemoApp context not initialized\n");
+            return;
+        }
+        
+        int ret = demo_app_create_entities(g_demo_ctx);
+        if (ret == 0) {
+            demo_cli_print("DDS entities created successfully\n");
+            demo_cli_print("Next: run 'start_scenario' command\n");
+        } else {
+            demo_cli_print("Failed to create DDS entities\n");
+        }
+    }
+    else if (strcmp(cmd, "start_scenario") == 0) {
+        if (!g_demo_ctx) {
+            demo_cli_print("DemoApp context not initialized\n");
+            return;
+        }
+        
+        int ret = demo_app_start_scenario(g_demo_ctx);
+        if (ret == 0) {
+            demo_cli_print("Scenario started (PBIT + timers)\n");
+            demo_cli_print("Check AgentUI for DDS messages\n");
+        } else {
+            demo_cli_print("Failed to start scenario\n");
+        }
     }
     else if (strcmp(cmd, "status") == 0) {
         if (!g_demo_ctx) {
@@ -160,12 +212,32 @@ static void process_command(char* line) {
         const char* agent_ip = (token_count >= 2) ? tokens[1] : "127.0.0.1";
         int agent_port = (token_count >= 3) ? atoi(tokens[2]) : 25000;
         
+        demo_cli_print("Running 3-step initialization...\n");
+        
+        // Step 1: Connect
         int ret = demo_app_start(g_demo_ctx, agent_ip, agent_port);
-        if (ret == 0) {
-            demo_cli_print("Demo initialization started\n");
-        } else {
-            demo_cli_print("Demo initialization failed\n");
+        if (ret != 0) {
+            demo_cli_print("[FAILED] Step 1: Connect to Agent\n");
+            return;
         }
+        demo_cli_print("[OK] Step 1: Connected to Agent\n");
+        
+        // Step 2: Create entities
+        ret = demo_app_create_entities(g_demo_ctx);
+        if (ret != 0) {
+            demo_cli_print("[FAILED] Step 2: Create DDS entities\n");
+            return;
+        }
+        demo_cli_print("[OK] Step 2: DDS entities created\n");
+        
+        // Step 3: Start scenario
+        ret = demo_app_start_scenario(g_demo_ctx);
+        if (ret != 0) {
+            demo_cli_print("[FAILED] Step 3: Start scenario\n");
+            return;
+        }
+        demo_cli_print("[OK] Step 3: Scenario started\n");
+        demo_cli_print("Demo initialization completed successfully!\n");
     }
     else if (strcmp(cmd, "demo_stop") == 0) {
         if (!g_demo_ctx) {

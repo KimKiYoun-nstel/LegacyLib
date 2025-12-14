@@ -68,7 +68,9 @@ SRCS = src/demo_app_core.c \
        src/demo_app_msg.c \
        src/demo_app_timer.c \
        src/demo_app_enums.c \
-       vxworks/demo_app_cli.c \
+       src/demo_app_log.c \
+       src/demo_app_cli.c \
+       vxworks/demo_app_tcp_vx.c \
        vxworks/demo_app_dkm.c
 
 # Object Files

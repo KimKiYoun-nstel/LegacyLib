@@ -32,7 +32,7 @@
 **중요**: 
 - `proto`: 항상 `1`
 - `data`: 항상 `null` (DDS 엔티티 생성 시)
-- QoS는 **"LibraryName::ProfileName"** 형식 (예: `"NstelCustomQosLib::HighFreqPeriodicProfile"`)
+- QoS는 **"LibraryName::ProfileName"** 형식 (예: `"NstelCustomQosLib::HighFrequencyPeriodicProfile"`)
 
 ---
 
@@ -212,7 +212,7 @@ Continuous BIT 상태 송신 (1Hz 주기)
   "args": {
     "domain": 0,
     "publisher": "pub1",
-    "qos": "NstelCustomQosLib::LowFreqStatusProfile"
+    "qos": "NstelCustomQosLib::LowFrequencyStatusProfile"
   },
   "data": null
 }
@@ -280,7 +280,7 @@ IBIT 결과 송신 (IBIT 완료 시)
   "args": {
     "domain": 0,
     "publisher": "pub1",
-    "qos": "NstelCustomQosLib::HighFreqPeriodicProfile"
+    "qos": "NstelCustomQosLib::HighFrequencyPeriodicProfile"
   },
   "data": null
 }
@@ -349,7 +349,7 @@ IBIT 요청 수신 (AgentUI → DemoApp)
   "args": {
     "domain": 0,
     "subscriber": "sub1",
-    "qos": "NstelCustomQosLib::HighFreqPeriodicProfile"
+    "qos": "NstelCustomQosLib::HighFrequencyPeriodicProfile"
   },
   "data": null
 }
@@ -383,7 +383,7 @@ IBIT 요청 수신 (AgentUI → DemoApp)
   "args": {
     "domain": 0,
     "subscriber": "sub1",
-    "qos": "NstelCustomQosLib::LowFreqVehicleProfile"
+    "qos": "NstelCustomQosLib::LowFrequencyVehicleProfile"
   },
   "data": null
 }
@@ -391,7 +391,7 @@ IBIT 요청 수신 (AgentUI → DemoApp)
 
 #### QoS 특성
 - **Reliability**: RELIABLE
-- **History**: KEEP_LAST (depth=5) ← LowFreqStatusProfile 기반 확장
+- **History**: KEEP_LAST (depth=5) ← LowFrequencyStatusProfile 기반 확장
 - **Durability**: TRANSIENT_LOCAL
 - **Deadline**: 1초 (1Hz)
 
@@ -420,12 +420,12 @@ IBIT 요청 수신 (AgentUI → DemoApp)
 | 메시지 | QoS Profile | Reliability | History | Durability | Deadline |
 |--------|-------------|-------------|---------|------------|----------|
 | PBIT | `NstelCustomQosLib::InitialStateProfile` | RELIABLE | KEEP_LAST(1) | TRANSIENT_LOCAL | - |
-| CBIT | `NstelCustomQosLib::LowFreqStatusProfile` | RELIABLE | KEEP_LAST(1) | TRANSIENT_LOCAL | 1s |
+| CBIT | `NstelCustomQosLib::LowFrequencyStatusProfile` | RELIABLE | KEEP_LAST(1) | TRANSIENT_LOCAL | 1s |
 | resultBIT | `NstelCustomQosLib::NonPeriodicEventProfile` | RELIABLE | KEEP_ALL | VOLATILE | - |
-| Actuator Signal | `NstelCustomQosLib::HighFreqPeriodicProfile` | BEST_EFFORT | KEEP_LAST(1) | VOLATILE | 5ms |
+| Actuator Signal | `NstelCustomQosLib::HighFrequencyPeriodicProfile` | BEST_EFFORT | KEEP_LAST(1) | VOLATILE | 5ms |
 | runBIT | `NstelCustomQosLib::NonPeriodicEventProfile` | RELIABLE | KEEP_ALL | VOLATILE | - |
-| Actuator Control | `NstelCustomQosLib::HighFreqPeriodicProfile` | BEST_EFFORT | KEEP_LAST(1) | VOLATILE | 5ms |
-| Vehicle Speed | `NstelCustomQosLib::LowFreqVehicleProfile` | RELIABLE | KEEP_LAST(5) | TRANSIENT_LOCAL | 1s |
+| Actuator Control | `NstelCustomQosLib::HighFrequencyPeriodicProfile` | BEST_EFFORT | KEEP_LAST(1) | VOLATILE | 5ms |
+| Vehicle Speed | `NstelCustomQosLib::LowFrequencyVehicleProfile` | RELIABLE | KEEP_LAST(5) | TRANSIENT_LOCAL | 1s |
 
 **XML 참조**: `d:\CodeDev\LegacyLib\RefDoc\nstel_custom_qos.xml`
 
@@ -469,7 +469,7 @@ DemoApp 시작 시 다음 순서로 메시지가 Agent로 전송됩니다:
 #### ✅ QoS 포맷 검증
 - [ ] QoS가 `"LibraryName::ProfileName"` 형식인가?
 - [ ] 프로파일 이름이 nstel_custom_qos.xml과 일치하는가?
-- [ ] Profile 이름에 오타가 없는가? (예: HighFrequencyPeriodicProfile → HighFreqPeriodicProfile)
+- [ ] Profile 이름이 XML 정의와 정확히 일치하는가? (예: HighFrequencyPeriodicProfile, LowFrequencyStatusProfile)
 
 #### ✅ Topic/Type 매칭 검증
 - [ ] Topic 이름이 정확한가? (네임스페이스 구분자: `__`)
