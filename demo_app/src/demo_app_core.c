@@ -104,6 +104,11 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->control_rx_prev = 0;
     ctx->speed_rx_prev = 0;
     ctx->runbit_rx_prev = 0;
+
+    /* Publish period defaults */
+    ctx->signal_period_ms = 5;    // 200Hz
+    ctx->cbit_period_ms = 1000;   // 1Hz
+    ctx->pbit_period_ms = 0;      // 0 => only at start (no periodic PBIT)
     
     printf("[DemoApp Core] Context initialized with default values\n");
 }
@@ -318,7 +323,7 @@ int demo_app_create_entities(DemoAppContext* ctx) {
 int demo_app_start_scenario(DemoAppContext* ctx) {
     if (!ctx) return -1;
     
-    if (ctx->current_state != DEMO_STATE_INIT) {
+    if (ctx->current_state != DEMO_STATE_INIT && ctx->current_state != DEMO_STATE_PEND) {
         printf("[DemoApp Core] ERROR: Cannot start scenario from state %s\n",
                demo_state_name(ctx->current_state));
         return -1;
@@ -356,35 +361,89 @@ int demo_app_start_scenario(DemoAppContext* ctx) {
     return 0;
 }
 
-void demo_app_stop(DemoAppContext* ctx) {
+/* ========================================================================
+ * Publish period control API
+ * ======================================================================== */
+
+int demo_app_set_publish_hz(DemoAppContext* ctx, const char* topic, uint32_t hz) {
+    if (!ctx || !topic) return -1;
+
+    uint32_t period_ms = 0;
+    if (hz == 0) {
+        period_ms = 0; // disable periodic publish
+    } else {
+        if (hz > 1000) hz = 1000;
+        period_ms = (hz == 0) ? 0 : (1000u / hz);
+        if (period_ms == 0) period_ms = 1; // at least 1ms
+    }
+
+    if (strcmp(topic, "signal") == 0) {
+        ctx->signal_period_ms = period_ms;
+        return 0;
+    }
+    if (strcmp(topic, "cbit") == 0) {
+        ctx->cbit_period_ms = period_ms;
+        return 0;
+    }
+    if (strcmp(topic, "pbit") == 0) {
+        ctx->pbit_period_ms = period_ms;
+        return 0;
+    }
+
+    return -1;
+}
+
+void demo_app_reset_publish_periods(DemoAppContext* ctx) {
     if (!ctx) return;
-    
-    printf("[DemoApp Core] Stopping demo application...\n");
-    
-    // Stop timer first
+    ctx->signal_period_ms = 5;
+    ctx->cbit_period_ms = 1000;
+    ctx->pbit_period_ms = 0;
+}
+
+void demo_app_stop(DemoAppContext* ctx) {
+    // Stop/ pause scenario: stop only the timer and keep DDS/agent open
+    if (!ctx) return;
+
+    printf("[DemoApp Core] Pausing demo scenario (timers will be stopped)...\n");
+
+    // Stop timer only
     demo_timer_cleanup(ctx);
-    
+
+    // Transition to PEND (paused) state - we'll resume from here
+    enter_state(ctx, DEMO_STATE_PEND);
+    printf("[DemoApp Core] Scenario paused (state=PEND)\n");
+}
+
+/* Full cleanup and reset: stop timers, cleanup messages/entities and close agent, then go to Idle */
+int demo_app_reset(DemoAppContext* ctx) {
+    if (!ctx) return -1;
+
+    printf("[DemoApp Core] Resetting DemoApp (full cleanup)...\n");
+
+    // Stop timer
+    demo_timer_cleanup(ctx);
+
     // Cleanup message handlers
     demo_msg_cleanup(ctx);
-    
-    // Clear DDS entities
+
+    // Clear DDS entities and close agent
     if (ctx->agent) {
         printf("[DemoApp Core] Clearing DDS entities...\n");
         legacy_agent_clear_dds_entities(ctx->agent, 2000,
                                         on_entity_created, (void*)"ClearEntities");
-        
-        // Give time for cleanup
         #ifdef _VXWORKS_
         taskDelay(sysClkRateGet() / 2);  // 500ms
         #endif
-        
-        // Close LegacyLib
         legacy_agent_close(ctx->agent);
         ctx->agent = NULL;
     }
-    
+
+    // Reinitialize internal simulation/state
+    demo_app_context_init(ctx);
+
     enter_state(ctx, DEMO_STATE_IDLE);
-    printf("[DemoApp Core] Stopped\n");
+    printf("[DemoApp Core] Reset complete (state=Idle)\n");
+    return 0;
 }
 
 /* ========================================================================

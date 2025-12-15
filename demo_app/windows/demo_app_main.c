@@ -218,7 +218,7 @@ int main(int argc, char* argv[]) {
     
     if (g_demo_ctx) {
         if (g_demo_ctx->current_state != DEMO_STATE_IDLE) {
-            demo_app_stop(g_demo_ctx);
+            demo_app_reset(g_demo_ctx);
         }
         free(g_demo_ctx);
         g_demo_ctx = NULL;

@@ -43,7 +43,8 @@ typedef enum {
     DEMO_STATE_INIT,           // DDS initialization in progress
     DEMO_STATE_POWERON_BIT,    // PowerOn BIT executing, publish PBIT
     DEMO_STATE_RUN,            // Normal operation (periodic messages)
-    DEMO_STATE_IBIT_RUNNING    // IBIT execution in progress
+    DEMO_STATE_IBIT_RUNNING,   // IBIT execution in progress
+    DEMO_STATE_PEND            // Scenario stopped/paused (timers stopped)
 } DemoState;
 
 const char* demo_state_name(DemoState state);
@@ -207,6 +208,10 @@ typedef struct {
     uint64_t tick_count;         // 1ms tick counter
     uint64_t last_200hz_tick;    // Last 200Hz update
     uint64_t last_1hz_tick;      // Last 1Hz update
+    // Configurable publish periods (ms)
+    uint32_t signal_period_ms;   // default 5 (200Hz)
+    uint32_t cbit_period_ms;     // default 1000 (1Hz)
+    uint32_t pbit_period_ms;     // default 0 (only at start)
     
     // Statistics (counters)
     uint32_t signal_pub_count;   // Actuator signal publish count
@@ -238,6 +243,10 @@ typedef struct {
     
 } DemoAppContext;
 
+/* Publish period control APIs */
+int demo_app_set_publish_hz(DemoAppContext* ctx, const char* topic, uint32_t hz);
+void demo_app_reset_publish_periods(DemoAppContext* ctx);
+
 /* ========================================================================
  * Core API (demo_app_core.c)
  * ======================================================================== */
@@ -257,8 +266,11 @@ int demo_app_create_entities(DemoAppContext* ctx);
 // Must call demo_app_create_entities() first
 int demo_app_start_scenario(DemoAppContext* ctx);
 
-// Stop demo application
+// Pause scenario: stop timers only and set state to PEND
 void demo_app_stop(DemoAppContext* ctx);
+
+// Full reset: cleanup messages/entities, close agent, reinitialize and set Idle
+int demo_app_reset(DemoAppContext* ctx);
 
 // Get current state
 DemoState demo_app_get_state(const DemoAppContext* ctx);

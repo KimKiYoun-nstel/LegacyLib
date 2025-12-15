@@ -4,8 +4,10 @@
 
 #include "../include/demo_app.h"
 #include "../include/demo_app_log.h"
+#include "../include/msg_fields.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef _VXWORKS_
 #include <vxWorks.h>
@@ -219,18 +221,17 @@ void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
     
     // Parse A_referenceNum
     uint32_t reference_num = 0;
-    const char* ref_str = strstr(json, "\"A_referenceNum\":");
+    const char* ref_str = strstr(json, P_COLON(F_A_REFERENCE_NUM));
     if (ref_str) {
-        sscanf(ref_str, "\"A_referenceNum\":%u", &reference_num);
+        sscanf(ref_str, P_FMT_UINT(F_A_REFERENCE_NUM), &reference_num);
     }
     
     // Parse A_type (enum string)
     T_BITType type = L_BITType_I_BIT;  // Default to I_BIT
-    const char* type_str = strstr(json, "\"A_type\":");
+    const char* type_str = strstr(json, P_COLON(F_A_TYPE));
     if (type_str) {
-        // Extract enum string value
         char type_value[64];
-        if (sscanf(type_str, "\"A_type\":\"%63[^\"]\"", type_value) == 1) {
+        if (sscanf(type_str, P_FMT_STR(F_A_TYPE), type_value) == 1) {
             type = parse_bit_type(type_value);
         }
     }
@@ -256,57 +257,57 @@ void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void*
     
     // Extract float fields
     const char* ptr;
-    if ((ptr = strstr(json, "\"A_drivingPosition\":"))) {
-        sscanf(ptr, "\"A_drivingPosition\":%f", &ctrl->drivingPosition);
+    if ((ptr = strstr(json, P_COLON(F_A_DRIVINGPOSITION)))) {
+        sscanf(ptr, P_FMT_FLOAT(F_A_DRIVINGPOSITION), &ctrl->drivingPosition);
     }
-    if ((ptr = strstr(json, "\"A_upDownPosition\":"))) {
-        sscanf(ptr, "\"A_upDownPosition\":%f", &ctrl->upDownPosition);
+    if ((ptr = strstr(json, P_COLON(F_A_UPDOWNPOSITION)))) {
+        sscanf(ptr, P_FMT_FLOAT(F_A_UPDOWNPOSITION), &ctrl->upDownPosition);
     }
-    if ((ptr = strstr(json, "\"A_roundAngleVelocity\":"))) {
-        sscanf(ptr, "\"A_roundAngleVelocity\":%f", &ctrl->roundAngleVelocity);
+    if ((ptr = strstr(json, P_COLON(F_A_ROUNDANGLEVELOCITY)))) {
+        sscanf(ptr, P_FMT_FLOAT(F_A_ROUNDANGLEVELOCITY), &ctrl->roundAngleVelocity);
     }
-    if ((ptr = strstr(json, "\"A_upDownAngleVelocity\":"))) {
-        sscanf(ptr, "\"A_upDownAngleVelocity\":%f", &ctrl->upDownAngleVelocity);
+    if ((ptr = strstr(json, P_COLON(F_A_UPDOWNANGLEVELOCITY)))) {
+        sscanf(ptr, P_FMT_FLOAT(F_A_UPDOWNANGLEVELOCITY), &ctrl->upDownAngleVelocity);
     }
-    if ((ptr = strstr(json, "\"A_cannonUpDownAngle\":"))) {
-        sscanf(ptr, "\"A_cannonUpDownAngle\":%f", &ctrl->cannonUpDownAngle);
+    if ((ptr = strstr(json, P_COLON(F_A_CANNONUPDOWNANGLE)))) {
+        sscanf(ptr, P_FMT_FLOAT(F_A_CANNONUPDOWNANGLE), &ctrl->cannonUpDownAngle);
     }
-    if ((ptr = strstr(json, "\"A_topRelativeAngle\":"))) {
-        sscanf(ptr, "\"A_topRelativeAngle\":%f", &ctrl->topRelativeAngle);
+    if ((ptr = strstr(json, P_COLON(F_A_TOPRELATIVEANGLE)))) {
+        sscanf(ptr, P_FMT_FLOAT(F_A_TOPRELATIVEANGLE), &ctrl->topRelativeAngle);
     }
     
     // Extract enum fields
     char enum_val[64];
-    if ((ptr = strstr(json, "\"A_operationMode\":")) && 
-        sscanf(ptr, "\"A_operationMode\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_OPERATIONMODE))) && 
+        sscanf(ptr, P_FMT_STR(F_A_OPERATIONMODE), enum_val) == 1) {
         ctrl->operationMode = parse_operation_mode(enum_val);
     }
-    if ((ptr = strstr(json, "\"A_parm\":")) && 
-        sscanf(ptr, "\"A_parm\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_PARM))) && 
+        sscanf(ptr, P_FMT_STR(F_A_PARM), enum_val) == 1) {
         ctrl->parm = parse_onoff_type(enum_val);
     }
-    if ((ptr = strstr(json, "\"A_targetDesingation\":")) && 
-        sscanf(ptr, "\"A_targetDesingation\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_TARGET_DESINGATION))) && 
+        sscanf(ptr, P_FMT_STR(F_A_TARGET_DESINGATION), enum_val) == 1) {
         ctrl->targetDesingation = parse_target_allot(enum_val);
     }
-    if ((ptr = strstr(json, "\"A_autoArmPosition\":")) && 
-        sscanf(ptr, "\"A_autoArmPosition\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_AUTO_ARM_POSITION))) && 
+        sscanf(ptr, P_FMT_STR(F_A_AUTO_ARM_POSITION), enum_val) == 1) {
         ctrl->autoArmPosition = parse_arm_position_lock(enum_val);
     }
-    if ((ptr = strstr(json, "\"A_manualArmPosition\":")) && 
-        sscanf(ptr, "\"A_manualArmPosition\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_MANUAL_ARM_POSITION))) && 
+        sscanf(ptr, P_FMT_STR(F_A_MANUAL_ARM_POSITION), enum_val) == 1) {
         ctrl->manualArmPosition = parse_arm_position_lock(enum_val);
     }
-    if ((ptr = strstr(json, "\"A_mainCannonRestore\":")) && 
-        sscanf(ptr, "\"A_mainCannonRestore\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_MAIN_CANNON_RESTORE))) && 
+        sscanf(ptr, P_FMT_STR(F_A_MAIN_CANNON_RESTORE), enum_val) == 1) {
         ctrl->mainCannonRestore = parse_main_cannon_return(enum_val);
     }
-    if ((ptr = strstr(json, "\"A_manCannonFix\":")) && 
-        sscanf(ptr, "\"A_manCannonFix\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_MAN_CANNON_FIX))) && 
+        sscanf(ptr, P_FMT_STR(F_A_MAN_CANNON_FIX), enum_val) == 1) {
         ctrl->manCannonFix = parse_main_cannon_fix(enum_val);
     }
-    if ((ptr = strstr(json, "\"A_closeEquipOpenStatus\":")) && 
-        sscanf(ptr, "\"A_closeEquipOpenStatus\":\"%63[^\"]\"", enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_CLOSE_EQUIP_OPEN_STATUS))) && 
+        sscanf(ptr, P_FMT_STR(F_A_CLOSE_EQUIP_OPEN_STATUS), enum_val) == 1) {
         ctrl->closeEquipOpenStatus = parse_equip_open_lock(enum_val);
     }
     
@@ -378,31 +379,31 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
     
     snprintf(pbit_json, sizeof(pbit_json),
         "{"
-        "\"A_sourceID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_SOURCEID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_timeOfDataGeneration\":{"
-            "\"A_second\":%lld,"
-            "\"A_nanoseconds\":%d"
+        "\"" F_A_TIMEOFDATA "\":{"
+            "\"" F_A_SECOND "\":%lld,"
+            "\"" F_A_NANOSECONDS "\":%d"
         "},"
-        "\"A_runBITEntity_sourceID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_RUNBITENTITY_SOURCEID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_type\":\"%s\","
-        "\"A_BITRunning\":%s,"
-        "\"A_upDownMotor\":%s,"
-        "\"A_roundMotor\":%s,"
-        "\"A_upDownAmp\":%s,"
-        "\"A_roundAmp\":%s,"
-        "\"A_baseGyro\":%s,"
-        "\"A_topForwardGryro\":%s,"
-        "\"A_vehicleForwardGyroi\":%s,"
-        "\"A_powerController\":%s,"
-        "\"A_energyStorage\":%s,"
-        "\"A_directPower\":%s,"
-        "\"A_cableLoop\":%s"
+        "\"" F_A_TYPE "\":\"%s\","
+        "\"" F_A_BITRUNNING "\":%s,"
+        "\"" F_A_UPDOWNMOTOR "\":%s,"
+        "\"" F_A_ROUNDMOTOR "\":%s,"
+        "\"" F_A_UPDOWNAMP "\":%s,"
+        "\"" F_A_ROUNDAMP "\":%s,"
+        "\"" F_A_BASEGYRO "\":%s,"
+        "\"" F_A_TOPFORWARDGRYRO "\":%s,"
+        "\"" F_A_VEHICLEFORWARDGYROI "\":%s,"
+        "\"" F_A_POWERCONTROLLER "\":%s,"
+        "\"" F_A_ENEGERYSTORAGE "\":%s,"
+        "\"" F_A_DIRECTPOWER "\":%s,"
+        "\"" F_A_CABLELOOP "\":%s"
         "}",
         (long long)(ctx->tick_count / 1000),
         (int)((ctx->tick_count % 1000) * 1000000),
@@ -453,34 +454,34 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
     
     snprintf(cbit_json, sizeof(cbit_json),
         "{"
-        "\"A_sourceID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_SOURCEID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_timeOfDataGeneration\":{"
-            "\"A_second\":%lld,"
-            "\"A_nanoseconds\":%d"
+        "\"" F_A_TIMEOFDATA "\":{"
+            "\"" F_A_SECOND "\":%lld,"
+            "\"" F_A_NANOSECONDS "\":%d"
         "},"
-        "\"A_runBITEntity_sourceID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_RUNBITENTITY_SOURCEID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_type\":\"%s\","
-        "\"A_upDownMotor\":%s,"
-        "\"A_roundMotor\":%s,"
-        "\"A_upDownAmp\":%s,"
-        "\"A_roundAmp\":%s,"
-        "\"A_baseGyro\":%s,"
-        "\"A_topForwardGryro\":%s,"
-        "\"A_vehicleForwardGyro\":%s,"
-        "\"A_powerController\":%s,"
-        "\"A_energyStorage\":%s,"
-        "\"A_directPower\":%s,"
-        "\"A_cableLoop\":%s,"
-        "\"A_upDownPark\":%s,"
-        "\"A_round_Park\":%s,"
-        "\"A_mainCannon_Lock\":%s,"
-        "\"A_commFault\":%s"
+        "\"" F_A_TYPE "\":\"%s\","
+        "\"" F_A_UPDOWNMOTOR "\":%s,"
+        "\"" F_A_ROUNDMOTOR "\":%s,"
+        "\"" F_A_UPDOWNAMP "\":%s,"
+        "\"" F_A_ROUNDAMP "\":%s,"
+        "\"" F_A_BASEGYRO "\":%s,"
+        "\"" F_A_TOPFORWARDGRYRO "\":%s,"
+        "\"" F_A_VEHICLEFORWARDGYRO "\":%s,"
+        "\"" F_A_POWERCONTROLLER "\":%s,"
+        "\"" F_A_ENEGERYSTORAGE "\":%s,"
+        "\"" F_A_DIRECTPOWER "\":%s,"
+        "\"" F_A_CABLELOOP "\":%s,"
+        "\"" F_A_UPDOWNPARK "\":%s,"
+        "\"" F_A_ROUND_PARK "\":%s,"
+        "\"" F_A_MAINCANNON_LOCK "\":%s,"
+        "\"" F_A_COMMFAULT "\":%s"
         "}",
         (long long)(ctx->tick_count / 1000),
         (int)((ctx->tick_count % 1000) * 1000000),
@@ -532,32 +533,32 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     
     snprintf(json, sizeof(json),
         "{"
-        "\"A_sourceID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_SOURCEID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_timeOfDataGeneration\":{"
-            "\"A_second\":%lld,"
-            "\"A_nanoseconds\":%d"
+        "\"" F_A_TIMEOFDATA "\":{"
+            "\"" F_A_SECOND "\":%lld,"
+            "\"" F_A_NANOSECONDS "\":%d"
         "},"
-        "\"A_referenceNum\":%u,"
-        "\"A_runBITEntity_sourceID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_REFERENCE_NUM "\":%u,"
+        "\"" F_A_RUNBITENTITY_SOURCEID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_type\":\"%s\","
-        "\"A_BITRunning\":%s,"
-        "\"A_upDownMotor\":%s,"
-        "\"A_roundMotor\":%s,"
-        "\"A_upDownAmp\":%s,"
-        "\"A_roundAmp\":%s,"
-        "\"A_baseGyro\":%s,"
-        "\"A_topForwardGryro\":%s,"
-        "\"A_vehicleForwardGyro\":%s,"
-        "\"A_power_Controller\":%s,"
-        "\"A_energyStorage\":%s,"
-        "\"A_directPower\":%s,"
-        "\"A_cableLoop\":%s"
+        "\"" F_A_TYPE "\":\"%s\","
+        "\"" F_A_BITRUNNING "\":%s,"
+        "\"" F_A_UPDOWNMOTOR "\":%s,"
+        "\"" F_A_ROUNDMOTOR "\":%s,"
+        "\"" F_A_UPDOWNAMP "\":%s,"
+        "\"" F_A_ROUNDAMP "\":%s,"
+        "\"" F_A_BASEGYRO "\":%s,"
+        "\"" F_A_TOPFORWARDGRYRO "\":%s,"
+        "\"" F_A_VEHICLEFORWARDGYRO "\":%s,"
+        "\"" F_A_POWER_CONTROLLER "\":%s,"
+        "\"" F_A_ENEGERYSTORAGE "\":%s,"
+        "\"" F_A_DIRECTPOWER "\":%s,"
+        "\"" F_A_CABLELOOP "\":%s"
         "}",
         (long long)(ctx->tick_count / 1000),
         (int)((ctx->tick_count % 1000) * 1000000),
@@ -617,37 +618,62 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     char signal_json[2048];
     ActuatorSignalState* sig = &ctx->signal_state;
     
+    // --- Quantize / Clamp outputs according to spec ---
+    // A_azAngle: send current azimuth velocity (sig->e1AngleVelocity) but keep field name
+    float az_v = sig->e1AngleVelocity; // treat A_azAngle as velocity
+    if (az_v > 800.0f) az_v = 800.0f;
+    if (az_v < -800.0f) az_v = -800.0f;
+    az_v = roundf(az_v / 0.01f) * 0.01f;
+
+    // A_e1AngleVelocity
+    float e1_v = sig->e1AngleVelocity;
+    if (e1_v > 450.0f) e1_v = 450.0f;
+    if (e1_v < -450.0f) e1_v = -450.0f;
+    e1_v = roundf(e1_v / 0.01f) * 0.01f;
+
+    // A_roundGyro
+    float round_v = sig->roundGyro;
+    if (round_v > 655.0f) round_v = 655.0f;
+    if (round_v < -655.0f) round_v = -655.0f;
+    round_v = roundf(round_v / 0.02f) * 0.02f;
+
+    // A_upDownGyro
+    float updown_v = sig->upDownGyro;
+    if (updown_v > 655.0f) updown_v = 655.0f;
+    if (updown_v < -655.0f) updown_v = -655.0f;
+    updown_v = roundf(updown_v / 0.02f) * 0.02f;
+
     snprintf(signal_json, sizeof(signal_json),
         "{"
-        "\"A_recipientID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_RECIPIENTID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_sourceID\":{"
-            "\"A_resourceId\":1,"
-            "\"A_instanceId\":1"
+        "\"" F_A_SOURCEID "\":{"
+            "\"" F_A_RESOURCEID "\":1,"
+            "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"A_timeOfDataGeneration\":{"
-            "\"A_second\":%lld,"
-            "\"A_nanoseconds\":%d"
+        "\"" F_A_TIMEOFDATA "\":{"
+            "\"" F_A_SECOND "\":%lld,"
+            "\"" F_A_NANOSECONDS "\":%d"
         "},"
-        "\"A_azAngle\":%.3f,"
-        "\"A_e1AngleVelocity\":%.3f,"
-        "\"A_energyStorage\":\"%s\","
-        "\"A_mainCannonFixStatus\":\"%s\","
-        "\"A_deckClearance\":\"%s\","
-        "\"A_autoArmPositionComplement\":\"%s\","
-        "\"A_manualArmPositionComple\":\"%s\","
-        "\"A_mainCannonRestoreComplement\":\"%s\","
-        "\"A_armSafetyMainCannonLock\":\"%s\","
-        "\"A_shutdown\":\"%s\","
-        "\"A_roundGyro\":%.3f,"
-        "\"A_upDownGyro\":%.3f"
+        "\"" F_A_AZANGLE "\":%.3f,"
+        "\"" F_A_E1ANGLEVELOCITY "\":%.3f,"
+        "\"" F_A_ENEGERYSTORAGE "\":\"%s\","
+        "\"" F_A_MAINCANNONFIXSTATUS "\":\"%s\","
+        "\"" F_A_DECKCLEARANCE "\":\"%s\","
+        "\"" F_A_AUTO_ARM_POSITION "\":\"%s\","
+        "\"" F_A_MANUAL_ARM_POSITION_COMPLE "\":\"%s\","
+        "\"" F_A_MAIN_CANNON_RESTORE_COMPLEMENT "\":\"%s\","
+        "\"" F_A_ARM_SAFETY_MAIN_CANNON_LOCK "\":\"%s\","
+        "\"" F_A_SHUTDOWN "\":\"%s\","
+        "\"" F_A_ROUNDGYRO "\":%.3f,"
+        "\"" F_A_UPDOWNGYRO "\":%.3f"
         "}",
         (long long)(ctx->tick_count / 1000),
         (int)((ctx->tick_count % 1000) * 1000000),
-        sig->azAngle,
-        sig->e1AngleVelocity,
+        az_v,
+        e1_v,
         format_changing_status(sig->energyStorage),
         format_main_cannon_fix_status(sig->mainCannonFixStatus),
         format_dek_clearance(sig->deckClearance),
@@ -656,8 +682,8 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         format_main_cannon_return_status(sig->mainCannonRestoreComplement),
         format_arm_safety_lock(sig->armSafetyMainCannonLock),
         format_shutdown_type(sig->shutdown),
-        sig->roundGyro,
-        sig->upDownGyro
+        round_v,
+        updown_v
     );
     
     LegacyWriteJsonOptions wopt = {

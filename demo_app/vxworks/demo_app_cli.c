@@ -100,13 +100,13 @@ static void print_help(void) {
         "\n[Legacy Commands]\n"
         "  demo_init           : Run all 3 steps automatically\n"
         "  demo_start          : Alias for demo_init\n"
-        "  demo_stop           : Stop demo (->Idle)\n"
+        "  demo_stop           : Stop demo (->PEND, pause timers)\n"
         "\n[Testing]\n"
         "  run_ibit <ref> <type> : Trigger IBIT manually\n"
         "  fault_inject <comp> : Inject fault (azimuth|updown|sensor)\n"
         "  fault_clear <comp>  : Clear fault (azimuth|updown|sensor|all)\n"
         "\n[Misc]\n"
-        "  quit                : Disconnect client\n"
+        "  quit                : Close CLI connection (server will close)\n"
         "=============================\n"
     );
 }
@@ -124,11 +124,12 @@ static void process_command(char* line) {
     const char* cmd = tokens[0];
     
     if (strcmp(cmd, "quit") == 0 || strcmp(cmd, "exit") == 0) {
-        demo_cli_print("Disconnecting...\n");
+        demo_cli_print("Closing CLI connection...\n");
         if (g_cli_client_sock >= 0) {
             close(g_cli_client_sock);
             g_cli_client_sock = -1;
         }
+        return;
     }
     else if (strcmp(cmd, "help") == 0) {
         print_help();

@@ -300,14 +300,20 @@ void demo_timer_tick(DemoAppContext* ctx) {
     // Update simulation (position/velocity)
     demo_timer_update_simulation(ctx);
     
-    // 200Hz processing (every 5ms)
-    if ((ctx->tick_count % 5) == 0) {
-        demo_msg_publish_actuator_signal(ctx);
+    // Signal processing (configurable period)
+    if (ctx->signal_period_ms > 0) {
+        if ((ctx->tick_count - ctx->last_200hz_tick) >= ctx->signal_period_ms) {
+            demo_msg_publish_actuator_signal(ctx);
+            ctx->last_200hz_tick = ctx->tick_count;
+        }
     }
-    
-    // 1Hz processing (every 1000ms)
-    if ((ctx->tick_count % 1000) == 0) {
-        demo_msg_publish_cbit(ctx);
+
+    // CBIT processing (configurable period)
+    if (ctx->cbit_period_ms > 0) {
+        if ((ctx->tick_count - ctx->last_1hz_tick) >= ctx->cbit_period_ms) {
+            demo_msg_publish_cbit(ctx);
+            ctx->last_1hz_tick = ctx->tick_count;
+        }
     }
 }
 

@@ -20,6 +20,10 @@ extern DemoAppContext* g_demo_ctx;
  * ======================================================================== */
 
 static int tokenize_command(char* line, char** tokens, int max_tokens) {
+
+/* Forward declarations */
+void demo_cli_stop(void);
+
     int count = 0;
     char* token = strtok(line, " \t");
     
@@ -40,8 +44,7 @@ static void cmd_help(void) {
         "\n=== DemoApp CLI Commands ===\n"
         "\n[Connection]\n"
         "  connect [ip] [port]       : Connect to Agent (default: 127.0.0.1:25000)\n"
-        "  disconnect                : Disconnect from Agent and reset to Idle\n"
-        "  reset                     : Reset state to Idle\n"
+        "  reset                     : Full reset (cleanup entities, set Idle)\n"
         "  status                    : Show current status\n"
         "\n[Entity Management]\n"
         "  create_entities           : Create DDS entities\n"
@@ -60,7 +63,7 @@ static void cmd_help(void) {
         "  log_status                : Show current log mode\n"
         "\n[Other]\n"
         "  help                      : Show this help\n"
-        "  quit                      : Disconnect\n"
+        "  quit                      : Close CLI connection\n"
         "============================\n"
     );
 }
@@ -96,13 +99,17 @@ static void cmd_status(void) {
     }
     
     demo_tcp_cli_print("\n[Published Messages - Total / Current Hz]\n");
-    demo_tcp_cli_print("  Signal (200Hz)     : %5u total (%3u Hz)\n", 
-        g_demo_ctx->signal_pub_count, g_demo_ctx->signal_pub_hz);
-    demo_tcp_cli_print("  CBIT   (1Hz)       : %5u total (%3u Hz)\n", 
-        g_demo_ctx->cbit_pub_count, g_demo_ctx->cbit_pub_hz);
-    demo_tcp_cli_print("  PBIT   (on-demand) : %5u total (%3u Hz)\n", 
-        g_demo_ctx->pbit_pub_count, g_demo_ctx->pbit_pub_hz);
-    demo_tcp_cli_print("  ResultBIT          : %5u total (%3u Hz)\n", 
+    uint32_t target_signal_hz = (g_demo_ctx->signal_period_ms == 0) ? 0 : (1000u / g_demo_ctx->signal_period_ms);
+    uint32_t target_cbit_hz = (g_demo_ctx->cbit_period_ms == 0) ? 0 : (1000u / g_demo_ctx->cbit_period_ms);
+    uint32_t target_pbit_hz = (g_demo_ctx->pbit_period_ms == 0) ? 0 : (1000u / g_demo_ctx->pbit_period_ms);
+
+    demo_tcp_cli_print("  Signal (target %u Hz) : %5u total (%3u Hz)\n", 
+        target_signal_hz, g_demo_ctx->signal_pub_count, g_demo_ctx->signal_pub_hz);
+    demo_tcp_cli_print("  CBIT   (target %u Hz) : %5u total (%3u Hz)\n", 
+        target_cbit_hz, g_demo_ctx->cbit_pub_count, g_demo_ctx->cbit_pub_hz);
+    demo_tcp_cli_print("  PBIT   (target %u Hz) : %5u total (%3u Hz)\n", 
+        target_pbit_hz, g_demo_ctx->pbit_pub_count, g_demo_ctx->pbit_pub_hz);
+    demo_tcp_cli_print("  ResultBIT             : %5u total (%3u Hz)\n", 
         g_demo_ctx->result_pub_count, g_demo_ctx->result_pub_hz);
     
     demo_tcp_cli_print("\n[Subscribed Messages - Total / Current Hz]\n");
@@ -154,26 +161,19 @@ static void cmd_connect(int token_count, char** tokens) {
     }
 }
 
-static void cmd_disconnect(void) {
-    if (!g_demo_ctx) {
-        demo_tcp_cli_print("ERROR: DemoApp context not initialized\n");
-        return;
-    }
-    
-    demo_tcp_cli_print("Disconnecting from Agent...\n");
-    demo_app_stop(g_demo_ctx);
-    demo_tcp_cli_print("OK: Disconnected, state reset to Idle\n");
-}
+// 'disconnect' command removed (use 'reset' to cleanup)
 
 static void cmd_reset(void) {
     if (!g_demo_ctx) {
         demo_tcp_cli_print("ERROR: DemoApp context not initialized\n");
         return;
     }
-    
-    demo_tcp_cli_print("Resetting DemoApp state...\n");
-    demo_app_stop(g_demo_ctx);
-    demo_tcp_cli_print("OK: State reset to Idle\n");
+    demo_tcp_cli_print("Resetting DemoApp (full cleanup)...\n");
+    if (demo_app_reset(g_demo_ctx) == 0) {
+        demo_tcp_cli_print("OK: State reset to Idle\n");
+    } else {
+        demo_tcp_cli_print("ERROR: Failed to reset DemoApp\n");
+    }
 }
 
 static void cmd_create_entities(void) {
@@ -215,10 +215,9 @@ static void cmd_stop_scenario(void) {
         demo_tcp_cli_print("ERROR: DemoApp context not initialized\n");
         return;
     }
-    
-    demo_tcp_cli_print("Stopping scenario...\n");
-    demo_app_stop(g_demo_ctx);
-    demo_tcp_cli_print("OK: Scenario stopped\n");
+    demo_tcp_cli_print("Pausing scenario (timers will be stopped)...\n");
+    demo_app_stop(g_demo_ctx); // pause only
+    demo_tcp_cli_print("OK: Scenario paused (state=PEND)\n");
 }
 
 static void cmd_test_write(int token_count, char** tokens) {
@@ -362,6 +361,37 @@ static void cmd_log_status(void) {
     }
 }
 
+static void cmd_set_hz(int token_count, char** tokens) {
+    if (!g_demo_ctx) {
+        demo_tcp_cli_print("ERROR: DemoApp context not initialized\n");
+        return;
+    }
+
+    if (token_count < 3) {
+        demo_tcp_cli_print("Usage: set_hz <topic> <hz>\n");
+        demo_tcp_cli_print("  Topics: signal, cbit, pbit\n");
+        return;
+    }
+
+    const char* topic = tokens[1];
+    uint32_t hz = (uint32_t)atoi(tokens[2]);
+
+    if (demo_app_set_publish_hz(g_demo_ctx, topic, hz) == 0) {
+        demo_tcp_cli_print("OK: %s publish rate set to %u Hz\n", topic, hz);
+    } else {
+        demo_tcp_cli_print("ERROR: Failed to set hz for topic '%s'\n", topic);
+    }
+}
+
+static void cmd_reset_hz(void) {
+    if (!g_demo_ctx) {
+        demo_tcp_cli_print("ERROR: DemoApp context not initialized\n");
+        return;
+    }
+    demo_app_reset_publish_periods(g_demo_ctx);
+    demo_tcp_cli_print("OK: Publish periods reset to defaults\n");
+}
+
 /* ========================================================================
  * Main Command Processor
  * ======================================================================== */
@@ -379,17 +409,15 @@ void demo_cli_process_command(char* line) {
         cmd_help();
     }
     else if (strcmp(cmd, "quit") == 0 || strcmp(cmd, "exit") == 0) {
-        demo_tcp_cli_print("Disconnecting...\n");
-        // Client will disconnect
+        demo_tcp_cli_print("Closing CLI connection...\n");
+        demo_cli_stop();
+        return;
     }
     else if (strcmp(cmd, "status") == 0) {
         cmd_status();
     }
     else if (strcmp(cmd, "connect") == 0) {
         cmd_connect(token_count, tokens);
-    }
-    else if (strcmp(cmd, "disconnect") == 0) {
-        cmd_disconnect();
     }
     else if (strcmp(cmd, "reset") == 0) {
         cmd_reset();
@@ -420,6 +448,12 @@ void demo_cli_process_command(char* line) {
     }
     else if (strcmp(cmd, "log_status") == 0) {
         cmd_log_status();
+    }
+    else if (strcmp(cmd, "set_hz") == 0) {
+        cmd_set_hz(token_count, tokens);
+    }
+    else if (strcmp(cmd, "reset_hz") == 0) {
+        cmd_reset_hz();
     }
     else {
         demo_tcp_cli_print("Unknown command: %s\n", cmd);

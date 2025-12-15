@@ -85,7 +85,7 @@ STATUS demoAppStart(int cli_port, const char* agent_ip) {
     printf("[DemoApp DKM] Connect with: telnet <target_ip> %d\n", g_cli_port);
     printf("[DemoApp DKM] Use shell commands:\n");
     printf("[DemoApp DKM]   demoAppConnect()        - Connect to Agent\n");
-    printf("[DemoApp DKM]   demoAppDisconnect()     - Disconnect and reset\n");
+    printf("[DemoApp DKM]   demoAppReset()           - Full reset (cleanup, Idle)\n");
     printf("[DemoApp DKM]   demoAppCreateEntities() - Create DDS entities\n");
     printf("[DemoApp DKM]   demoAppStartScenario()  - Start simulation\n");
     printf("[DemoApp DKM]   demoAppStopScenario()   - Stop simulation\n");
@@ -124,14 +124,8 @@ STATUS demoAppConnect(void) {
  * @return OK on success, ERROR on failure
  */
 STATUS demoAppDisconnect(void) {
-    if (!g_demo_ctx) {
-        printf("[DemoApp DKM] Not initialized\n");
-        return ERROR;
-    }
-    
-    demo_app_stop(g_demo_ctx);
-    printf("[DemoApp DKM] Disconnected, state reset to Idle\n");
-    return OK;
+    printf("[DemoApp DKM] demoAppDisconnect() is removed. Use demoAppReset() instead.\n");
+    return ERROR;
 }
 
 /**
@@ -186,8 +180,25 @@ STATUS demoAppStopScenario(void) {
     }
     
     demo_app_stop(g_demo_ctx);
-    printf("[DemoApp DKM] Scenario stopped\n");
+    printf("[DemoApp DKM] Scenario paused (state=PEND)\n");
     return OK;
+}
+
+/**
+ * Full reset (cleanup entities and set Idle)
+ */
+STATUS demoAppReset(void) {
+    if (!g_demo_ctx) {
+        printf("[DemoApp DKM] Not initialized\n");
+        return ERROR;
+    }
+
+    if (demo_app_reset(g_demo_ctx) == 0) {
+        printf("[DemoApp DKM] Reset complete, state=Idle\n");
+        return OK;
+    }
+    printf("[DemoApp DKM] Reset failed\n");
+    return ERROR;
 }
 
 /**
@@ -288,8 +299,8 @@ STATUS demoAppStop(void) {
     
     printf("[DemoApp DKM] Stopping...\n");
     
-    // Stop demo application
-    demo_app_stop(g_demo_ctx);
+    // Full reset/demo shutdown
+    demo_app_reset(g_demo_ctx);
     
     // Stop CLI server
     demo_cli_stop();

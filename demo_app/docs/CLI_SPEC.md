@@ -77,8 +77,8 @@ VxWorks shell에서 직접 호출 가능한 명령들:
 demoAppStart(23000, "127.0.0.1")     // CLI 및 Log 서버와 함께 시작
 demoAppConnect()                      // Agent에 연결
 demoAppCreateEntities()               // DDS 엔티티 생성
-demoAppStartScenario()                // 시나리오 시작
-demoAppStopScenario()                 // 시나리오 중지
+demoAppStartScenario()                // 시나리오 시작 (INIT 또는 PEND에서 가능)
+demoAppStopScenario()                 // 시나리오 일시정지 (타이머 중지, 상태=PEND)
 demoAppTestWrite("pbit")              // 테스트 전송 (pbit|cbit|result_bit|signal|all)
 demoAppLogMode("console")             // 로그 모드 설정 (console|redirect|both)
 demoAppStatus()                       // 상태 표시
@@ -151,11 +151,12 @@ Connected successfully
 State: RUN
 Tick: 12345
 Transmit:
-  Signal: 2468 (200Hz)
-  CBIT: 12 (1Hz)
+  Signal: 2468 (target 200Hz, cur 200Hz)
+  CBIT: 12 (target 1Hz, cur 1Hz)
+  PBIT: 1 (target 0Hz, cur 0Hz)
 Receive:
-  Control: 2468 (200Hz)
-  Speed: 12 (1Hz)
+  Control: 2468 (cur 200Hz)
+  Speed: 12 (cur 1Hz)
 BIT:
   PBIT: Completed
   CBIT: Active
@@ -187,7 +188,7 @@ State: POWERON_BIT
 
 #### `start_scenario`
 
-시나리오 실행 시작:
+시나리오 실행 시작 (INIT 또는 PEND 상태에서 호출 가능):
 
 1. PBIT 발행 (1회)
 2. 주기적 타이머 시작:
@@ -213,9 +214,43 @@ State: RUN
 
 ```
 > stop_scenario
-Stopping scenario...
+Pausing scenario (timers stopped)...
 Timers stopped
-State: INIT
+State: PEND
+```
+
+#### `set_hz <topic> <hz>`
+
+주기 전송 주파수를 동적으로 변경합니다.
+
+**파라미터:**
+
+- `topic`: `signal`, `cbit`, `pbit`
+- `hz`: 0 이상 정수, `0`은 해당 주기형 전송을 비활성화 (예: `pbit`은 기본적으로 비활성화)
+
+**제약:**
+
+- 최대 1000Hz로 제한됩니다 (1ms 최소 주기).
+
+**예제:**
+
+```
+> set_hz signal 100
+OK: signal publish rate set to 100 Hz
+
+> set_hz pbit 0
+OK: pbit publish disabled (periodic)
+```
+
+#### `reset_hz`
+
+주기 설정을 기본값으로 복원합니다 (signal=200Hz, cbit=1Hz, pbit=off).
+
+**예제:**
+
+```
+> reset_hz
+OK: Publish periods reset to defaults
 ```
 
 ### 테스트 명령
@@ -362,9 +397,21 @@ Client Connected: Yes
 
 사용 가능한 모든 명령어와 간단한 설명 표시
 
+#### `reset`
+
+DemoApp을 완전히 초기화합니다: 내부 상태(시뮬레이션 값, 카운터) 초기화, 메시지/엔티티 정리 및 에이전트 닫기를 수행하고 상태를 `Idle`로 만듭니다. TCP CLI 연결은 유지됩니다.
+
+**예제:**
+
+```
+> reset
+Resetting DemoApp (full cleanup)...
+OK: State reset to Idle
+```
+
 #### `quit` / `exit`
 
-CLI 서버 연결 해제 (DemoApp 종료 안 함)
+CLI 클라이언트 연결을 종료합니다 (서버가 클라이언트 소켓을 닫음). DemoApp 프로세스는 계속 실행됩니다.
 
 ## 로그 출력 형식
 
