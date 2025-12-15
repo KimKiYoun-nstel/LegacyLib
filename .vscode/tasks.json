@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "1) VxWorks lib (clean+build)",
+      "type": "process",
+      "command": "D:\\WindRiver\\wrenv.exe",
+      "args": [
+        "cmd.exe", "/d", "/s", "/c",
+        "call BuildRef\\vx_set_env.cmd && call BuildRef\\build_vx_lib.cmd"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "2) VxWorks demoApp (clean+build)",
+      "type": "process",
+      "command": "D:\\WindRiver\\wrenv.exe",
+      "args": [
+        "cmd.exe", "/d", "/s", "/c",
+        "call BuildRef\\vx_set_env.cmd && call BuildRef\\build_vx_demo.cmd"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "3) Windows demoApp (clean+build, lib 포함)",
+      "type": "process",
+      "command": "cmd.exe",
+      "args": [
+        "/d", "/s", "/c",
+        "call BuildRef\\build_win_demo.cmd"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    }
+  ]
+}
