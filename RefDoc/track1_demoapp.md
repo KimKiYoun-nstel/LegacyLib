@@ -17,7 +17,7 @@ DemoApp (VxWorks 모듈) – 시연용 동작 설계
 ### 2.1. AgentUI → DemoApp (DDS 수신, DemoApp Subscriber)
 
 1. **포구동장치통제명령 (runBIT 요청)**
-   - Topic: `P_UCMS__C_Monitored_Entity_runBIT`
+  - Topic: `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`
    - 방향: AgentUI → DemoApp
    - 주기: 비주기
    - QoS: Non-Periodic Event
@@ -26,7 +26,7 @@ DemoApp (VxWorks 모듈) – 시연용 동작 설계
      - `referenceNum`, `type(BITType)` 등을 포함
 
 2. **포구동장치제어명령**
-   - Topic: `P_NSTEL__C_Cannon_Actuator_Control`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_commandDriving`
    - 방향: AgentUI → DemoApp
    - 주기: 200Hz
    - QoS: High Frequency Periodic
@@ -34,7 +34,7 @@ DemoApp (VxWorks 모듈) – 시연용 동작 설계
      - 포신 위치/속도/운용모드 제어
 
 3. **차량속도정보**
-   - Topic: `P_NSTEL__C_Vehicle_Speed`
+  - Topic: `P_NSTEL__C_VehicleSpeed`
    - 방향: AgentUI → DemoApp
    - 주기: 1Hz
    - QoS: Low Frequency Vehicle
@@ -46,7 +46,7 @@ DemoApp (VxWorks 모듈) – 시연용 동작 설계
 ### 2.2. DemoApp → AgentUI (DDS 송신, DemoApp Publisher)
 
 4. **포구동장치 IBIT 결과**
-   - Topic: `P_NSTEL__C_Cannon_Driving_Device_resultBIT`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_IBIT`
    - 방향: DemoApp → AgentUI
    - 주기: 비주기
    - QoS: Non-Periodic Event
@@ -55,7 +55,7 @@ DemoApp (VxWorks 모듈) – 시연용 동작 설계
      - `referenceNum`, 구성품별 BIT 결과 포함
 
 5. **포구동장치 CBIT 상태**
-   - Topic: `P_NSTEL__C_Cannon_Driving_Device_CBIT`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_PBIT`
    - 방향: DemoApp → AgentUI
    - 주기: 1Hz
    - QoS: Low Frequency Status
@@ -63,7 +63,7 @@ DemoApp (VxWorks 모듈) – 시연용 동작 설계
      - 운용 중 BIT 상태(구성품별 상태 스냅샷)
 
 6. **포구동장치 PowerOn BIT 결과**
-   - Topic: `P_NSTEL__C_Cannon_Driving_Device_PBIT`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
    - 방향: DemoApp → AgentUI
    - 주기: 비주기 (모듈 초기화 시)
    - QoS: Initial State
@@ -72,7 +72,7 @@ DemoApp (VxWorks 모듈) – 시연용 동작 설계
      - Initial State QoS로 AgentUI는 나중에 붙어도 마지막 결과 1개 수신 가능
 
 7. **포구동장치 신호획득 (피드백)**
-   - Topic: `P_NSTEL__C_Cannon_Actuator_Signal`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_Signal`
    - 방향: DemoApp → AgentUI
    - 주기: 200Hz
    - QoS: High Frequency Periodic

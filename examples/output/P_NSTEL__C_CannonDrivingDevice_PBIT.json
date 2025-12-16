@@ -1,0 +1,29 @@
+{
+  "A_sourceID": {
+    "A_resourceId": 1,
+    "A_instanceId": 1
+  },
+  "A_timeOfDataGeneration": {
+    "A_second": 1,
+    "A_nanoseconds": 1
+  },
+  "A_cannonDrivingDevice_sourceID": {
+    "A_resourceId": 1,
+    "A_instanceId": 1
+  },
+  "A_upDownMotor": "L_BITResultType_NORMAL",
+  "A_roundMotor": "L_BITResultType_NORMAL",
+  "A_upDownAmp": "L_BITResultType_NORMAL",
+  "A_roundAmp": "L_BITResultType_NORMAL",
+  "A_baseGiro": "L_BITResultType_NORMAL",
+  "A_topForwardGiro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_powerController": "L_BITResultType_NORMAL",
+  "A_energyStorage": "L_BITResultType_NORMAL",
+  "A_directPower": "L_BITResultType_NORMAL",
+  "A_cableLoop": "L_BITResultType_NORMAL",
+  "A_upDownPark": "L_BITResultType_NORMAL",
+  "A_roundPark": "L_BITResultType_NORMAL",
+  "A_mainCannonLock": "L_BITResultType_NORMAL",
+  "A_controllerNetwork": "L_BITResultType_NORMAL"
+}

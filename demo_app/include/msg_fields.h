@@ -5,7 +5,6 @@
 #ifndef MSG_FIELDS_H
 #define MSG_FIELDS_H
 
-/* Structural / common fields */
 #define F_A_SOURCEID "A_sourceID"
 #define F_A_RECIPIENTID "A_recipientID"
 #define F_A_RESOURCEID "A_resourceId"
@@ -14,12 +13,18 @@
 #define F_A_SECOND "A_second"
 #define F_A_NANOSECONDS "A_nanoseconds"
 
-/* Actuator signal fields */
-#define F_A_AZANGLE "A_azAngle"
+/* Actuator signal/control fields (align with attachments)
+ * - Some messages use 'A_roundPosition' for azimuth position
+ * - Signal uses velocity-named azimuth field 'A_azAngleVelocity'
+ */
+#define F_A_AZANGLEVELOCITY "A_azAngleVelocity"
 #define F_A_E1ANGLEVELOCITY "A_e1AngleVelocity"
-#define F_A_ROUNDGYRO "A_roundGyro"
-#define F_A_UPDOWNGYRO "A_upDownGyro"
-#define F_A_DRIVINGPOSITION "A_drivingPosition"
+#define F_A_ROUNDGIRO "A_roundGiro"
+#define F_A_UPDOWNGIRO "A_upDownGiro"
+/* Control/command position naming (attachment uses A_roundPosition)
+ * keep alias name for compatibility
+ */
+#define F_A_DRIVINGPOSITION "A_roundPosition"
 #define F_A_UPDOWNPOSITION "A_upDownPosition"
 #define F_A_ROUNDANGLEVELOCITY "A_roundAngleVelocity"
 #define F_A_UPDOWNANGLEVELOCITY "A_upDownAngleVelocity"
@@ -30,42 +35,55 @@
 #define F_A_REFERENCE_NUM "A_referenceNum"
 #define F_A_TYPE "A_type"
 #define F_A_BITRUNNING "A_BITRunning"
-#define F_A_SPEED "A_speed"
+/* Vehicle speed in current attachments uses 'A_value' */
+#define F_A_SPEED "A_value"
 #define F_A_OPERATIONMODE "A_operationMode"
 #define F_A_PARM "A_parm"
-#define F_A_TARGET_DESINGATION "A_targetDesingation"
+/* Attachment changed 'A_targetDesingation' -> 'A_targetFix' */
+#define F_A_TARGET_DESIGNATION "A_targetFix"
 #define F_A_AUTO_ARM_POSITION "A_autoArmPosition"
 #define F_A_MANUAL_ARM_POSITION "A_manualArmPosition"
 #define F_A_MAIN_CANNON_RESTORE "A_mainCannonRestore"
-#define F_A_MAN_CANNON_FIX "A_manCannonFix"
-#define F_A_CLOSE_EQUIP_OPEN_STATUS "A_closeEquipOpenStatus"
+/* Attachment uses 'A_mainCannonFix' spelling */
+#define F_A_MAIN_CANNON_FIX "A_mainCannonFix"
+/* Attachment uses 'A_closureEquipOpenStatus' */
+#define F_A_CLOSE_EQUIP_OPEN_STATUS "A_closureEquipOpenStatus"
 
-/* Status / BIT fields */
-#define F_A_ENEGERYSTORAGE "A_energyStorage"
+/* Status / BIT fields (updated to actual incoming names)
+ * Note: attachments include several typos; definitions mirror attachments
+ */
+#define F_A_ENERGY_STORAGE "A_energyStorage"
 #define F_A_MAINCANNONFIXSTATUS "A_mainCannonFixStatus"
-#define F_A_DECKCLEARANCE "A_deckClearance"
-#define F_A_AUTO_ARM_POSITION "A_autoArmPositionComplement"
-#define F_A_MANUAL_ARM_POSITION_COMPLE "A_manualArmPositionComple"
+/* attachment uses 'A_deckCleance' (typo preserved) */
+#define F_A_DECKCLEARANCE "A_deckCleance"
+#define F_A_AUTO_ARM_POSITION_COMPLEMENT "A_autoArmPositionComplement"
+#define F_A_MANUAL_ARM_POSITION_COMPLEMENT "A_manualArmPositionComplement"
 #define F_A_MAIN_CANNON_RESTORE_COMPLEMENT "A_mainCannonRestoreComplement"
 #define F_A_ARM_SAFETY_MAIN_CANNON_LOCK "A_armSafetyMainCannonLock"
 #define F_A_SHUTDOWN "A_shutdown"
-#define F_A_TOPFORWARDGRYRO "A_topForwardGryro"
-#define F_A_VEHICLEFORWARDGYROI "A_vehicleForwardGyroi"
-#define F_A_POWER_CONTROLLER "A_power_Controller"
-#define F_A_ROUND_PARK "A_round_Park"
-#define F_A_VEHICLEFORWARDGYRO "A_vehicleForwardGyro"
-#define F_A_POWERCONTROLLER "A_powerController"
+#define F_A_TOPFORWARDGIRO "A_topForwardGiro"
+#define F_A_VEHICLEFORWARDGIRO "A_vehicleForwardGiro"
+#define F_A_POWER_CONTROLLER "A_powerController"
+#define F_A_ROUND_PARK "A_roundPark"
 #define F_A_RUNBITENTITY_SOURCEID "A_runBITEntity_sourceID"
 #define F_A_UPDOWNMOTOR "A_upDownMotor"
 #define F_A_ROUNDMOTOR "A_roundMotor"
 #define F_A_UPDOWNAMP "A_upDownAmp"
 #define F_A_ROUNDAMP "A_roundAmp"
-#define F_A_BASEGYRO "A_baseGyro"
+#define F_A_BASEGIRO "A_baseGiro"
 #define F_A_DIRECTPOWER "A_directPower"
 #define F_A_CABLELOOP "A_cableLoop"
 #define F_A_UPDOWNPARK "A_upDownPark"
-#define F_A_MAINCANNON_LOCK "A_mainCannon_Lock"
+#define F_A_MAINCANNON_LOCK "A_mainCannonLock"
 #define F_A_COMMFAULT "A_commFault"
+
+/* Specific source id used in some attachment files */
+#define F_A_CANNON_SOURCEID "A_cannonDrivingDevice_sourceID"
+
+/* NOTE: Removed compatibility aliases — only current/actual field names are defined. */
+
+/* Controller network field used by PBIT/CBIT per schema */
+#define F_A_CONTROLLER_NETWORK "A_controllerNetwork"
 
 /* PBIT/CBIT/RESULT fields */
 #define F_P_RESULTBIT "P_resultBit"

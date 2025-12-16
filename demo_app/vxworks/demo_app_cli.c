@@ -200,7 +200,7 @@ static void process_command(char* line) {
         demo_cli_print("\nComponent Status:\n");
         demo_cli_print("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor ? "OK" : "FAULT");
         demo_cli_print("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor ? "OK" : "FAULT");
-        demo_cli_print("  Base Gyro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGyro ? "OK" : "FAULT");
+        demo_cli_print("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro ? "OK" : "FAULT");
         demo_cli_print("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController ? "OK" : "FAULT");
         demo_cli_print("======================\n");
     }

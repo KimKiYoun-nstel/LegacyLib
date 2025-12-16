@@ -65,7 +65,7 @@ CFLAGS = -dkm \
 
 # Source Files
 SRCS = src/demo_app_core.c \
-       src/demo_app_msg.c \
+	src/demo_app_msg.cpp \
        src/demo_app_timer.c \
        src/demo_app_enums.c \
        src/demo_app_log.c \
@@ -74,7 +74,8 @@ SRCS = src/demo_app_core.c \
        vxworks/demo_app_dkm.c
 
 # Object Files
-OBJS = $(SRCS:.c=.o)
+OBJS = $(patsubst %.c,%.o,$(SRCS))
+OBJS := $(patsubst %.cpp,%.o,$(OBJS))
 
 # Output
 TARGET = demo_app_dkm.out
@@ -126,8 +127,12 @@ $(TARGET): $(OBJS) $(LEGACY_OBJS)
 	@echo "  -> demoAppStart(23000, \"127.0.0.1\")"
 
 %.o: %.c
-	@echo "Compiling $<..."
+	@echo "Compiling C $<..."
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+%.o: %.cpp
+	@echo "Compiling C++ $<..."
+	$(CXX) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	@echo "Cleaning..."

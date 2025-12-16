@@ -47,9 +47,9 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->bit_state.pbit_components.roundMotor = true;
     ctx->bit_state.pbit_components.upDownAmp = true;
     ctx->bit_state.pbit_components.roundAmp = true;
-    ctx->bit_state.pbit_components.baseGyro = true;
-    ctx->bit_state.pbit_components.topForwardGryro = true;
-    ctx->bit_state.pbit_components.vehicleForwardGyro = true;
+    ctx->bit_state.pbit_components.baseGiro = true;
+    ctx->bit_state.pbit_components.topForwardGiro = true;
+    ctx->bit_state.pbit_components.vehicleForwardGiro = true;
     ctx->bit_state.pbit_components.powerController = true;
     ctx->bit_state.pbit_components.energyStorage = true;
     ctx->bit_state.pbit_components.directPower = true;
@@ -513,10 +513,10 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.pbit_components.upDownAmp = false;
         printf("[DemoApp Core] Fault injected: UpDown Motor/Amp\n");
     }
-    else if (strcmp(component, "sensor") == 0 || strcmp(component, "gyro") == 0) {
-        ctx->bit_state.pbit_components.baseGyro = false;
-        ctx->bit_state.pbit_components.vehicleForwardGyro = false;
-        printf("[DemoApp Core] Fault injected: Base/Vehicle Gyro\n");
+    else if (strcmp(component, "sensor") == 0 || strcmp(component, "Giro") == 0) {
+        ctx->bit_state.pbit_components.baseGiro = false;
+        ctx->bit_state.pbit_components.vehicleForwardGiro = false;
+        printf("[DemoApp Core] Fault injected: Base/Vehicle Giro\n");
     }
     else if (strcmp(component, "power") == 0) {
         ctx->bit_state.pbit_components.powerController = false;
@@ -548,10 +548,10 @@ void demo_app_clear_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.pbit_components.upDownAmp = true;
         printf("[DemoApp Core] Fault cleared: UpDown Motor/Amp\n");
     }
-    else if (strcmp(component, "sensor") == 0 || strcmp(component, "gyro") == 0) {
-        ctx->bit_state.pbit_components.baseGyro = true;
-        ctx->bit_state.pbit_components.vehicleForwardGyro = true;
-        printf("[DemoApp Core] Fault cleared: Base/Vehicle Gyro\n");
+    else if (strcmp(component, "sensor") == 0 || strcmp(component, "Giro") == 0) {
+        ctx->bit_state.pbit_components.baseGiro = true;
+        ctx->bit_state.pbit_components.vehicleForwardGiro = true;
+        printf("[DemoApp Core] Fault cleared: Base/Vehicle Giro\n");
     }
     else if (strcmp(component, "power") == 0) {
         ctx->bit_state.pbit_components.powerController = true;
@@ -565,9 +565,9 @@ void demo_app_clear_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.pbit_components.roundMotor = true;
         ctx->bit_state.pbit_components.upDownAmp = true;
         ctx->bit_state.pbit_components.roundAmp = true;
-        ctx->bit_state.pbit_components.baseGyro = true;
-        ctx->bit_state.pbit_components.topForwardGryro = true;
-        ctx->bit_state.pbit_components.vehicleForwardGyro = true;
+        ctx->bit_state.pbit_components.baseGiro = true;
+        ctx->bit_state.pbit_components.topForwardGiro = true;
+        ctx->bit_state.pbit_components.vehicleForwardGiro = true;
         ctx->bit_state.pbit_components.powerController = true;
         ctx->bit_state.pbit_components.energyStorage = true;
         ctx->bit_state.pbit_components.directPower = true;

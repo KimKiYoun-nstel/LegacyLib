@@ -34,6 +34,145 @@ typedef struct {
     int32_t A_nanoseconds;
 } T_DateTimeType;
 
+/* ------------------------------------------------------------------------
+ * XML-derived struct types starting with C_ (from RefDoc/Nstel_PSM.xml)
+ * These are added to provide a 1:1 representation of the schema structs
+ * used by the DemoApp JSON builders and parsers.
+ * NOTE: sequenceMaxLength fields are implemented as fixed-size arrays
+ *       to match schema constraints.
+ * ------------------------------------------------------------------------ */
+
+// P_NSTEL::C_CannonDrivingDevice
+typedef struct {
+    T_IdentifierType A_sourceID;
+    T_DateTimeType   A_timeOfDataGeneration;
+    T_IdentifierType A_specification_sourceID;
+} C_CannonDrivingDevice;
+
+// P_NSTEL::C_CannonDrivingDevice_Specification
+typedef struct {
+    T_IdentifierType A_sourceID;
+    T_DateTimeType   A_timeOfDataGeneration;
+    /* Boolean type from LDM_Common */
+    bool             A_powerOnBITSupported;
+    bool             A_continousBITSupported;
+    bool             A_initiatedBITSupported;
+    int32_t          A_continousBITInterval;
+    /* sequenceMaxLength=100 */
+    T_IdentifierType A_specifiedCannonDrivingDevices_sourceID[100];
+} C_CannonDrivingDevice_Specification;
+
+// P_NSTEL::C_CannonDrivingDevice_commandDriving
+typedef struct {
+    T_IdentifierType        A_sourceID;
+    T_IdentifierType        A_recipientID;
+    T_DateTimeType          A_timeOfDataGeneration;
+    int32_t                 A_referenceNum;
+    double                  A_roundPosition;
+    double                  A_upDownPosition;
+    double                  A_roundAngleVelocity;
+    double                  A_upDownAngleVelocity;
+    double                  A_cannonUpDownAngle;
+    double                  A_topRelativeAngle;
+    T_OperationModeType     A_operationMode;
+    T_PalmModeType          A_parm;
+    T_TargetFixType         A_targetFix;
+    T_ArmPositionType       A_autoArmPosition;
+    T_ArmPositionType       A_manualArmPosition;
+    T_CannonRestoreType     A_mainCannonRestore;
+    T_CannonFixType         A_mainCannonFix;
+    T_EquipOpenStatusType   A_closureEquipOpenStatus;
+} C_CannonDrivingDevice_commandDriving;
+
+// P_NSTEL::C_CannonDrivingDevice_Signal
+typedef struct {
+    T_IdentifierType            A_sourceID;
+    T_IdentifierType            A_recipientID;
+    T_DateTimeType              A_timeOfDataGeneration;
+    double                      A_azAngleVelocity;
+    double                      A_e1AngleVelocity;
+    T_ChangingStatusType        A_energyStorage;          // maps to T_EnergyStorageStatusType in XML
+    T_CannonFixType             A_mainCannonFixStatus;
+    T_DekClearanceType         A_deckCleance;            // note: name preserved from XML (typo)
+    T_CannonDrivingType         A_autoArmPositionComplement;
+    T_CannonDrivingType         A_manualArmPositionComplement;
+    T_CannonDrivingType         A_mainCannonRestoreComplement;
+    T_CannonLockType            A_armSafetyMainCannonLock;
+    T_CannonDrivingDeviceShutdownType A_shutdown;
+    double                      A_roundGiro;
+    double                      A_upDownGiro;
+} C_CannonDrivingDevice_Signal;
+
+// P_NSTEL::C_VehicleSpeed
+typedef struct {
+    T_IdentifierType A_sourceID;
+    T_DateTimeType   A_timeOfDataGeneration;
+    double           A_value;
+} C_VehicleSpeed;
+
+// P_NSTEL::C_CannonDrivingDevice_PowerOnBIT
+typedef struct {
+    T_IdentifierType A_sourceID;
+    T_DateTimeType   A_timeOfDataGeneration;
+    T_IdentifierType A_cannonDrivingDevice_sourceID;
+    bool             A_BITRunning; /* boolean */
+    /* BIT result fields: represented in XML as T_BITResultType enumerators */
+    /* In code these are typically represented as booleans; keep XML semantics */
+    int32_t          A_upDownMotor;    /* use integer for internal representation */
+    int32_t          A_roundMotor;
+    int32_t          A_upDownAmp;
+    int32_t          A_roundAmp;
+    int32_t          A_baseGiro;
+    int32_t          A_topForwardGiro;
+    int32_t          A_vehicleForwardGiro;
+    int32_t          A_powerController;
+    int32_t          A_energyStorage;
+    int32_t          A_directPower;
+    int32_t          A_cableLoop;
+} C_CannonDrivingDevice_PowerOnBIT;
+
+// P_NSTEL::C_CannonDrivingDevice_PBIT
+typedef struct {
+    T_IdentifierType A_sourceID;
+    T_DateTimeType   A_timeOfDataGeneration;
+    T_IdentifierType A_cannonDrivingDevice_sourceID;
+    int32_t          A_upDownMotor;
+    int32_t          A_roundMotor;
+    int32_t          A_upDownAmp;
+    int32_t          A_roundAmp;
+    int32_t          A_baseGiro;
+    int32_t          A_topForwardGiro;
+    int32_t          A_vehicleForwardGiro;
+    int32_t          A_powerController;
+    int32_t          A_energyStorage;
+    int32_t          A_directPower;
+    int32_t          A_cableLoop;
+    int32_t          A_upDownPark;
+    int32_t          A_roundPark;
+    int32_t          A_mainCannonLock;
+    int32_t          A_controllerNetwork;
+} C_CannonDrivingDevice_PBIT;
+
+// P_NSTEL::C_CannonDrivingDevice_IBIT
+typedef struct {
+    T_IdentifierType A_sourceID;
+    T_DateTimeType   A_timeOfDataGeneration;
+    T_IdentifierType A_cannonDrivingDevice_sourceID;
+    int32_t          A_referenceNum;
+    bool             A_BITRunning;
+    int32_t          A_upDownMotor;
+    int32_t          A_roundMotor;
+    int32_t          A_upDownAmp;
+    int32_t          A_roundAmp;
+    int32_t          A_baseGiro;
+    int32_t          A_topForwardGiro;
+    int32_t          A_vehicleForwardGiro;
+    int32_t          A_powerController;
+    int32_t          A_energyStorage;
+    int32_t          A_directPower;
+    int32_t          A_cableLoop;
+} C_CannonDrivingDevice_IBIT;
+
 /* ========================================================================
  * State Machine Definitions
  * ======================================================================== */
@@ -53,25 +192,25 @@ const char* demo_state_name(DemoState state);
  * Message Type Definitions (7 DDS Topics)
  * ======================================================================== */
 
-// Receive Messages (AgentUI -> DemoApp)
-#define TOPIC_RUNBIT           "P_UCMS__C_Monitored_Entity_runBIT"
-#define TOPIC_ACTUATOR_CONTROL "P_NSTEL__C_Cannon_Actuator_Control"
-#define TOPIC_VEHICLE_SPEED    "P_NSTEL__C_Vehicle_Speed"
+// Receive Messages (AgentUI -> DemoApp) - canonical names use XML struct name (last underscore part)
+#define TOPIC_runBIT           "P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT"
+#define TOPIC_commandDriving   "P_NSTEL__C_CannonDrivingDevice_commandDriving"
+#define TOPIC_VehicleSpeed     "P_NSTEL__C_VehicleSpeed"
 
-#define TYPE_RUNBIT            "P_UCMS::C_Monitored_Entity_runBIT"
-#define TYPE_ACTUATOR_CONTROL  "P_NSTEL::C_Cannon_Actuator_Control"
-#define TYPE_VEHICLE_SPEED     "P_NSTEL::C_Vehicle_Speed"
+#define TYPE_runBIT            "P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT"
+#define TYPE_commandDriving    "P_NSTEL::C_CannonDrivingDevice_commandDriving"
+#define TYPE_VehicleSpeed      "P_NSTEL::C_VehicleSpeed"
 
-// Send Messages (DemoApp -> AgentUI)
-#define TOPIC_RESULT_BIT       "P_NSTEL__C_Cannon_Driving_Device_resultBIT"
-#define TOPIC_CBIT             "P_NSTEL__C_Cannon_Driving_Device_CBIT"
-#define TOPIC_PBIT             "P_NSTEL__C_Cannon_Driving_Device_PBIT"
-#define TOPIC_ACTUATOR_SIGNAL  "P_NSTEL__C_Cannon_Actuator_Signal"
+// Send Messages (DemoApp -> AgentUI) - canonical names: IBIT, PBIT, PowerOnBIT, Signal
+#define TOPIC_IBIT             "P_NSTEL__C_CannonDrivingDevice_IBIT"
+#define TOPIC_PBIT             "P_NSTEL__C_CannonDrivingDevice_PBIT"
+#define TOPIC_PowerOnBIT       "P_NSTEL__C_CannonDrivingDevice_PowerOnBIT"
+#define TOPIC_Signal           "P_NSTEL__C_CannonDrivingDevice_Signal"
 
-#define TYPE_RESULT_BIT        "P_NSTEL::C_Cannon_Driving_Device_resultBIT"
-#define TYPE_CBIT              "P_NSTEL::C_Cannon_Driving_Device_CBIT"
-#define TYPE_PBIT              "P_NSTEL::C_Cannon_Driving_Device_PBIT"
-#define TYPE_ACTUATOR_SIGNAL   "P_NSTEL::C_Cannon_Actuator_Signal"
+#define TYPE_IBIT              "P_NSTEL::C_CannonDrivingDevice_IBIT"
+#define TYPE_PBIT              "P_NSTEL::C_CannonDrivingDevice_PBIT"
+#define TYPE_PowerOnBIT        "P_NSTEL::C_CannonDrivingDevice_PowerOnBIT"
+#define TYPE_Signal            "P_NSTEL::C_CannonDrivingDevice_Signal"
 
 /* ========================================================================
  * Internal State Structures
@@ -86,12 +225,12 @@ typedef struct {
     T_DateTimeType timeOfDataGeneration;
     
     // Position/Velocity fields
-    float drivingPosition;       // A_drivingPosition (azimuth)
-    float upDownPosition;        // A_upDownPosition
-    float roundAngleVelocity;    // A_roundAngleVelocity
-    float upDownAngleVelocity;   // A_upDownAngleVelocity
-    float cannonUpDownAngle;     // A_cannonUpDownAngle
-    float topRelativeAngle;      // A_topRelativeAngle
+    double drivingPosition;       // A_drivingPosition (azimuth)
+    double upDownPosition;        // A_upDownPosition
+    double roundAngleVelocity;    // A_roundAngleVelocity
+    double upDownAngleVelocity;   // A_upDownAngleVelocity
+    double cannonUpDownAngle;     // A_cannonUpDownAngle
+    double topRelativeAngle;      // A_topRelativeAngle
     
     // Enum fields
     T_OperationModeType operationMode;          // A_operationMode
@@ -115,10 +254,10 @@ typedef struct {
     T_DateTimeType timeOfDataGeneration;
     
     // Sensor values
-    float azAngle;               // A_azAngle (azimuth angle)
-    float e1AngleVelocity;       // A_e1AngleVelocity
-    float roundGyro;             // A_roundGyro
-    float upDownGyro;            // A_upDownGyro
+    double azAngle;               // A_azAngle (azimuth angle)
+    double e1AngleVelocity;       // A_e1AngleVelocity
+    double roundGiro;             // A_roundGiro
+    double upDownGiro;            // A_upDownGiro
     
     // Enum status fields
     T_ChangingStatusType energyStorage;                      // A_energyStorage
@@ -139,7 +278,7 @@ typedef struct {
     T_DateTimeType timeOfDataGeneration;
     
     // Speed value
-    float speed;                 // A_speed (m/s)
+    double speed;                 // A_speed (m/s)
     
     uint64_t last_update_time;   // Internal timestamp
 } VehicleSpeedState;
@@ -150,9 +289,9 @@ typedef struct {
     bool roundMotor;
     bool upDownAmp;
     bool roundAmp;
-    bool baseGyro;
-    bool topForwardGryro;        // Note: XML has 'Gryro' typo
-    bool vehicleForwardGyro;     // PBIT: Gyroi, CBIT/resultBIT: Gyro
+    bool baseGiro;
+    bool topForwardGiro;         // A_topForwardGiro
+    bool vehicleForwardGiro;     // A_vehicleForwardGiro
     bool powerController;
     bool energyStorage;
     bool directPower;
@@ -167,6 +306,7 @@ typedef struct {
     bool round_Park;
     bool mainCannon_Lock;
     bool commFault;
+    bool controllerNetwork; /* Added: corresponds to A_controllerNetwork (T_BITResultType) */
 } CBITComponentState;
 
 // BIT (Built-In Test) State

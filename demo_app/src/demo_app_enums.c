@@ -22,7 +22,7 @@ T_BITType parse_bit_type(const char* str) {
 T_OperationModeType parse_operation_mode(const char* str) {
     if (!str) return L_OperationModeType_NORMAL;
     
-    if (strstr(str, "EMER_GENCY")) return L_OperationModeType_EMER_GENCY;
+    if (strstr(str, "EMERGENCY")) return L_OperationModeType_EMERGENCY;
     if (strstr(str, "MANUAL")) return L_OperationModeType_MANUAL;
     if (strstr(str, "NORMAL")) return L_OperationModeType_NORMAL;
     
@@ -96,10 +96,17 @@ const char* format_bit_type(T_BITType type) {
     }
 }
 
+/* Format BIT result fields (boolean -> enumerator string)
+ * Convention: ok (non-zero) -> NORMAL, zero -> ABNORMAL
+ */
+const char* format_bit_result(int ok) {
+    return ok ? "L_BITResultType_NORMAL" : "L_BITResultType_ABNORMAL";
+}
+
 const char* format_operation_mode(T_OperationModeType mode) {
     switch(mode) {
         case L_OperationModeType_NORMAL: return "L_OperationModeType_NORMAL";
-        case L_OperationModeType_EMER_GENCY: return "L_OperationModeType_EMER_GENCY";
+        case L_OperationModeType_EMERGENCY: return "L_OperationModeType_EMERGENCY";
         case L_OperationModeType_MANUAL: return "L_OperationModeType_MANUAL";
         default: return "L_OperationModeType_NORMAL";
     }
@@ -161,27 +168,41 @@ const char* format_changing_status(T_ChangingStatusType status) {
     }
 }
 
+/* The XML schema uses a different enum name for energy storage status; format
+ * functions for A_energyStorage must produce the schema enumerator names.
+ */
+const char* format_energy_storage(T_ChangingStatusType status) {
+    switch(status) {
+        case L_ChangingStatusType_NORMAL: return "L_EnergyStorageStatusType_NORMAL";
+        case L_ChangingStatusType_DISCHARGE: return "L_EnergyStorageStatusType_DISCHARGE";
+        default: return "L_EnergyStorageStatusType_NORMAL";
+    }
+}
+
 const char* format_dek_clearance(T_DekClearanceType type) {
+    /* Map internal names to schema enumerators */
     switch(type) {
-        case L_DekClearanceType_OUTSIDE: return "L_DekClearanceType_OUTSIDE";
-        case L_DekClearanceType_RUNNING: return "L_DekClearanceType_RUNNING";
-        default: return "L_DekClearanceType_OUTSIDE";
+        case L_DekClearanceType_OUTSIDE: return "L_DeckClearanceType_OUT_OF_DECK";
+        case L_DekClearanceType_RUNNING: return "L_DeckClearanceType_IN_DECK";
+        default: return "L_DeckClearanceType_OUT_OF_DECK";
     }
 }
 
 const char* format_arm_position(T_ArmPositionType type) {
+    /* Align with XML: ArmPositionType uses RELEASE / DRIVING */
     switch(type) {
-        case L_ArmPositionType_NORMAL: return "L_ArmPositionType_NORMAL";
-        case L_ArmPositionType_MANUAL: return "L_ArmPositionType_MANUAL";
-        default: return "L_ArmPositionType_NORMAL";
+        case L_ArmPositionType_NORMAL: return "L_ArmPositionType_RELEASE";
+        case L_ArmPositionType_MANUAL: return "L_ArmPositionType_DRIVING";
+        default: return "L_ArmPositionType_RELEASE";
     }
 }
 
 const char* format_main_cannon_fix_status(T_MainCannonFixStatusType status) {
+    /* Signal schema expects P_NSTEL::T_CannonFixType enumerators */
     switch(status) {
-        case L_MainCannonFixStatusType_NORMAL: return "L_MainCannonFixStatusType_NORMAL";
-        case L_MainCannonFixStatusType_FIX: return "L_MainCannonFixStatusType_FIX";
-        default: return "L_MainCannonFixStatusType_NORMAL";
+        case L_MainCannonFixStatusType_NORMAL: return "L_CannonFixType_RELEASE";
+        case L_MainCannonFixStatusType_FIX: return "L_CannonFixType_FIX";
+        default: return "L_CannonFixType_RELEASE";
     }
 }
 
@@ -194,17 +215,36 @@ const char* format_main_cannon_return_status(T_MainCannonReturnStatusType status
 }
 
 const char* format_arm_safety_lock(T_ArmSafetyMainCannonLock lock) {
+    /* Schema expects P_NSTEL::T_CannonLockType enumerators */
     switch(lock) {
-        case L_ArmSafetyMainCannonLock_NORMAL: return "L_ArmSafetyMainCannonLock_NORMAL";
-        case L_ArmSafetyMainCannonLock_COMPLETE: return "L_ArmSafetyMainCannonLock_COMPLETE";
-        default: return "L_ArmSafetyMainCannonLock_NORMAL";
+        case L_ArmSafetyMainCannonLock_NORMAL: return "L_CannonLockType_NORMAL";
+        case L_ArmSafetyMainCannonLock_COMPLETE: return "L_CannonLockType_LOCKED";
+        default: return "L_CannonLockType_NORMAL";
     }
 }
 
 const char* format_shutdown_type(T_CannonDrivingDeviceShutdownType type) {
+    /* Map internal shutdown enum to schema's T_ShutdownType enumerator strings */
     switch(type) {
-        case L_CannonDrivingDeviceShutdownType_UNKNOWN: return "L_CannonDrivingDeviceShutdownType_UNKNOWN";
-        case L_CannonDrivingDeviceShutdownType_SHUTDOWN: return "L_CannonDrivingDeviceShutdownType_SHUTDOWN";
-        default: return "L_CannonDrivingDeviceShutdownType_UNKNOWN";
+        case L_CannonDrivingDeviceShutdownType_UNKNOWN: return "L_ShutdownType_UNKNOWN";
+        case L_CannonDrivingDeviceShutdownType_SHUTDOWN: return "L_ShutdownType_SHUTDOWN";
+        default: return "L_ShutdownType_UNKNOWN";
+    }
+}
+
+/* Map internal ArmPosition / ReturnStatus types to schema::T_CannonDrivingType */
+const char* format_cannon_driving_from_arm(T_ArmPositionType type) {
+    switch(type) {
+        case L_ArmPositionType_NORMAL: return "L_CannonDrivingType_DRIVING";
+        case L_ArmPositionType_MANUAL: return "L_CannonDrivingType_DONE";
+        default: return "L_CannonDrivingType_DRIVING";
+    }
+}
+
+const char* format_cannon_driving_from_return(T_MainCannonReturnStatusType status) {
+    switch(status) {
+        case L_MainCannonReturnStatusType_RUNNING: return "L_CannonDrivingType_DRIVING";
+        case L_MainCannonReturnStatusType_COMPLETE: return "L_CannonDrivingType_DONE";
+        default: return "L_CannonDrivingType_DRIVING";
     }
 }

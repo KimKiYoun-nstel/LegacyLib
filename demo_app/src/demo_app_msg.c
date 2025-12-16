@@ -58,12 +58,12 @@ int demo_msg_init(DemoAppContext* ctx) {
     LegacyWriterConfig pbit_wcfg = {
         ctx->domain_id,
         "pub1",
-        TOPIC_PBIT,
-        TYPE_PBIT,
+        TOPIC_PowerOnBIT,
+        TYPE_PowerOnBIT,
         "NstelCustomQosLib::InitialStateProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &pbit_wcfg, 2000,
-                                       on_writer_created, (void*)TOPIC_PBIT);
+                                       on_writer_created, (void*)TOPIC_PowerOnBIT);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to create PBIT writer\n");
         return -1;
@@ -73,12 +73,12 @@ int demo_msg_init(DemoAppContext* ctx) {
     LegacyWriterConfig cbit_wcfg = {
         ctx->domain_id,
         "pub1",
-        TOPIC_CBIT,
-        TYPE_CBIT,
+        TOPIC_PBIT,
+        TYPE_PBIT,
         "NstelCustomQosLib::LowFrequencyStatusProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &cbit_wcfg, 2000,
-                                       on_writer_created, (void*)TOPIC_CBIT);
+                                       on_writer_created, (void*)TOPIC_PBIT);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to create CBIT writer\n");
         return -1;
@@ -88,12 +88,12 @@ int demo_msg_init(DemoAppContext* ctx) {
     LegacyWriterConfig rbit_wcfg = {
         ctx->domain_id,
         "pub1",
-        TOPIC_RESULT_BIT,
-        TYPE_RESULT_BIT,
+        TOPIC_IBIT,
+        TYPE_IBIT,
         "NstelCustomQosLib::NonPeriodicEventProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &rbit_wcfg, 2000,
-                                       on_writer_created, (void*)TOPIC_RESULT_BIT);
+                                       on_writer_created, (void*)TOPIC_IBIT);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to create ResultBIT writer\n");
         return -1;
@@ -103,12 +103,12 @@ int demo_msg_init(DemoAppContext* ctx) {
     LegacyWriterConfig signal_wcfg = {
         ctx->domain_id,
         "pub1",
-        TOPIC_ACTUATOR_SIGNAL,
-        TYPE_ACTUATOR_SIGNAL,
+        TOPIC_Signal,
+        TYPE_Signal,
         "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &signal_wcfg, 2000,
-                                       on_writer_created, (void*)TOPIC_ACTUATOR_SIGNAL);
+                                       on_writer_created, (void*)TOPIC_Signal);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to create Actuator Signal writer\n");
         return -1;
@@ -120,19 +120,19 @@ int demo_msg_init(DemoAppContext* ctx) {
     LegacyReaderConfig runbit_rcfg = {
         ctx->domain_id,
         "sub1",
-        TOPIC_RUNBIT,
-        TYPE_RUNBIT,
+        TOPIC_runBIT,
+        TYPE_runBIT,
         "NstelCustomQosLib::NonPeriodicEventProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &runbit_rcfg, 2000,
-                                       on_reader_created, (void*)TOPIC_RUNBIT);
+                                       on_reader_created, (void*)TOPIC_runBIT);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to create runBIT reader\n");
         return -1;
     }
     
     // Subscribe to runBIT events
-    status = legacy_agent_subscribe_event(ctx->agent, TOPIC_RUNBIT, TYPE_RUNBIT,
+    status = legacy_agent_subscribe_event(ctx->agent, TOPIC_runBIT, TYPE_runBIT,
                                          demo_msg_on_runbit, ctx);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to subscribe to runBIT\n");
@@ -143,20 +143,20 @@ int demo_msg_init(DemoAppContext* ctx) {
     LegacyReaderConfig control_rcfg = {
         ctx->domain_id,
         "sub1",
-        TOPIC_ACTUATOR_CONTROL,
-        TYPE_ACTUATOR_CONTROL,
+        TOPIC_commandDriving,
+        TYPE_commandDriving,
         "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &control_rcfg, 2000,
-                                       on_reader_created, (void*)TOPIC_ACTUATOR_CONTROL);
+                                       on_reader_created, (void*)TOPIC_commandDriving);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to create Actuator Control reader\n");
         return -1;
     }
     
     // Subscribe to control events
-    status = legacy_agent_subscribe_event(ctx->agent, TOPIC_ACTUATOR_CONTROL,
-                                         TYPE_ACTUATOR_CONTROL,
+    status = legacy_agent_subscribe_event(ctx->agent, TOPIC_commandDriving,
+                                         TYPE_commandDriving,
                                          demo_msg_on_actuator_control, ctx);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to subscribe to Actuator Control\n");
@@ -167,20 +167,20 @@ int demo_msg_init(DemoAppContext* ctx) {
     LegacyReaderConfig speed_rcfg = {
         ctx->domain_id,
         "sub1",
-        TOPIC_VEHICLE_SPEED,
-        TYPE_VEHICLE_SPEED,
+        TOPIC_VehicleSpeed,
+        TYPE_VehicleSpeed,
         "NstelCustomQosLib::LowFrequencyVehicleProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &speed_rcfg, 2000,
-                                       on_reader_created, (void*)TOPIC_VEHICLE_SPEED);
+                                       on_reader_created, (void*)TOPIC_VehicleSpeed);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to create Vehicle Speed reader\n");
         return -1;
     }
     
     // Subscribe to speed events
-    status = legacy_agent_subscribe_event(ctx->agent, TOPIC_VEHICLE_SPEED,
-                                         TYPE_VEHICLE_SPEED,
+    status = legacy_agent_subscribe_event(ctx->agent, TOPIC_VehicleSpeed,
+                                         TYPE_VehicleSpeed,
                                          demo_msg_on_vehicle_speed, ctx);
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to subscribe to Vehicle Speed\n");
@@ -286,8 +286,8 @@ void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void*
         sscanf(ptr, P_FMT_STR(F_A_PARM), enum_val) == 1) {
         ctrl->parm = parse_onoff_type(enum_val);
     }
-    if ((ptr = strstr(json, P_COLON(F_A_TARGET_DESINGATION))) && 
-        sscanf(ptr, P_FMT_STR(F_A_TARGET_DESINGATION), enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_TARGET_DESIGNATION))) && 
+        sscanf(ptr, P_FMT_STR(F_A_TARGET_DESIGNATION), enum_val) == 1) {
         ctrl->targetDesingation = parse_target_allot(enum_val);
     }
     if ((ptr = strstr(json, P_COLON(F_A_AUTO_ARM_POSITION))) && 
@@ -302,8 +302,8 @@ void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void*
         sscanf(ptr, P_FMT_STR(F_A_MAIN_CANNON_RESTORE), enum_val) == 1) {
         ctrl->mainCannonRestore = parse_main_cannon_return(enum_val);
     }
-    if ((ptr = strstr(json, P_COLON(F_A_MAN_CANNON_FIX))) && 
-        sscanf(ptr, P_FMT_STR(F_A_MAN_CANNON_FIX), enum_val) == 1) {
+    if ((ptr = strstr(json, P_COLON(F_A_MAIN_CANNON_FIX))) && 
+        sscanf(ptr, P_FMT_STR(F_A_MAIN_CANNON_FIX), enum_val) == 1) {
         ctrl->manCannonFix = parse_main_cannon_fix(enum_val);
     }
     if ((ptr = strstr(json, P_COLON(F_A_CLOSE_EQUIP_OPEN_STATUS))) && 
@@ -332,17 +332,17 @@ void demo_msg_on_vehicle_speed(LEGACY_HANDLE h, const LegacyEvent* evt, void* us
     const char* json = evt->data_json;
     if (!json) return;
     
-    // Extract A_speed value
-    const char* speed_ptr = strstr(json, "\"A_speed\":");
+    // Extract A_value (vehicle speed) using field macro
+    const char* speed_ptr = strstr(json, P_COLON(F_A_SPEED));
     if (speed_ptr) {
-        sscanf(speed_ptr, "\"A_speed\":%f", &ctx->speed_state.speed);
+        sscanf(speed_ptr, P_FMT_FLOAT(F_A_SPEED), &ctx->speed_state.speed);
     }
     
     ctx->speed_state.last_update_time = ctx->tick_count;
     ctx->speed_rx_count++;
     
-    LOG_RX("Vehicle Speed: A_speed=%.2f m/s (rx=%u)\n",
-           ctx->speed_state.speed, ctx->speed_rx_count);
+        LOG_RX("Vehicle Speed: A_value=%.2f m/s (rx=%u)\n",
+            ctx->speed_state.speed, ctx->speed_rx_count);
 }
 
 /* ========================================================================
@@ -373,59 +373,34 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
     printf("[DemoApp Msg] Publishing PBIT...\n");
     
     // Build PBIT JSON payload (12 components from XML schema)
-    // Note: A_vehicleForwardGyroi has 'i' typo in PBIT schema
+    // Field names use 'Giro' spelling per XML canonicalization
     char pbit_json[2048];
     BITComponentState* comp = &ctx->bit_state.pbit_components;
     
-    snprintf(pbit_json, sizeof(pbit_json),
-        "{"
-        "\"" F_A_SOURCEID "\":{"
-            "\"" F_A_RESOURCEID "\":1,"
-            "\"" F_A_INSTANCEID "\":1"
-        "},"
-        "\"" F_A_TIMEOFDATA "\":{"
-            "\"" F_A_SECOND "\":%lld,"
-            "\"" F_A_NANOSECONDS "\":%d"
-        "},"
-        "\"" F_A_RUNBITENTITY_SOURCEID "\":{"
-            "\"" F_A_RESOURCEID "\":1,"
-            "\"" F_A_INSTANCEID "\":1"
-        "},"
-        "\"" F_A_TYPE "\":\"%s\","
-        "\"" F_A_BITRUNNING "\":%s,"
-        "\"" F_A_UPDOWNMOTOR "\":%s,"
-        "\"" F_A_ROUNDMOTOR "\":%s,"
-        "\"" F_A_UPDOWNAMP "\":%s,"
-        "\"" F_A_ROUNDAMP "\":%s,"
-        "\"" F_A_BASEGYRO "\":%s,"
-        "\"" F_A_TOPFORWARDGRYRO "\":%s,"
-        "\"" F_A_VEHICLEFORWARDGYROI "\":%s,"
-        "\"" F_A_POWERCONTROLLER "\":%s,"
-        "\"" F_A_ENEGERYSTORAGE "\":%s,"
-        "\"" F_A_DIRECTPOWER "\":%s,"
-        "\"" F_A_CABLELOOP "\":%s"
-        "}",
-        (long long)(ctx->tick_count / 1000),
-        (int)((ctx->tick_count % 1000) * 1000000),
-        format_bit_type(L_BITType_P_BIT),
-        comp->bitRunning ? "true" : "false",
-        comp->upDownMotor ? "true" : "false",
-        comp->roundMotor ? "true" : "false",
-        comp->upDownAmp ? "true" : "false",
-        comp->roundAmp ? "true" : "false",
-        comp->baseGyro ? "true" : "false",
-        comp->topForwardGryro ? "true" : "false",
-        comp->vehicleForwardGyro ? "true" : "false",
-        comp->powerController ? "true" : "false",
-        comp->energyStorage ? "true" : "false",
-        comp->directPower ? "true" : "false",
-        comp->cableLoop ? "true" : "false"
-    );
+    int ppos = 0;
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "{");
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":{\"%s\":1,\"%s\":1},", F_A_SOURCEID, F_A_RESOURCEID, F_A_INSTANCEID);
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":{\"%s\":%lld,\"%s\":%d},", F_A_TIMEOFDATA, F_A_SECOND, (long long)(ctx->tick_count/1000), F_A_NANOSECONDS, (int)((ctx->tick_count%1000)*1000000));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":{\"%s\":1,\"%s\":1},", F_A_CANNON_SOURCEID, F_A_RESOURCEID, F_A_INSTANCEID);
+    /* A_type is not part of PowerOnBIT schema — removed */
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":%s,", F_A_BITRUNNING, comp->bitRunning ? "true" : "false");
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_UPDOWNMOTOR, format_bit_result(comp->upDownMotor));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_ROUNDMOTOR, format_bit_result(comp->roundMotor));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_UPDOWNAMP, format_bit_result(comp->upDownAmp));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_ROUNDAMP, format_bit_result(comp->roundAmp));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_BASEGIRO, format_bit_result(comp->baseGiro));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_TOPFORWARDGIRO, format_bit_result(comp->topForwardGiro));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_VEHICLEFORWARDGIRO, format_bit_result(comp->vehicleForwardGiro));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_POWER_CONTROLLER, format_bit_result(comp->powerController));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_ENERGY_STORAGE, format_bit_result(comp->energyStorage));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_DIRECTPOWER, format_bit_result(comp->directPower));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\"", F_A_CABLELOOP, format_bit_result(comp->cableLoop));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "}");
     
     // Write to DDS
     LegacyWriteJsonOptions wopt = {
-        TOPIC_PBIT,
-        TYPE_PBIT,
+        TOPIC_PowerOnBIT,
+        TYPE_PowerOnBIT,
         pbit_json,
         ctx->domain_id,
         "pub1",
@@ -451,7 +426,7 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
     // Build CBIT JSON payload (15 components from XML schema)
     char cbit_json[2048];
     CBITComponentState* cbit = &ctx->bit_state.cbit_components;
-    
+
     snprintf(cbit_json, sizeof(cbit_json),
         "{"
         "\"" F_A_SOURCEID "\":{"
@@ -462,50 +437,51 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
             "\"" F_A_SECOND "\":%lld,"
             "\"" F_A_NANOSECONDS "\":%d"
         "},"
-        "\"" F_A_RUNBITENTITY_SOURCEID "\":{"
+        "\"" F_A_CANNON_SOURCEID "\":{"
             "\"" F_A_RESOURCEID "\":1,"
             "\"" F_A_INSTANCEID "\":1"
         "},"
-        "\"" F_A_TYPE "\":\"%s\","
-        "\"" F_A_UPDOWNMOTOR "\":%s,"
-        "\"" F_A_ROUNDMOTOR "\":%s,"
-        "\"" F_A_UPDOWNAMP "\":%s,"
-        "\"" F_A_ROUNDAMP "\":%s,"
-        "\"" F_A_BASEGYRO "\":%s,"
-        "\"" F_A_TOPFORWARDGRYRO "\":%s,"
-        "\"" F_A_VEHICLEFORWARDGYRO "\":%s,"
-        "\"" F_A_POWERCONTROLLER "\":%s,"
-        "\"" F_A_ENEGERYSTORAGE "\":%s,"
-        "\"" F_A_DIRECTPOWER "\":%s,"
-        "\"" F_A_CABLELOOP "\":%s,"
-        "\"" F_A_UPDOWNPARK "\":%s,"
-        "\"" F_A_ROUND_PARK "\":%s,"
-        "\"" F_A_MAINCANNON_LOCK "\":%s,"
-        "\"" F_A_COMMFAULT "\":%s"
+        /* A_type removed per schema; include controller network result instead */
+        "\"" F_A_CONTROLLER_NETWORK "\":\"%s\","
+        "\"" F_A_UPDOWNMOTOR "\":\"%s\"," 
+        "\"" F_A_ROUNDMOTOR "\":\"%s\"," 
+        "\"" F_A_UPDOWNAMP "\":\"%s\"," 
+        "\"" F_A_ROUNDAMP "\":\"%s\"," 
+        "\"" F_A_BASEGIRO "\":\"%s\"," 
+        "\"" F_A_TOPFORWARDGIRO "\":\"%s\"," 
+        "\"" F_A_VEHICLEFORWARDGIRO "\":\"%s\"," 
+        "\"" F_A_POWER_CONTROLLER "\":\"%s\"," 
+        "\"" F_A_ENERGY_STORAGE "\":\"%s\"," 
+        "\"" F_A_DIRECTPOWER "\":\"%s\"," 
+        "\"" F_A_CABLELOOP "\":\"%s\"," 
+        "\"" F_A_UPDOWNPARK "\":\"%s\"," 
+        "\"" F_A_ROUND_PARK "\":\"%s\"," 
+        "\"" F_A_MAINCANNON_LOCK "\":\"%s\"," 
+        "\"" F_A_COMMFAULT "\":\"%s\""
         "}",
         (long long)(ctx->tick_count / 1000),
         (int)((ctx->tick_count % 1000) * 1000000),
-        format_bit_type(L_BITType_C_BIT),
-        cbit->base.upDownMotor ? "true" : "false",
-        cbit->base.roundMotor ? "true" : "false",
-        cbit->base.upDownAmp ? "true" : "false",
-        cbit->base.roundAmp ? "true" : "false",
-        cbit->base.baseGyro ? "true" : "false",
-        cbit->base.topForwardGryro ? "true" : "false",
-        cbit->base.vehicleForwardGyro ? "true" : "false",
-        cbit->base.powerController ? "true" : "false",
-        cbit->base.energyStorage ? "true" : "false",
-        cbit->base.directPower ? "true" : "false",
-        cbit->base.cableLoop ? "true" : "false",
-        cbit->upDownPark ? "true" : "false",
-        cbit->round_Park ? "true" : "false",
-        cbit->mainCannon_Lock ? "true" : "false",
-        cbit->commFault ? "true" : "false"
+        format_bit_result(cbit->base.upDownMotor),
+        format_bit_result(cbit->base.roundMotor),
+        format_bit_result(cbit->base.upDownAmp),
+        format_bit_result(cbit->base.roundAmp),
+        format_bit_result(cbit->base.baseGiro),
+        format_bit_result(cbit->base.topForwardGiro),
+        format_bit_result(cbit->base.vehicleForwardGiro),
+        format_bit_result(cbit->base.powerController),
+        format_bit_result(cbit->base.energyStorage),
+        format_bit_result(cbit->base.directPower),
+        format_bit_result(cbit->base.cableLoop),
+        format_bit_result(cbit->upDownPark),
+        format_bit_result(cbit->round_Park),
+        format_bit_result(cbit->mainCannon_Lock),
+        format_bit_result(cbit->controllerNetwork),
+        format_bit_result(cbit->commFault)
     );
     
     LegacyWriteJsonOptions wopt = {
-        TOPIC_CBIT,
-        TYPE_CBIT,
+        TOPIC_PBIT,
+        TYPE_PBIT,
         cbit_json,
         ctx->domain_id,
         "pub1",
@@ -527,60 +503,34 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
     
     // Build resultBIT JSON payload (12 components + referenceNum)
-    // Note: A_power_Controller has underscore in different position
+    // Using canonical field name: A_powerController (no underscore)
     char json[2048];
     BITComponentState* result = &ctx->bit_state.result_components;
     
-    snprintf(json, sizeof(json),
-        "{"
-        "\"" F_A_SOURCEID "\":{"
-            "\"" F_A_RESOURCEID "\":1,"
-            "\"" F_A_INSTANCEID "\":1"
-        "},"
-        "\"" F_A_TIMEOFDATA "\":{"
-            "\"" F_A_SECOND "\":%lld,"
-            "\"" F_A_NANOSECONDS "\":%d"
-        "},"
-        "\"" F_A_REFERENCE_NUM "\":%u,"
-        "\"" F_A_RUNBITENTITY_SOURCEID "\":{"
-            "\"" F_A_RESOURCEID "\":1,"
-            "\"" F_A_INSTANCEID "\":1"
-        "},"
-        "\"" F_A_TYPE "\":\"%s\","
-        "\"" F_A_BITRUNNING "\":%s,"
-        "\"" F_A_UPDOWNMOTOR "\":%s,"
-        "\"" F_A_ROUNDMOTOR "\":%s,"
-        "\"" F_A_UPDOWNAMP "\":%s,"
-        "\"" F_A_ROUNDAMP "\":%s,"
-        "\"" F_A_BASEGYRO "\":%s,"
-        "\"" F_A_TOPFORWARDGRYRO "\":%s,"
-        "\"" F_A_VEHICLEFORWARDGYRO "\":%s,"
-        "\"" F_A_POWER_CONTROLLER "\":%s,"
-        "\"" F_A_ENEGERYSTORAGE "\":%s,"
-        "\"" F_A_DIRECTPOWER "\":%s,"
-        "\"" F_A_CABLELOOP "\":%s"
-        "}",
-        (long long)(ctx->tick_count / 1000),
-        (int)((ctx->tick_count % 1000) * 1000000),
-        ctx->bit_state.ibit_reference_num,
-        format_bit_type(L_BITType_I_BIT),
-        result->bitRunning ? "true" : "false",
-        result->upDownMotor ? "true" : "false",
-        result->roundMotor ? "true" : "false",
-        result->upDownAmp ? "true" : "false",
-        result->roundAmp ? "true" : "false",
-        result->baseGyro ? "true" : "false",
-        result->topForwardGryro ? "true" : "false",
-        result->vehicleForwardGyro ? "true" : "false",
-        result->powerController ? "true" : "false",
-        result->energyStorage ? "true" : "false",
-        result->directPower ? "true" : "false",
-        result->cableLoop ? "true" : "false"
-    );
+    int rpos = 0;
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "{");
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":{\"%s\":1,\"%s\":1},", F_A_SOURCEID, F_A_RESOURCEID, F_A_INSTANCEID);
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":{\"%s\":%lld,\"%s\":%d},", F_A_TIMEOFDATA, F_A_SECOND, (long long)(ctx->tick_count/1000), F_A_NANOSECONDS, (int)((ctx->tick_count%1000)*1000000));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":%u,", F_A_REFERENCE_NUM, ctx->bit_state.ibit_reference_num);
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":{\"%s\":1,\"%s\":1},", F_A_CANNON_SOURCEID, F_A_RESOURCEID, F_A_INSTANCEID);
+    /* A_type is not part of IBIT schema — removed */
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":%s,", F_A_BITRUNNING, result->bitRunning ? "true" : "false");
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_UPDOWNMOTOR, format_bit_result(result->upDownMotor));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_ROUNDMOTOR, format_bit_result(result->roundMotor));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_UPDOWNAMP, format_bit_result(result->upDownAmp));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_ROUNDAMP, format_bit_result(result->roundAmp));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_BASEGIRO, format_bit_result(result->baseGiro));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_TOPFORWARDGIRO, format_bit_result(result->topForwardGiro));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_VEHICLEFORWARDGIRO, format_bit_result(result->vehicleForwardGiro));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_POWER_CONTROLLER, format_bit_result(result->powerController));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_ENERGY_STORAGE, format_bit_result(result->energyStorage));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_DIRECTPOWER, format_bit_result(result->directPower));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\"", F_A_CABLELOOP, format_bit_result(result->cableLoop));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "}");
     
     LegacyWriteJsonOptions wopt = {
-        TOPIC_RESULT_BIT,
-        TYPE_RESULT_BIT,
+        TOPIC_IBIT,
+        TYPE_IBIT,
         json,
         ctx->domain_id,
         "pub1",
@@ -598,10 +548,10 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     ctx->result_pub_count++;
     
     // Calculate overall result
-    bool has_fault = result->upDownMotor || result->roundMotor || result->upDownAmp ||
-                     result->roundAmp || result->baseGyro || result->topForwardGryro ||
-                     result->vehicleForwardGyro || result->powerController ||
-                     result->energyStorage || result->directPower || result->cableLoop;
+    bool has_fault = !(result->upDownMotor && result->roundMotor && result->upDownAmp &&
+                     result->roundAmp && result->baseGiro && result->topForwardGiro &&
+                     result->vehicleForwardGiro && result->powerController &&
+                     result->energyStorage && result->directPower && result->cableLoop);
     
     LOG_TX("resultBIT published: ref=%u, result=%s\n",
            ctx->bit_state.ibit_reference_num,
@@ -631,14 +581,14 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     if (e1_v < -450.0f) e1_v = -450.0f;
     e1_v = roundf(e1_v / 0.01f) * 0.01f;
 
-    // A_roundGyro
-    float round_v = sig->roundGyro;
+    // A_roundGiro
+    float round_v = sig->roundGiro;
     if (round_v > 655.0f) round_v = 655.0f;
     if (round_v < -655.0f) round_v = -655.0f;
     round_v = roundf(round_v / 0.02f) * 0.02f;
 
-    // A_upDownGyro
-    float updown_v = sig->upDownGyro;
+    // A_upDownGiro
+    float updown_v = sig->upDownGiro;
     if (updown_v > 655.0f) updown_v = 655.0f;
     if (updown_v < -655.0f) updown_v = -655.0f;
     updown_v = roundf(updown_v / 0.02f) * 0.02f;
@@ -657,29 +607,29 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
             "\"" F_A_SECOND "\":%lld,"
             "\"" F_A_NANOSECONDS "\":%d"
         "},"
-        "\"" F_A_AZANGLE "\":%.3f,"
+        "\"" F_A_AZANGLEVELOCITY "\":%.3f,"
         "\"" F_A_E1ANGLEVELOCITY "\":%.3f,"
-        "\"" F_A_ENEGERYSTORAGE "\":\"%s\","
+        "\"" F_A_ENERGY_STORAGE "\":\"%s\","
         "\"" F_A_MAINCANNONFIXSTATUS "\":\"%s\","
         "\"" F_A_DECKCLEARANCE "\":\"%s\","
-        "\"" F_A_AUTO_ARM_POSITION "\":\"%s\","
-        "\"" F_A_MANUAL_ARM_POSITION_COMPLE "\":\"%s\","
+        "\"" F_A_AUTO_ARM_POSITION_COMPLEMENT "\":\"%s\","
+        "\"" F_A_MANUAL_ARM_POSITION_COMPLEMENT "\":\"%s\","
         "\"" F_A_MAIN_CANNON_RESTORE_COMPLEMENT "\":\"%s\","
         "\"" F_A_ARM_SAFETY_MAIN_CANNON_LOCK "\":\"%s\","
         "\"" F_A_SHUTDOWN "\":\"%s\","
-        "\"" F_A_ROUNDGYRO "\":%.3f,"
-        "\"" F_A_UPDOWNGYRO "\":%.3f"
+        "\"" F_A_ROUNDGIRO "\":%.3f,"
+        "\"" F_A_UPDOWNGIRO "\":%.3f"
         "}",
         (long long)(ctx->tick_count / 1000),
         (int)((ctx->tick_count % 1000) * 1000000),
         az_v,
         e1_v,
-        format_changing_status(sig->energyStorage),
+        format_energy_storage(sig->energyStorage),
         format_main_cannon_fix_status(sig->mainCannonFixStatus),
         format_dek_clearance(sig->deckClearance),
-        format_arm_position(sig->autoArmPositionComplement),
-        format_arm_position(sig->manualArmPositionComple),
-        format_main_cannon_return_status(sig->mainCannonRestoreComplement),
+        format_cannon_driving_from_arm(sig->autoArmPositionComplement),
+        format_cannon_driving_from_arm(sig->manualArmPositionComple),
+        format_cannon_driving_from_return(sig->mainCannonRestoreComplement),
         format_arm_safety_lock(sig->armSafetyMainCannonLock),
         format_shutdown_type(sig->shutdown),
         round_v,
@@ -687,8 +637,8 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     );
     
     LegacyWriteJsonOptions wopt = {
-        TOPIC_ACTUATOR_SIGNAL,
-        TYPE_ACTUATOR_SIGNAL,
+        TOPIC_Signal,
+        TYPE_Signal,
         signal_json,
         ctx->domain_id,
         "pub1",
@@ -726,19 +676,18 @@ int demo_msg_test_write_cbit(DemoAppContext* ctx) {
     return demo_msg_publish_cbit(ctx);
 }
 
-int demo_msg_test_write_result_bit(DemoAppContext* ctx) {
-    if (!ctx || !ctx->agent) return -1;
-    
-    // Set dummy reference number for test
-    ctx->bit_state.ibit_reference_num = 999;
-    
-    printf("[DemoApp Test] Sending resultBIT test message (ref=999)...\n");
-    return demo_msg_publish_result_bit(ctx);
-}
-
 int demo_msg_test_write_signal(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
-    
     printf("[DemoApp Test] Sending Actuator Signal test message...\n");
     return demo_msg_publish_actuator_signal(ctx);
+}
+
+int demo_msg_test_write_result_bit(DemoAppContext* ctx) {
+    if (!ctx || !ctx->agent) return -1;
+
+    // Set dummy reference number for test
+    ctx->bit_state.ibit_reference_num = 999;
+
+    printf("[DemoApp Test] Sending resultBIT test message (ref=999)...\n");
+    return demo_msg_publish_result_bit(ctx);
 }

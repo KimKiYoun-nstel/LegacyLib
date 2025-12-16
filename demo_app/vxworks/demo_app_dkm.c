@@ -340,7 +340,7 @@ void demoAppStatus(void) {
     printf("\nComponent Status:\n");
     printf("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor ? "OK" : "FAULT");
     printf("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor ? "OK" : "FAULT");
-    printf("  Base Gyro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGyro ? "OK" : "FAULT");
+    printf("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro ? "OK" : "FAULT");
     printf("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController ? "OK" : "FAULT");
     printf("======================\n");
 }

@@ -46,7 +46,7 @@ Agent와의 초기 핸드셰이크
 {
   "op": "hello",
   "proto": 1,
-  "target": {
+    "type": "P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT"
     "kind": "agent"
   },
   "args": null,
@@ -57,9 +57,6 @@ Agent와의 초기 핸드셰이크
 ### 응답 예상
 ```json
 {
-  "ok": true,
-  "proto": 1,
-  "result": {
     "proto": 1
   }
 }
@@ -172,8 +169,8 @@ PowerOn BIT 결과 송신 (초기화 시 1회)
   "proto": 1,
   "target": {
     "kind": "writer",
-    "topic": "P_NSTEL__C_Cannon_Driving_Device_PBIT",
-    "type": "P_NSTEL::C_Cannon_Driving_Device_PBIT"
+    "topic": "P_NSTEL__C_CannonDrivingDevice_PowerOnBIT",
+    "type": "P_NSTEL::C_CannonDrivingDevice_PowerOnBIT"
   },
   "args": {
     "domain": 0,
@@ -206,8 +203,8 @@ Continuous BIT 상태 송신 (1Hz 주기)
   "proto": 1,
   "target": {
     "kind": "writer",
-    "topic": "P_NSTEL__C_Cannon_Driving_Device_CBIT",
-    "type": "P_NSTEL::C_Cannon_Driving_Device_CBIT"
+    "topic": "P_NSTEL__C_CannonDrivingDevice_PBIT",
+    "type": "P_NSTEL::C_CannonDrivingDevice_PBIT"
   },
   "args": {
     "domain": 0,
@@ -240,8 +237,8 @@ IBIT 결과 송신 (IBIT 완료 시)
   "proto": 1,
   "target": {
     "kind": "writer",
-    "topic": "P_NSTEL__C_Cannon_Driving_Device_resultBIT",
-    "type": "P_NSTEL::C_Cannon_Driving_Device_resultBIT"
+    "topic": "P_NSTEL__C_CannonDrivingDevice_IBIT",
+    "type": "P_NSTEL::C_CannonDrivingDevice_IBIT"
   },
   "args": {
     "domain": 0,
@@ -274,8 +271,8 @@ IBIT 결과 송신 (IBIT 완료 시)
   "proto": 1,
   "target": {
     "kind": "writer",
-    "topic": "P_NSTEL__C_Cannon_Actuator_Signal",
-    "type": "P_NSTEL::C_Cannon_Actuator_Signal"
+    "topic": "P_NSTEL__C_CannonDrivingDevice_Signal",
+    "type": "P_NSTEL::C_CannonDrivingDevice_Signal"
   },
   "args": {
     "domain": 0,
@@ -310,8 +307,8 @@ IBIT 요청 수신 (AgentUI → DemoApp)
   "proto": 1,
   "target": {
     "kind": "reader",
-    "topic": "P_UCMS__C_Monitored_Entity_runBIT",
-    "type": "P_UCMS::C_Monitored_Entity_runBIT"
+    "topic": "P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT",
+    "type": "P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT"
   },
   "args": {
     "domain": 0,
@@ -343,8 +340,8 @@ IBIT 요청 수신 (AgentUI → DemoApp)
   "proto": 1,
   "target": {
     "kind": "reader",
-    "topic": "P_NSTEL__C_Cannon_Actuator_Control",
-    "type": "P_NSTEL::C_Cannon_Actuator_Control"
+    "topic": "P_NSTEL__C_CannonDrivingDevice_commandDriving",
+    "type": "P_NSTEL::C_CannonDrivingDevice_commandDriving"
   },
   "args": {
     "domain": 0,
@@ -377,8 +374,8 @@ IBIT 요청 수신 (AgentUI → DemoApp)
   "proto": 1,
   "target": {
     "kind": "reader",
-    "topic": "P_NSTEL__C_Vehicle_Speed",
-    "type": "P_NSTEL::C_Vehicle_Speed"
+    "topic": "P_NSTEL__C_VehicleSpeed",
+    "type": "P_NSTEL::C_VehicleSpeed"
   },
   "args": {
     "domain": 0,
@@ -557,16 +554,16 @@ Agent Error: Publisher "pub1" not found
 ### PBIT Writer 생성 로그 예제
 ```
 [DemoApp Msg] Initializing message handlers...
-[IpcJsonClient] Sending: {"args":{"domain":0,"publisher":"pub1","qos":"NstelCustomQosLib::InitialStateProfile"},"data":null,"op":"create","proto":1,"target":{"kind":"writer","topic":"P_NSTEL__C_Cannon_Driving_Device_PBIT","type":"P_NSTEL::C_Cannon_Driving_Device_PBIT"}}
-[Agent] Writer created for P_NSTEL__C_Cannon_Driving_Device_PBIT
-[DemoApp Msg] Writer created: P_NSTEL__C_Cannon_Driving_Device_PBIT
+[IpcJsonClient] Sending: {"args":{"domain":0,"publisher":"pub1","qos":"NstelCustomQosLib::InitialStateProfile"},"data":null,"op":"create","proto":1,"target":{"kind":"writer","topic":"P_NSTEL__C_CannonDrivingDevice_PowerOnBIT","type":"P_NSTEL::C_CannonDrivingDevice_PowerOnBIT"}}
+[Agent] Writer created for P_NSTEL__C_CannonDrivingDevice_PowerOnBIT
+[DemoApp Msg] Writer created: P_NSTEL__C_CannonDrivingDevice_PowerOnBIT
 ```
 
 ### runBIT Reader 생성 로그 예제
 ```
-[IpcJsonClient] Sending: {"args":{"domain":0,"qos":"NstelCustomQosLib::NonPeriodicEventProfile","subscriber":"sub1"},"data":null,"op":"create","proto":1,"target":{"kind":"reader","topic":"P_UCMS__C_Monitored_Entity_runBIT","type":"P_UCMS::C_Monitored_Entity_runBIT"}}
-[Agent] Reader created for P_UCMS__C_Monitored_Entity_runBIT
-[DemoApp Msg] Reader created: P_UCMS__C_Monitored_Entity_runBIT
+[IpcJsonClient] Sending: {"args":{"domain":0,"qos":"NstelCustomQosLib::NonPeriodicEventProfile","subscriber":"sub1"},"data":null,"op":"create","proto":1,"target":{"kind":"reader","topic":"P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT","type":"P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT"}}
+[Agent] Reader created for P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT
+[DemoApp Msg] Reader created: P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT
 ```
 
 ---

@@ -25,9 +25,21 @@ typedef enum {
 // P_NSTEL::T_OperationModeType
 typedef enum {
     L_OperationModeType_NORMAL = 0,
-    L_OperationModeType_EMER_GENCY = 1,
+    L_OperationModeType_EMERGENCY = 1,
     L_OperationModeType_MANUAL = 2
 } T_OperationModeType;
+
+// P_NSTEL::T_PalmModeType
+typedef enum {
+    L_PalmModeType_ON = 0,
+    L_PalmModeType_OFF = 1
+} T_PalmModeType;
+
+// P_NSTEL::T_TargetFixType
+typedef enum {
+    L_TargetFixType_FIXED = 0,
+    L_TargetFixType_ETC = 1
+} T_TargetFixType;
 
 // P_NSTEL::T_OnOffType
 typedef enum {
@@ -83,6 +95,25 @@ typedef enum {
     L_ArmPositionType_MANUAL = 1
 } T_ArmPositionType;
 
+// P_NSTEL::T_CannonRestoreType
+typedef enum {
+    L_CannonRestoreType_RELEASE = 0,
+    L_CannonRestoreType_RESTORE = 1
+} T_CannonRestoreType;
+
+// P_NSTEL::T_CannonFixType
+typedef enum {
+    L_CannonFixType_RELEASE = 0,
+    L_CannonFixType_FIX = 1
+} T_CannonFixType;
+
+// P_NSTEL::T_EquipOpenStatusType
+typedef enum {
+    L_EquipOpenStatusType_CLOSE = 0,
+    L_EquipOpenStatusType_OPEN = 1
+} T_EquipOpenStatusType;
+
+
 // P_NSTEL::T_MainCannonFixStatusType
 typedef enum {
     L_MainCannonFixStatusType_NORMAL = 0,
@@ -107,6 +138,24 @@ typedef enum {
     L_CannonDrivingDeviceShutdownType_SHUTDOWN = 1
 } T_CannonDrivingDeviceShutdownType;
 
+// P_NSTEL::T_CannonDrivingType
+typedef enum {
+    L_CannonDrivingType_DRIVING = 0,
+    L_CannonDrivingType_DONE = 1
+} T_CannonDrivingType;
+
+// P_NSTEL::T_CannonLockType
+typedef enum {
+    L_CannonLockType_NORMAL = 0,
+    L_CannonLockType_LOCKED = 1
+} T_CannonLockType;
+
+// P_NSTEL::T_DeckClearanceType
+typedef enum {
+    L_DeckClearanceType_OUT_OF_DECK = 0,
+    L_DeckClearanceType_IN_DECK = 1
+} T_DeckClearanceType;
+
 /* ========================================================================
  * Enum Parsing Functions (JSON String -> Enum Value)
  * ======================================================================== */
@@ -125,6 +174,7 @@ T_EquipOpenLockType parse_equip_open_lock(const char* str);
  * ======================================================================== */
 
 const char* format_bit_type(T_BITType type);
+const char* format_bit_result(int ok);
 const char* format_operation_mode(T_OperationModeType mode);
 const char* format_onoff_type(T_OnOffType type);
 const char* format_target_allot(T_TargetAllotType type);
@@ -133,12 +183,17 @@ const char* format_main_cannon_return(T_MainCannonReturnType type);
 const char* format_main_cannon_fix(T_MainCannonFixType type);
 const char* format_equip_open_lock(T_EquipOpenLockType type);
 const char* format_changing_status(T_ChangingStatusType status);
+const char* format_energy_storage(T_ChangingStatusType status);
 const char* format_dek_clearance(T_DekClearanceType type);
 const char* format_arm_position(T_ArmPositionType type);
 const char* format_main_cannon_fix_status(T_MainCannonFixStatusType status);
 const char* format_main_cannon_return_status(T_MainCannonReturnStatusType status);
 const char* format_arm_safety_lock(T_ArmSafetyMainCannonLock lock);
 const char* format_shutdown_type(T_CannonDrivingDeviceShutdownType type);
+
+/* Map internal status types to schema T_CannonDrivingType enumerator strings */
+const char* format_cannon_driving_from_arm(T_ArmPositionType type);
+const char* format_cannon_driving_from_return(T_MainCannonReturnStatusType status);
 
 #ifdef __cplusplus
 }

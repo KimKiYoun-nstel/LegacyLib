@@ -13,28 +13,11 @@
 ## 개요
 
 ### 문서 목적
-본 문서는 **DemoApp(포구동장치 시뮬레이터)**와 **AgentUI(운용자 인터페이스)** 간의 데이터 송수신 규격을 정의합니다.
+본 문서는 **DemoApp(포구동장치 시뮬레이터)**와 **AgentUI(운용자 인터페이스)** 간의 데이터 송수신 규격을 정의합니다. 문서의 필드명과 Topic/Type은 RefDoc XML 스키마를 기준으로 정확한 식별자를 사용합니다.
 
-### 시스템 구성
-```
-┌─────────────┐  DDS Messages   ┌───────────┐  DDS Messages   ┌─────────────┐
-│  DemoApp    │ ───────────────> │  Agent    │ ───────────────> │  AgentUI    │
-│ (VxWorks/   │ <─────────────── │  (RTP)    │ <─────────────── │ (Windows/   │
-│  Windows)   │   JSON over TCP  │           │   JSON over TCP  │  Web)       │
-└─────────────┘                  └───────────┘                  └─────────────┘
-```
-
-### 메시지 구성
-- **송신 (DemoApp → AgentUI)**: 4개 Topic
-  1. PBIT (PowerOn BIT)
-  2. CBIT (Continuous BIT)
-  3. resultBIT (IBIT 결과)
-  4. Actuator Signal (피드백)
-
-- **수신 (AgentUI → DemoApp)**: 3개 Topic
-  1. runBIT (IBIT 요청)
-  2. Actuator Control (제어 명령)
-  3. Vehicle Speed (차량 속도)
+### 명명 규칙
+- Topic: `module__struct` (예: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`)
+- Type: `module::struct` (예: `P_NSTEL::C_CannonDrivingDevice_PowerOnBIT`)
 
 ---
 
@@ -43,55 +26,242 @@
 ### 1. PBIT (PowerOn BIT)
 
 #### Topic 정보
-- **Topic**: `P_NSTEL__C_Cannon_Driving_Device_PBIT`
-- **Type**: `P_NSTEL::C_Cannon_Driving_Device_PBIT`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_PowerOnBIT`
 - **QoS**: `InitialStateProfile` (TRANSIENT_LOCAL)
-- **주기**: 비주기 (PowerOnBit 상태에서 1회만 송신)
+- **주기**: 비주기 (PowerOn 상태에서 1회 송신)
 
-#### 메시지 구조
+#### 메시지 구조 (예시)
 ```json
 {
-  "A_sourceID": {
-    "A_resourceId": 1,
-    "A_instanceId": 1
-  },
-  "A_timeOfDataGeneration": {
-    "A_second": 1733900000,
-    "A_nanoseconds": 123456789
-  },
+  "A_sourceID": { /* identifier */ },
+  "A_timeOfDataGeneration": "...",
+  "A_cannonDrivingDevice_sourceID": { /* identifier */ },
   "A_BITRunning": false,
-  "A_upDownMotor": true,
-  "A_roundMotor": true,
-  "A_upDownAmp": true,
-  "A_roundAmp": true,
-  "A_baseGyro": true,
-  "A_topForwardGryro": true,
-  "A_vehicleForwardGyroi": true,
-  "A_powerController": true,
-  "A_energyStorage": true,
-  "A_directPower": true,
-  "A_cableLoop": true
+  "A_upDownMotor": "L_BITResultType_NORMAL",
+  "A_roundMotor": "L_BITResultType_NORMAL",
+  "A_upDownAmp": "L_BITResultType_NORMAL",
+  "A_roundAmp": "L_BITResultType_NORMAL",
+  "A_baseGiro": "L_BITResultType_NORMAL",
+  "A_topForwardGiro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_powerController": "L_BITResultType_NORMAL",
+  "A_energyStorage": "L_BITResultType_NORMAL",
+  "A_directPower": "L_BITResultType_NORMAL",
+  "A_cableLoop": "L_BITResultType_NORMAL"
 }
 ```
 
-#### 필드 설명 (12개 BIT 컴포넌트)
+#### 필드 요약
+- 모든 BIT 결과 필드는 스키마의 `T_BITResultType` 열거형 값을 사용합니다.
+- 자이로 관련 필드명은 `Giro`로 통일: `A_baseGiro`, `A_topForwardGiro`, `A_vehicleForwardGiro`.
 
-| 필드 | 타입 | 설명 | 정상값 | 고장값 | Fault 명령 |
-|------|------|------|--------|--------|-----------|
-| `A_upDownMotor` | boolean | 상하 모터 상태 | `true` | `false` | `updown` |
-| `A_roundMotor` | boolean | 회전 모터 상태 | `true` | `false` | `round` |
-| `A_upDownAmp` | boolean | 상하 앰프 상태 | `true` | `false` | `updown` |
-| `A_roundAmp` | boolean | 회전 앰프 상태 | `true` | `false` | `round` |
-| `A_baseGyro` | boolean | 베이스 자이로 상태 | `true` | `false` | `sensor` |
-| `A_topForwardGryro` | boolean | 상단 전방 자이로 (오타 보존) | `true` | `false` | - |
-| `A_vehicleForwardGyroi` | boolean | 차량 전방 자이로 (오타 보존) | `true` | `false` | `sensor` |
-| `A_powerController` | boolean | 전원 컨트롤러 상태 | `true` | `false` | `power` |
-| `A_energyStorage` | boolean | 에너지 저장장치 상태 | `true` | `false` | `power` |
-| `A_directPower` | boolean | 직접 전원 상태 | `true` | `false` | `power` |
-| `A_cableLoop` | boolean | 케이블 루프 상태 | `true` | `false` | - |
-| `A_BITRunning` | boolean | BIT 수행 중 플래그 | `false` | - | - |
+---
 
-**주의**: `A_topForwardGryro`, `A_vehicleForwardGyroi`는 XML 스키마 오타를 보존
+### 2. CBIT (Continuous BIT)
+
+#### Topic 정보
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_PBIT`
+- **QoS**: `LowFreqStatusProfile` (1Hz)
+- **주기**: 1초 (1000ms)
+
+#### 메시지 구조 (예시)
+```json
+{
+  "A_sourceID": { /* identifier */ },
+  "A_timeOfDataGeneration": "...",
+  "A_cannonDrivingDevice_sourceID": { /* identifier */ },
+  "A_upDownMotor": "L_BITResultType_NORMAL",
+  "A_roundMotor": "L_BITResultType_NORMAL",
+  "A_upDownAmp": "L_BITResultType_NORMAL",
+  "A_roundAmp": "L_BITResultType_NORMAL",
+  "A_baseGiro": "L_BITResultType_NORMAL",
+  "A_topForwardGiro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_powerController": "L_BITResultType_NORMAL",
+  "A_energyStorage": "L_BITResultType_NORMAL",
+  "A_directPower": "L_BITResultType_NORMAL",
+  "A_cableLoop": "L_BITResultType_NORMAL",
+  "A_upDownPark": "L_BITResultType_NORMAL",
+  "A_roundPark": "L_BITResultType_NORMAL",
+  "A_mainCannonLock": "L_BITResultType_NORMAL",
+  "A_controllerNetwork": "L_BITResultType_NORMAL",
+  "A_commFault": false
+}
+```
+
+#### 필드 요약
+- CBIT은 PBIT(12개) + 파킹/잠금/네트워크 상태를 포함합니다.
+- `A_commFault`는 boolean이며 `true`는 통신 고장(오류)을 의미합니다.
+
+---
+
+### 3. resultBIT (IBIT 결과)
+
+#### Topic 정보
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_IBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_IBIT`
+- **QoS**: `NonPeriodicEventProfile` (RELIABLE)
+- **주기**: 비주기 (IBIT 완료 시)
+
+#### 메시지 구조 (예시)
+```json
+{
+  "A_sourceID": { /* identifier */ },
+  "A_timeOfDataGeneration": "...",
+  "A_cannonDrivingDevice_sourceID": { /* identifier */ },
+  "A_referenceNum": 1234,
+  "A_BITRunning": false,
+  "A_upDownMotor": "L_BITResultType_NORMAL",
+  "A_roundMotor": "L_BITResultType_NORMAL",
+  "A_upDownAmp": "L_BITResultType_NORMAL",
+  "A_roundAmp": "L_BITResultType_NORMAL",
+  "A_baseGiro": "L_BITResultType_NORMAL",
+  "A_topForwardGiro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_powerController": "L_BITResultType_NORMAL",
+  "A_energyStorage": "L_BITResultType_NORMAL",
+  "A_directPower": "L_BITResultType_NORMAL",
+  "A_cableLoop": "L_BITResultType_NORMAL"
+}
+```
+
+#### 필드 요약
+- `A_referenceNum` (`P_LDM_Common::T_Int32`)는 runBIT 요청에서 전달된 값을 그대로 반환하여 요청-응답 매칭에 사용됩니다.
+- 나머지 BIT 필드는 PBIT와 동일한 `T_BITResultType` 열거형을 사용합니다。
+
+---
+
+### 4. Actuator Signal (피드백)
+
+#### Topic 정보
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_Signal`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_Signal`
+- **QoS**: `HighFreqPeriodicProfile` (200Hz, BEST_EFFORT)
+- **주기**: 5ms (200Hz)
+
+#### 메시지 구조 (예시)
+```json
+{
+  "A_sourceID": { /* identifier */ },
+  "A_timeOfDataGeneration": "...",
+  "A_recipientID": { /* identifier */ },
+  "A_azAngle": 45.5,
+  "A_e1AngleVelocity": 2.3,
+  "A_roundGiro": 2.3,
+  "A_upDownGiro": 0.5,
+  "A_energyStorage": "L_EnergyStorageStatusType_NORMAL",
+  "A_mainCannonFixStatus": "L_CannonFixType_RELEASE",
+  "A_deckCleance": "L_DeckClearanceType_OUT_OF_DECK",
+  "A_autoArmPositionComplement": "L_CannonDrivingType_DRIVING",
+  "A_manualArmPositionComplement": "L_CannonDrivingType_DRIVING",
+  "A_mainCannonRestoreComplement": "L_CannonDrivingType_RUNNING",
+  "A_armSafetyMainCannonLock": "L_CannonLockType_NORMAL",
+  "A_shutdown": "L_ShutdownType_UNKNOWN"
+}
+```
+
+#### 필드 요약
+- 자이로 표기는 스키마 기준으로 `Giro`로 통일: `A_roundGiro`, `A_upDownGiro`.
+- `A_roundGiro`/`A_upDownGiro`는 `P_LDM_Common::T_Double` (double) 타입입니다。
+
+---
+
+## AgentUI → DemoApp 수신 메시지
+
+### 1. runBIT (IBIT 요청)
+
+#### Topic 정보
+- **Topic**: `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`
+- **Type**: `P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT`
+- **QoS**: `NonPeriodicEventProfile` (RELIABLE)
+- **주기**: 비주기 (사용자 명령)
+
+#### 메시지 구조 (AgentUI 송신)
+```json
+{
+  "A_recipientID": { /* DemoApp identifier */ },
+  "A_sourceID": { /* Agent identifier */ },
+  "A_referenceNum": 1234,
+  "A_timeOfDataGeneration": "...",
+  "A_type": "L_BITType_I_BIT"
+}
+```
+
+#### 필드 요약
+- `A_referenceNum`는 반드시 포함되며, DemoApp은 IBIT 완료 시 resultBIT의 `A_referenceNum`를 동일 값으로 반환합니다。
+
+---
+
+### 2. Actuator Control (제어 명령)
+
+#### Topic 정보
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_commandDriving`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_commandDriving`
+- **QoS**: `HighFreqPeriodicProfile` (200Hz, BEST_EFFORT)
+- **주기**: 권장 200Hz (최소 10Hz)
+
+#### 메시지 구조 (AgentUI 송신, 예시)
+```json
+{
+  "A_sourceID": { /* AgentUI */ },
+  "A_recipientID": { /* DemoApp */ },
+  "A_timeOfDataGeneration": "...",
+  "A_referenceNum": 1234,
+  "A_roundPosition": 0.0,
+  "A_upDownPosition": 0.0,
+  "A_roundAngleVelocity": 0.0,
+  "A_upDownAngleVelocity": 0.0,
+  "A_operationMode": "L_OperationModeType_NORMAL",
+  "A_parm": "L_PalmModeType_OFF",
+  "A_targetFix": "L_TargetFixType_ETC",
+  "A_autoArmPosition": "L_ArmPositionType_RELEASE",
+  "A_manualArmPosition": "L_ArmPositionType_RELEASE",
+  "A_mainCannonRestore": "L_CannonRestoreType_RESTORE",
+  "A_mainCannonFix": "L_CannonFixType_RELEASE"
+}
+```
+
+#### 필드 요약
+- 제어 메시지는 정밀한 Topic/Type 식별자가 중요합니다. 반드시 스키마의 `module__struct` / `module::struct` 표기를 사용하세요。
+
+---
+
+### 3. Vehicle Speed (차량 속도)
+
+#### Topic 정보
+- **Topic**: `P_NSTEL__C_VehicleSpeed`
+- **Type**: `P_NSTEL::C_VehicleSpeed`
+- **QoS**: `LowFreqVehicleProfile` (1Hz, RELIABLE)
+- **주기**: 권장 1Hz
+
+#### 메시지 구조 (AgentUI 송신)
+```json
+{
+  "A_sourceID": { /* identifier */ },
+  "A_timeOfDataGeneration": "...",
+  "A_value": 30.5
+}
+```
+
+---
+
+## 시뮬레이션 동작 로직
+
+(시뮬레이션/타이머/IBIT 처리 로직은 기존 구현을 따르되, 메시지 식별자 및 필드 이름은 본 문서의 스펙을 우선으로 적용합니다.)
+
+**코드 위치**: `demo_app/src/demo_app_timer.c`, `demo_app/src/demo_app_msg.c`, `demo_app/src/demo_app_core.c`
+
+---
+
+## 테스트 시나리오 (간단)
+- IBIT 요청: AgentUI가 `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`로 `A_referenceNum` 포함하여 전송 → DemoApp이 `P_NSTEL__C_CannonDrivingDevice_IBIT`로 동일 `A_referenceNum` 반환
+- Signal 수신/표시: AgentUI는 `P_NSTEL__C_CannonDrivingDevice_Signal`의 `A_roundGiro`/`A_upDownGiro` 값을 사용하여 실시간 게이지를 갱신
+
+---
+
+(문서 끝)
 
 #### AgentUI 표시 방법
 
@@ -127,8 +297,8 @@ PBIT: 12/12 정상 ✓
 ### 2. CBIT (Continuous BIT)
 
 #### Topic 정보
-- **Topic**: `P_NSTEL__C_Cannon_Driving_Device_CBIT`
-- **Type**: `P_NSTEL::C_Cannon_Driving_Device_CBIT`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_PBIT`
 - **QoS**: `LowFreqStatusProfile` (1Hz)
 - **주기**: 1초 (1000ms)
 
@@ -142,9 +312,9 @@ PBIT: 12/12 정상 ✓
   "A_roundMotor": true,
   "A_upDownAmp": true,
   "A_roundAmp": true,
-  "A_baseGyro": true,
-  "A_topForwardGryro": true,
-  "A_vehicleForwardGyroi": true,
+  "A_baseGiro": true,
+  "A_topForwardGiro": true,
+  "A_vehicleForwardGiro": true,
   "A_powerController": true,
   "A_energyStorage": true,
   "A_directPower": true,
@@ -204,8 +374,8 @@ PBIT: 12/12 정상 ✓
 ### 3. resultBIT (IBIT 결과)
 
 #### Topic 정보
-- **Topic**: `P_NSTEL__C_Cannon_Driving_Device_resultBIT`
-- **Type**: `P_NSTEL::C_Cannon_Driving_Device_resultBIT`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_IBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_IBIT`
 - **QoS**: `NonPeriodicEventProfile` (RELIABLE)
 - **주기**: 비주기 (IBIT 완료 시)
 
@@ -220,10 +390,10 @@ PBIT: 12/12 정상 ✓
   "A_roundMotor": true,
   "A_upDownAmp": true,
   "A_roundAmp": true,
-  "A_baseGyro": true,
-  "A_topForwardGryro": true,
-  "A_vehicleForwardGyroi": true,
-  "A_power_Controller": true,
+  "A_baseGiro": true,
+  "A_topForwardGiro": true,
+  "A_vehicleForwardGiro": true,
+  "A_powerController": true,
   "A_energyStorage": true,
   "A_directPower": true,
   "A_cableLoop": true
@@ -237,7 +407,7 @@ PBIT: 12/12 정상 ✓
 | `A_referenceNum` | int32 | runBIT 요청 시 받은 참조 번호 (그대로 반환) |
 | 나머지 12개 | boolean | PBIT와 동일 (12개 BIT 컴포넌트) |
 
-**주의**: `A_power_Controller`는 XML 스키마 오타 (`_` 포함)
+**주의**: `A_powerController` 필드는 RefDoc XML 스키마의 표기와 일치합니다.
 
 #### AgentUI 표시 방법
 
@@ -278,8 +448,8 @@ PBIT: 12/12 정상 ✓
 ### 4. Actuator Signal (피드백)
 
 #### Topic 정보
-- **Topic**: `P_NSTEL__C_Cannon_Actuator_Signal`
-- **Type**: `P_NSTEL::C_Cannon_Actuator_Signal`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_Signal`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_Signal`
 - **QoS**: `HighFreqPeriodicProfile` (200Hz, BEST_EFFORT)
 - **주기**: 5ms (200Hz)
 
@@ -290,8 +460,8 @@ PBIT: 12/12 정상 ✓
   "A_timeOfDataGeneration": {...},
   "A_azAngle": 45.5,
   "A_e1AngleVelocity": 2.3,
-  "A_roundGyro": 2.3,
-  "A_upDownGyro": 0.5,
+  "A_roundGiro": 2.3,
+  "A_upDownGiro": 0.5,
   "A_energyStorage": "L_ChangingStatusType_NORMAL",
   "A_mainCannonFixStatus": "L_MainCannonFixStatusType_NORMAL",
   "A_deckClearance": "L_DekClearanceType_OUTSIDE",
@@ -311,8 +481,8 @@ PBIT: 12/12 정상 ✓
 |------|------|------|------|------|
 | `A_azAngle` | float | deg | 현재 방위각 (E1 각도) | 0~360 |
 | `A_e1AngleVelocity` | float | deg/s | E1 각속도 | -360~360 |
-| `A_roundGyro` | float | deg/s | 회전 자이로 값 | -360~360 |
-| `A_upDownGyro` | float | deg/s | 상하 자이로 값 | -90~90 |
+| `A_roundGiro` | float | deg/s | 회전 자이로 값 | -360~360 |
+| `A_upDownGiro` | float | deg/s | 상하 자이로 값 | -90~90 |
 
 **Enum 필드 (8개)**:
 
@@ -396,8 +566,8 @@ DemoApp은 내부 BIT 상태를 기반으로 Enum 값을 설정합니다:
 ### 1. runBIT (IBIT 요청)
 
 #### Topic 정보
-- **Topic**: `P_UCMS__C_Monitored_Entity_runBIT`
-- **Type**: `P_UCMS::C_Monitored_Entity_runBIT`
+- **Topic**: `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`
+- **Type**: `P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT`
 - **QoS**: `NonPeriodicEventProfile` (RELIABLE)
 - **주기**: 비주기 (사용자 명령)
 
@@ -496,8 +666,8 @@ onResultBIT((msg) => {
 ### 2. Actuator Control (제어 명령)
 
 #### Topic 정보
-- **Topic**: `P_NSTEL__C_Cannon_Actuator_Control`
-- **Type**: `P_NSTEL::C_Cannon_Actuator_Control`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_commandDriving`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_commandDriving`
 - **QoS**: `HighFreqPeriodicProfile` (200Hz, BEST_EFFORT)
 - **주기**: 권장 200Hz (최소 10Hz)
 
@@ -632,8 +802,8 @@ sendControl({
 ### 3. Vehicle Speed (차량 속도)
 
 #### Topic 정보
-- **Topic**: `P_NSTEL__C_Vehicle_Speed`
-- **Type**: `P_NSTEL::C_Vehicle_Speed`
+- **Topic**: `P_NSTEL__C_VehicleSpeed`
+- **Type**: `P_NSTEL::C_VehicleSpeed`
 - **QoS**: `LowFreqVehicleProfile` (1Hz, RELIABLE)
 - **주기**: 권장 1Hz
 
@@ -737,13 +907,13 @@ signal.e1AngleVelocity = error * 1.0f;  // P gain = 1.0
 signal.azAngle += signal.e1AngleVelocity * dt;
 
 // 자이로 값 업데이트
-signal.roundGyro = signal.e1AngleVelocity;
+signal.roundGiro = signal.e1AngleVelocity;
 ```
 
 #### 출력 (5ms마다)
 - `signal.azAngle`: 현재 각도
 - `signal.e1AngleVelocity`: 현재 각속도
-- `signal.roundGyro`: 자이로 값 (각속도와 동일)
+-- `signal.roundGiro`: 자이로 값 (각속도와 동일)
 
 ---
 
@@ -763,13 +933,13 @@ signal.e1AngleVelocity = control.roundAngleVelocity;
 signal.azAngle += signal.e1AngleVelocity * dt;
 
 // 자이로 값 업데이트
-signal.roundGyro = signal.e1AngleVelocity;
+signal.roundGiro = signal.e1AngleVelocity;
 ```
 
 #### 출력 (5ms마다)
 - `signal.azAngle`: 계속 증가/감소
 - `signal.e1AngleVelocity`: 목표 속도
-- `signal.roundGyro`: 목표 속도
+-- `signal.roundGiro`: 목표 속도
 
 ---
 
@@ -806,7 +976,7 @@ Fault 주입 (power):
 
 #### PBIT 수신
 ```javascript
-agent.subscribe("P_NSTEL__C_Cannon_Driving_Device_PBIT", (msg) => {
+agent.subscribe("P_NSTEL__C_CannonDrivingDevice_PowerOnBIT", (msg) => {
   // 1. 타임스탬프 저장
   lastPBIT = {
     time: new Date(),
@@ -831,7 +1001,7 @@ agent.subscribe("P_NSTEL__C_Cannon_Driving_Device_PBIT", (msg) => {
 
 #### CBIT 수신 (1Hz)
 ```javascript
-agent.subscribe("P_NSTEL__C_Cannon_Driving_Device_CBIT", (msg) => {
+agent.subscribe("P_NSTEL__C_CannonDrivingDevice_PBIT", (msg) => {
   // 1. 실시간 상태 갱신
   updateSystemStatus(msg);
   
@@ -876,7 +1046,7 @@ let pendingIBIT = {};
 function requestIBIT() {
   let refNum = Date.now() & 0x7FFFFFFF;
   
-  agent.publish("P_UCMS__C_Monitored_Entity_runBIT", {
+  agent.publish("P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT", {
     A_referenceNum: refNum,
     A_type: "L_BITType_I_BIT",
     ...
@@ -895,7 +1065,7 @@ function requestIBIT() {
 }
 
 // resultBIT 수신
-agent.subscribe("P_NSTEL__C_Cannon_Driving_Device_resultBIT", (msg) => {
+agent.subscribe("P_NSTEL__C_CannonDrivingDevice_IBIT", (msg) => {
   let refNum = msg.A_referenceNum;
   
   if (pendingIBIT[refNum]) {
@@ -915,7 +1085,7 @@ agent.subscribe("P_NSTEL__C_Cannon_Driving_Device_resultBIT", (msg) => {
 ```javascript
 let frameCount = 0;
 
-agent.subscribe("P_NSTEL__C_Cannon_Actuator_Signal", (msg) => {
+agent.subscribe("P_NSTEL__C_CannonDrivingDevice_Signal", (msg) => {
   frameCount++;
   
   // 1. 게이지 업데이트 (매 프레임)
@@ -965,7 +1135,7 @@ setInterval(() => {
     A_stopShutdown: "L_OnOffType_OFF"
   };
   
-  agent.publish("P_NSTEL__C_Cannon_Actuator_Control", control);
+  agent.publish("P_NSTEL__C_CannonDrivingDevice_commandDriving", control);
 }, 16);  // 60Hz (권장: 10Hz ~ 200Hz)
 ```
 
@@ -977,7 +1147,7 @@ setInterval(() => {
 setInterval(() => {
   let speed = getVehicleSpeed();  // GPS, OBD, 시뮬레이션 등
   
-  agent.publish("P_NSTEL__C_Vehicle_Speed", {
+  agent.publish("P_NSTEL__C_VehicleSpeed", {
     A_sourceID: { A_resourceId: 99, A_instanceId: 1 },
     A_timeOfDataGeneration: getCurrentTimestamp(),
     A_speed: speed
@@ -1165,18 +1335,15 @@ L_BoolType_FALSE
 
 ---
 
-### 오타 필드 정리
+### 필드 표준화
 
-XML 스키마 오타를 프로토콜 호환성을 위해 보존:
+문서와 코드 모두 RefDoc XML 스키마를 기준으로 표준화되어 있습니다. 주요 자이로 필드:
 
-| 필드 | 올바른 철자 | 사용처 |
-|------|------------|--------|
-| `A_vehicleForwardGyroi` | vehicleForwardGyro | PBIT, CBIT |
-| `A_topForwardGryro` | topForwardGyro | PBIT, CBIT |
-| `A_manualArmPositionComple` | manualArmPositionComplement | Signal |
-| `A_power_Controller` | powerController | resultBIT |
-
-**주의**: AgentUI도 정확히 동일한 철자 사용 필수!
+| 필드 | 사용처 |
+|------|--------|
+| `A_baseGiro` | PBIT, CBIT, IBIT |
+| `A_topForwardGiro` | PBIT, CBIT, IBIT |
+| `A_vehicleForwardGiro` | PBIT, CBIT, IBIT |
 
 ---
 

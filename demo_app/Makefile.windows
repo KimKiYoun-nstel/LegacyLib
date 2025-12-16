@@ -27,13 +27,13 @@ LDFLAGS = -lws2_32 -lwinmm
 
 # Source Files
 SRCS_C = src/demo_app_core.c \
-         src/demo_app_msg.c \
-         src/demo_app_timer.c \
-         src/demo_app_enums.c \
-         src/demo_app_log.c \
-         src/demo_app_cli.c \
-         windows/demo_app_tcp_win.c \
-         windows/demo_app_main.c
+		 src/demo_app_msg.cpp \
+		 src/demo_app_timer.c \
+		 src/demo_app_enums.c \
+		 src/demo_app_log.c \
+		 src/demo_app_cli.c \
+		 windows/demo_app_tcp_win.c \
+		 windows/demo_app_main.c
 
 # LegacyLib C++ sources
 LEGACY_SRCS_CPP = ../src/legacy_agent.cpp \
@@ -41,8 +41,8 @@ LEGACY_SRCS_CPP = ../src/legacy_agent.cpp \
                   ../src/internal/DkmRtpIpc.cpp
 
 # Object Files (in build directory)
-OBJS_C = $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(SRCS_C)))
-OBJS_CPP = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(notdir $(LEGACY_SRCS_CPP)))
+OBJS_C = $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(filter %.c,$(SRCS_C))))
+OBJS_CPP = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(notdir $(filter %.cpp,$(SRCS_C) $(LEGACY_SRCS_CPP))))
 
 # Output
 TARGET = $(BUILD_DIR)/demo_app.exe
@@ -68,6 +68,10 @@ $(TARGET): $(OBJS_C) $(OBJS_CPP)
 $(BUILD_DIR)/%.o: src/%.c
 	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: src/%.cpp
+	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: windows/%.c
 	@echo "Compiling $<..."

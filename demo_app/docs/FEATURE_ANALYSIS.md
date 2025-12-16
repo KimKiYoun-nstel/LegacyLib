@@ -70,8 +70,8 @@ typedef enum {
 #### 2.1 송신 메시지 (DemoApp → AgentUI)
 
 ##### ① PBIT (PowerOn BIT)
-- **Topic**: `P_NSTEL__C_Cannon_Driving_Device_PBIT`
-- **Type**: `P_NSTEL::C_Cannon_Driving_Device_PBIT`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_PowerOnBIT`
 - **QoS**: `InitialStateProfile` (늦게 연결된 Subscriber도 마지막 1개 수신)
 - **주기**: 비주기 (PowerOnBit 상태에서 1회)
 - **필드**: 12개 BIT 컴포넌트
@@ -84,9 +84,9 @@ typedef enum {
     "A_roundMotor": true,        // 회전 모터 상태
     "A_upDownAmp": true,
     "A_roundAmp": true,
-    "A_baseGyro": true,          // 베이스 자이로
-    "A_topForwardGryro": true,   // 상단 전방 자이로 (XML 오타 보존)
-    "A_vehicleForwardGyroi": true, // 차량 전방 자이로 (XML 오타 보존)
+    "A_baseGiro": true,          // 베이스 Giro
+    "A_topForwardGiro": true,    // 상단 전방 Giro
+    "A_vehicleForwardGiro": true, // 차량 전방 Giro
     "A_powerController": true,
     "A_energyStorage": true,
     "A_directPower": true,
@@ -96,8 +96,8 @@ typedef enum {
 - **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_publish_pbit()`
 
 ##### ② CBIT (Continuous BIT)
-- **Topic**: `P_NSTEL__C_Cannon_Driving_Device_CBIT`
-- **Type**: `P_NSTEL::C_Cannon_Driving_Device_CBIT`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_PBIT`
 - **QoS**: `LowFreqStatusProfile` (1Hz)
 - **주기**: 1Hz (1000ms마다)
 - **필드**: 15개 BIT 컴포넌트 (PBIT 12개 + 추가 3개)
@@ -105,8 +105,8 @@ typedef enum {
 - **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_publish_cbit()`
 
 ##### ③ resultBIT (IBIT 결과)
-- **Topic**: `P_NSTEL__C_Cannon_Driving_Device_resultBIT`
-- **Type**: `P_NSTEL::C_Cannon_Driving_Device_resultBIT`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_IBIT`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_IBIT`
 - **QoS**: `NonPeriodicEventProfile`
 - **주기**: 비주기 (IBIT 완료 시)
 - **필드**: 12개 BIT 컴포넌트 + `A_referenceNum`
@@ -114,8 +114,8 @@ typedef enum {
 - **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_publish_result_bit()`
 
 ##### ④ Actuator Signal (피드백)
-- **Topic**: `P_NSTEL__C_Cannon_Actuator_Signal`
-- **Type**: `P_NSTEL::C_Cannon_Actuator_Signal`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_Signal`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_Signal`
 - **QoS**: `HighFreqPeriodicProfile` (200Hz)
 - **주기**: 200Hz (5ms마다)
 - **필드**: 14개 (4 float + 8 enum + 2 common)
@@ -125,8 +125,8 @@ typedef enum {
     "A_timeOfDataGeneration": {...},
     "A_azAngle": 0.0,                    // 방위각
     "A_e1AngleVelocity": 0.0,            // E1 각속도
-    "A_roundGyro": 0.0,                  // 회전 자이로
-    "A_upDownGyro": 0.0,                 // 상하 자이로
+    "A_roundGiro": 0.0,                  // 회전 Giro
+    "A_upDownGiro": 0.0,                 // 상하 Giro
     "A_energyStorage": "L_ChangingStatusType_NORMAL",
     "A_mainCannonFixStatus": "L_MainCannonFixStatusType_NORMAL",
     "A_deckClearance": "L_DekClearanceType_OUTSIDE",
@@ -143,8 +143,8 @@ typedef enum {
 #### 2.2 수신 메시지 (AgentUI → DemoApp)
 
 ##### ⑤ runBIT (IBIT 요청)
-- **Topic**: `P_UCMS__C_Monitored_Entity_runBIT`
-- **Type**: `P_UCMS::C_Monitored_Entity_runBIT`
+- **Topic**: `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`
+- **Type**: `P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT`
 - **QoS**: `NonPeriodicEventProfile`
 - **주기**: 비주기 (사용자 명령)
 - **필드**: `A_referenceNum`, `A_type`
@@ -160,8 +160,8 @@ typedef enum {
 - **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_on_runbit()`
 
 ##### ⑥ Actuator Control (제어 명령)
-- **Topic**: `P_NSTEL__C_Cannon_Actuator_Control`
-- **Type**: `P_NSTEL::C_Cannon_Actuator_Control`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_commandDriving`
+- **Type**: `P_NSTEL::C_CannonDrivingDevice_commandDriving`
 - **QoS**: `HighFreqPeriodicProfile` (200Hz)
 - **주기**: 200Hz
 - **필드**: 16개 (6 float + 8 enum + 2 common)
@@ -185,8 +185,8 @@ typedef enum {
 - **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_on_actuator_control()`
 
 ##### ⑦ Vehicle Speed (차량 속도)
-- **Topic**: `P_NSTEL__C_Vehicle_Speed`
-- **Type**: `P_NSTEL::C_Vehicle_Speed`
+- **Topic**: `P_NSTEL__C_VehicleSpeed`
+- **Type**: `P_NSTEL::C_VehicleSpeed`
 - **QoS**: `LowFreqVehicleProfile` (1Hz)
 - **주기**: 1Hz
 - **필드**: `A_speed`
@@ -228,8 +228,8 @@ void demo_timer_update_simulation(DemoAppContext* ctx) {
     }
     
     // 자이로 값 업데이트
-    sig->roundGyro = sig->e1AngleVelocity;
-    sig->upDownGyro = ctrl->upDownAngleVelocity;
+    sig->roundGiro = sig->e1AngleVelocity;
+    sig->upDownGiro = ctrl->upDownAngleVelocity;
     
     // Enum 상태 매핑 (Fault 기반)
     sig->energyStorage = pbit->energyStorage ? 
@@ -250,7 +250,7 @@ void demo_timer_update_simulation(DemoAppContext* ctx) {
 |--------|----------------------|
 | `round` / `azimuth` | roundMotor, roundAmp |
 | `updown` | upDownMotor, upDownAmp |
-| `sensor` / `gyro` | baseGyro, vehicleForwardGyro |
+| `sensor` / `Giro` | baseGiro, vehicleForwardGiro |
 | `power` | powerController, energyStorage, directPower |
 | `motor` | roundMotor, upDownMotor |
 | `all` (clear) | 모든 12개 컴포넌트 |
@@ -414,14 +414,8 @@ Clear fault (component or 'all'): all
 }
 ```
 
-### XML 스키마 오타 보존
-프로토콜 호환성을 위해 XML 스키마의 오타를 그대로 유지:
-- `A_vehicleForwardGyroi` (PBIT) - 올바른 철자: Gyro
-- `A_topForwardGryro` (PBIT) - 올바른 철자: Gyro
-- `A_manualArmPositionComple` (Signal) - 올바른 철자: Complement
-- `A_power_Controller` (resultBIT) - 올바른 철자: powerController (언더스코어 제거)
-
----
+### XML 스키마 일치
+문서와 구현은 RefDoc XML 스키마를 우선으로 하며, 자이로 관련 필드명은 `Giro`로 통일합니다.
 
 ## 테스트 시나리오
 
@@ -452,9 +446,9 @@ DemoApp 시작 → PBIT 송신 → 주기 메시지(CBIT, Signal) 확인
 3. **AgentUI 실행 및 구독**
    - Domain: 0
    - Subscribe Topics:
-     - `P_NSTEL__C_Cannon_Driving_Device_PBIT`
-     - `P_NSTEL__C_Cannon_Driving_Device_CBIT`
-     - `P_NSTEL__C_Cannon_Actuator_Signal`
+    - `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
+    - `P_NSTEL__C_CannonDrivingDevice_PBIT`
+    - `P_NSTEL__C_CannonDrivingDevice_Signal`
 
 #### 예상 결과
 - ✅ PBIT 메시지 1개 수신 (InitialState QoS)
@@ -475,7 +469,7 @@ AgentUI에서 runBIT 송신 → DemoApp IBIT 수행 → resultBIT 수신
 
 #### 절차
 1. **AgentUI에서 runBIT 송신**
-   - Topic: `P_UCMS__C_Monitored_Entity_runBIT`
+  - Topic: `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`
    - Payload:
      ```json
      {
@@ -496,7 +490,7 @@ AgentUI에서 runBIT 송신 → DemoApp IBIT 수행 → resultBIT 수신
    ```
 
 3. **AgentUI에서 resultBIT 수신 확인**
-   - Topic: `P_NSTEL__C_Cannon_Driving_Device_resultBIT`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_IBIT`
    - `A_referenceNum`: 1234 (요청과 동일)
    - 12개 컴포넌트 상태 확인
 
@@ -514,7 +508,7 @@ AgentUI에서 Actuator Control 송신 → DemoApp 시뮬레이션 → Signal 피
 
 #### 절차
 1. **AgentUI에서 위치 제어 명령 송신**
-   - Topic: `P_NSTEL__C_Cannon_Actuator_Control`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_commandDriving`
    - Payload:
      ```json
      {
@@ -528,7 +522,7 @@ AgentUI에서 Actuator Control 송신 → DemoApp 시뮬레이션 → Signal 피
      ```
 
 2. **AgentUI에서 Signal 모니터링**
-   - Topic: `P_NSTEL__C_Cannon_Actuator_Signal`
+  - Topic: `P_NSTEL__C_CannonDrivingDevice_Signal`
    - 확인 필드:
      - `A_azAngle`: 0 → 45도로 서서히 증가
      - `A_e1AngleVelocity`: 비례 제어 속도 (P gain = 1.0)
@@ -600,7 +594,7 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 
 #### 절차
 1. **AgentUI에서 Vehicle Speed 송신**
-   - Topic: `P_NSTEL__C_Vehicle_Speed`
+  - Topic: `P_NSTEL__C_VehicleSpeed`
    - Payload:
      ```json
      {
@@ -671,16 +665,16 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 
 #### Subscribe 설정
 다음 4개 Topic 구독:
-1. `P_NSTEL__C_Cannon_Driving_Device_PBIT`
-2. `P_NSTEL__C_Cannon_Driving_Device_CBIT`
-3. `P_NSTEL__C_Cannon_Driving_Device_resultBIT`
-4. `P_NSTEL__C_Cannon_Actuator_Signal`
+ 1. `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
+ 2. `P_NSTEL__C_CannonDrivingDevice_PBIT`
+ 3. `P_NSTEL__C_CannonDrivingDevice_IBIT`
+ 4. `P_NSTEL__C_CannonDrivingDevice_Signal`
 
 #### Publish 설정
 다음 3개 Topic 발행 준비:
-1. `P_UCMS__C_Monitored_Entity_runBIT`
-2. `P_NSTEL__C_Cannon_Actuator_Control`
-3. `P_NSTEL__C_Vehicle_Speed`
+1. `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`
+2. `P_NSTEL__C_CannonDrivingDevice_commandDriving`
+3. `P_NSTEL__C_VehicleSpeed`
 
 ---
 
@@ -688,7 +682,7 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 
 #### Step 1: PBIT 수신 확인
 - **시점**: DemoApp 시작 직후
-- **Topic**: `P_NSTEL__C_Cannon_Driving_Device_PBIT`
+- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
 - **검증**:
   ```json
   {
@@ -709,13 +703,13 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 [DemoApp Core] Agent connection established
 [DemoApp Msg] Entity created: pub1
 [DemoApp Msg] Entity created: sub1
-[DemoApp Msg] Writer created: P_NSTEL__C_Cannon_Driving_Device_PBIT
-[DemoApp Msg] Writer created: P_NSTEL__C_Cannon_Driving_Device_CBIT
-[DemoApp Msg] Writer created: P_NSTEL__C_Cannon_Driving_Device_resultBIT
-[DemoApp Msg] Writer created: P_NSTEL__C_Cannon_Actuator_Signal
-[DemoApp Msg] Reader created: P_UCMS__C_Monitored_Entity_runBIT
-[DemoApp Msg] Reader created: P_NSTEL__C_Cannon_Actuator_Control
-[DemoApp Msg] Reader created: P_NSTEL__C_Vehicle_Speed
+[DemoApp Msg] Writer created: P_NSTEL__C_CannonDrivingDevice_PowerOnBIT
+[DemoApp Msg] Writer created: P_NSTEL__C_CannonDrivingDevice_PBIT
+[DemoApp Msg] Writer created: P_NSTEL__C_CannonDrivingDevice_IBIT
+[DemoApp Msg] Writer created: P_NSTEL__C_CannonDrivingDevice_Signal
+[DemoApp Msg] Reader created: P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT
+[DemoApp Msg] Reader created: P_NSTEL__C_CannonDrivingDevice_commandDriving
+[DemoApp Msg] Reader created: P_NSTEL__C_VehicleSpeed
 [DemoApp Core] State transition: Init -> PowerOnBit
 [DemoApp Msg] Publishing PBIT...
 [DemoApp Core] State transition: PowerOnBit -> Run
@@ -852,7 +846,7 @@ Control Rx: 456
 Component Status:
   Round Motor: OK
   UpDown Motor: OK
-  Base Gyro: OK
+  Base Giro: OK
   Power: OK
 ======================
 ```
