@@ -373,7 +373,7 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
         {F_A_RESOURCEID, 1},
         {F_A_INSTANCEID, 1}
     };
-    j[F_A_BITRUNNING] = comp->bitRunning ? true : false;
+    j[F_A_BITRUNNING] = (comp->bitRunning == L_BITResultType_NORMAL) ? true : false;
     j[F_A_UPDOWNMOTOR] = format_bit_result(comp->upDownMotor);
     j[F_A_ROUNDMOTOR] = format_bit_result(comp->roundMotor);
     j[F_A_UPDOWNAMP] = format_bit_result(comp->upDownAmp);
@@ -464,7 +464,7 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     j[F_A_TIMEOFDATA] = {{F_A_SECOND,(long long)(ctx->tick_count/1000)},{F_A_NANOSECONDS,(int)((ctx->tick_count%1000)*1000000)}};
     j[F_A_REFERENCE_NUM] = ctx->bit_state.ibit_reference_num;
     j[F_A_CANNON_SOURCEID] = {{F_A_RESOURCEID,1},{F_A_INSTANCEID,1}};
-    j[F_A_BITRUNNING] = result->bitRunning ? true : false;
+    j[F_A_BITRUNNING] = (result->bitRunning == L_BITResultType_NORMAL) ? true : false;
     j[F_A_UPDOWNMOTOR] = format_bit_result(result->upDownMotor);
     j[F_A_ROUNDMOTOR] = format_bit_result(result->roundMotor);
     j[F_A_UPDOWNAMP] = format_bit_result(result->upDownAmp);
@@ -497,10 +497,19 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     }
     
     ctx->result_pub_count++;
-    bool has_fault = !(result->upDownMotor && result->roundMotor && result->upDownAmp &&
-                     result->roundAmp && result->baseGiro && result->topForwardGiro &&
-                     result->vehicleForwardGiro && result->powerController &&
-                     result->energyStorage && result->directPower && result->cableLoop);
+    bool has_fault = !(
+        result->upDownMotor == L_BITResultType_NORMAL &&
+        result->roundMotor == L_BITResultType_NORMAL &&
+        result->upDownAmp == L_BITResultType_NORMAL &&
+        result->roundAmp == L_BITResultType_NORMAL &&
+        result->baseGiro == L_BITResultType_NORMAL &&
+        result->topForwardGiro == L_BITResultType_NORMAL &&
+        result->vehicleForwardGiro == L_BITResultType_NORMAL &&
+        result->powerController == L_BITResultType_NORMAL &&
+        result->energyStorage == L_BITResultType_NORMAL &&
+        result->directPower == L_BITResultType_NORMAL &&
+        result->cableLoop == L_BITResultType_NORMAL
+    );
     
     LOG_TX("resultBIT published: ref=%u, result=%s\n",
            ctx->bit_state.ibit_reference_num,

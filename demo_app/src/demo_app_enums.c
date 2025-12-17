@@ -96,11 +96,15 @@ const char* format_bit_type(T_BITType type) {
     }
 }
 
-/* Format BIT result fields (boolean -> enumerator string)
- * Convention: ok (non-zero) -> NORMAL, zero -> ABNORMAL
+/* Format BIT result fields (T_BITResultType -> enumerator string)
+ * Convention: L_BITResultType_NORMAL -> "L_BITResultType_NORMAL"
  */
-const char* format_bit_result(int ok) {
-    return ok ? "L_BITResultType_NORMAL" : "L_BITResultType_ABNORMAL";
+const char* format_bit_result(T_BITResultType ok) {
+    switch (ok) {
+        case L_BITResultType_NORMAL: return "L_BITResultType_NORMAL";
+        case L_BITResultType_ABNORMAL: return "L_BITResultType_ABNORMAL";
+        default: return "L_BITResultType_NORMAL";
+    }
 }
 
 const char* format_operation_mode(T_OperationModeType mode) {

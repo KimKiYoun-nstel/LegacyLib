@@ -359,9 +359,9 @@ void demo_timer_update_simulation(DemoAppContext* ctx) {
     // Set to NORMAL if no faults, otherwise indicate fault conditions
     BITComponentState* pbit = &ctx->bit_state.pbit_components;
     
-    sig->energyStorage = pbit->energyStorage ? 
+    sig->energyStorage = (pbit->energyStorage == L_BITResultType_NORMAL) ? 
         L_ChangingStatusType_DISCHARGE : L_ChangingStatusType_NORMAL;
-    sig->mainCannonFixStatus = pbit->roundMotor ? 
+    sig->mainCannonFixStatus = (pbit->roundMotor == L_BITResultType_NORMAL) ? 
         L_MainCannonFixStatusType_FIX : L_MainCannonFixStatusType_NORMAL;
     sig->deckClearance = L_DekClearanceType_OUTSIDE;
     sig->autoArmPositionComplement = L_ArmPositionType_NORMAL;

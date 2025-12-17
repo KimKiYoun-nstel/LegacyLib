@@ -83,6 +83,12 @@ typedef enum {
     L_ChangingStatusType_DISCHARGE = 1
 } T_ChangingStatusType;
 
+// P_NSTEL::T_BITResultType (schema enumerator for BIT results)
+typedef enum {
+    L_BITResultType_NORMAL = 0,
+    L_BITResultType_ABNORMAL = 1
+} T_BITResultType;
+
 // P_NSTEL::T_DekClearanceType
 typedef enum {
     L_DekClearanceType_OUTSIDE = 0,
@@ -174,7 +180,7 @@ T_EquipOpenLockType parse_equip_open_lock(const char* str);
  * ======================================================================== */
 
 const char* format_bit_type(T_BITType type);
-const char* format_bit_result(int ok);
+const char* format_bit_result(T_BITResultType ok);
 const char* format_operation_mode(T_OperationModeType mode);
 const char* format_onoff_type(T_OnOffType type);
 const char* format_target_allot(T_TargetAllotType type);

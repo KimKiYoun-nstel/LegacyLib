@@ -63,7 +63,9 @@ static void cmd_help(void) {
         "  log_status                : Show current log mode\n"
         "\n[Other]\n"
         "  help                      : Show this help\n"
-        "  quit                      : Close CLI connection\n"
+        "  quit                      : Close CLI client connection (server remains)\n"
+        "  set_hz <topic> <hz>       : Set publish rate for topic (signal,cbit,pbit)\n"
+        "  reset_hz                  : Reset publish periods to defaults\n"
         "============================\n"
     );
 }
@@ -409,8 +411,9 @@ void demo_cli_process_command(char* line) {
         cmd_help();
     }
     else if (strcmp(cmd, "quit") == 0 || strcmp(cmd, "exit") == 0) {
-        demo_tcp_cli_print("Closing CLI connection...\n");
-        demo_cli_stop();
+        demo_tcp_cli_print("Closing CLI client connection...\n");
+        // Close only the current client connection; keep server running
+        demo_tcp_cli_disconnect_client();
         return;
     }
     else if (strcmp(cmd, "status") == 0) {

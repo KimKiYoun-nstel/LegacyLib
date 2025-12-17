@@ -16,337 +16,67 @@
 - **이름**: DemoApp (Cannon Driving Device Simulator)
 - **목적**: 포구동장치 시뮬레이터를 통한 DDS 메시지 송수신 시연
 - **플랫폼**: VxWorks DKM / Windows Console (멀티플랫폼)
-- **Phase**: 4.5 (실제 JSON 스키마 기반 전면 재작성 완료)
-- **실행 모드**: 단계별 수동 실행 (Agent 연결 → DDS 엔티티 생성 → 시나리오 시작)
+# DemoApp 기능 분석
 
-### 주요 특징
-- ✅ **7개 DDS 메시지** 송수신 (4 송신 + 3 수신)
-- ✅ **State Machine 기반** 동작 (5개 상태)
-- ✅ **실시간 시뮬레이션** (200Hz 피드백, 1Hz 상태)
-- ✅ **BIT 시나리오** (PBIT, CBIT, IBIT)
-- ✅ **Fault Injection** (테스트용)
-- ✅ **실제 XML 스키마** 100% 준수 (Phase 4.5)
-- ✅ **단계별 실행** (연결 → 엔티티 → 시나리오)
-- ✅ **Clean Start** (hello 이후 자동 clear entities)
+이 문서는 현재 코드베이스 기준으로 DemoApp의 구조와 동작을 정리한 최종 사양서입니다. 실제 구현은 `demo_app/src`의 C/C++ 소스와 `demo_app/include` 헤더들을 기준으로 합니다.
 
----
+핵심 요약
+----------
+- 플랫폼: VxWorks DKM, Windows 콘솔
+- 통신: Legacy Agent IPC (JSON/CBOR over RTP)
+- JSON 처리: `nlohmann::json` (`json.hpp`) 사용
+- 주요 메시지: 7개 (4 송신: PBIT/CBIT/IBIT/Signal, 3 수신: runBIT/commandDriving/VehicleSpeed)
+- 메시지 필드명 및 열거자 문자열은 RefDoc XML 스키마(`RefDoc/Nstel_PSM.xml`) 표준을 따릅니다.
 
-## 구현된 핵심 기능
+구조 및 위치(요약)
+-------------------
+- 메시지 관련 구현: `demo_app/src/demo_app_msg.cpp` (C++ 포팅, JSON 빌더/파서)
+- Enum 변환 및 포맷: `demo_app/src/demo_app_enums.c`, `demo_app/include/demo_app_enums.h`
+- 상태·타이머·시뮬레이션: `demo_app/src/demo_app_core.c`, `demo_app/src/demo_app_timer.c`
+- 필드 이름 중앙화: `demo_app/include/msg_fields.h`
 
-### 1. State Machine (상태 머신)
+주요 변경점(현재 구현 기준)
+---------------------------
+- JSON 파싱/생성은 안전한 `nlohmann::json` 사용으로 대체되어 문자열 파싱(`strstr`/`sscanf`)을 제거했습니다.
+- 내부 상태 수치 타입을 `double`로 통일하여 XML 스키마의 `T_Double`과 정합성을 확보했습니다.
+- 열거자 파싱/포맷의 불일치(예: `EMER_GENCY`)를 정리하고 스키마 열거자 문자열(`L_OperationModeType_EMERGENCY` 등)에 맞춰 포맷/파싱이 동작합니다.
+- 기존 C 구현 파일은 C++ 포팅으로 교체되었으며 빌드 시스템(Windows/VxWorks Makefile)에 `.cpp` 빌드 규칙을 추가했습니다.
 
-#### 상태 정의
-```c
-typedef enum {
-    DEMO_STATE_IDLE,         // 초기 상태 (대기)
-    DEMO_STATE_INIT,         // Agent 연결 및 DDS 엔티티 생성
-    DEMO_STATE_POWERON_BIT,  // PowerOn BIT 수행
-    DEMO_STATE_RUN,          // 정상 운용 (주기 메시지 송수신)
-    DEMO_STATE_IBIT_RUNNING  // IBIT 수행 중 (3초)
-} DemoState;
-```
+메시지 요약(간단)
+------------------
+- PBIT (Topic: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`)
+  - 12개 BIT 결과 필드, `A_BITRunning` boolean, `A_sourceID`/`A_timeOfDataGeneration` 포함
+  - 송신: 전원 기동 시 1회
 
-#### 상태 전이도
-```
-[IDLE] 
-  ↓ demoAppStart()
-[INIT] - Agent 연결, Topic 생성
-  ↓ 성공
-[POWERON_BIT] - PBIT 1회 송신
-  ↓ 완료
-[RUN] - 200Hz Signal, 1Hz CBIT 송신
-  ↓ runBIT 수신
-[IBIT_RUNNING] - 3초 대기 후 resultBIT 송신
-  ↓ 완료
-[RUN] - 정상 운용 복귀
-```
+- CBIT (Topic: `P_NSTEL__C_CannonDrivingDevice_PBIT`)
+  - PBIT 필드 12개 + 추가 컴포넌트 필드(파킹, 잠금 등)
+  - 주기: 1Hz
 
-**구현 위치**: [demo_app_core.c](src/demo_app_core.c) `demo_app_start()`
+- resultBIT / IBIT (Topic: `P_NSTEL__C_CannonDrivingDevice_IBIT`)
+  - `A_referenceNum` 포함, PBIT와 동일한 BIT 결과 필드
+  - 전송: IBIT 완료 시 (runBIT 요청으로 시작)
 
----
+- Actuator Signal (Topic: `P_NSTEL__C_CannonDrivingDevice_Signal`)
+  - 위치/속도/자이로(`A_roundGiro`, `A_upDownGiro`)는 `double`
+  - Enum 필드들은 스키마 열거자 문자열로 직렬화
+  - 주기: 200Hz
 
-### 2. DDS 메시지 (7개)
+- Receive topics: runBIT, commandDriving, VehicleSpeed — 모두 JSON payload로 수신, `nlohmann::json`로 파싱
 
-#### 2.1 송신 메시지 (DemoApp → AgentUI)
+운영/테스트 지침(간단)
+-----------------------
+- Windows 빌드: `mingw32-make -f demo_app/Makefile.windows` (MinGW 환경)
+- 실행 예 (Windows): `demo_app/build_win/demo_app.exe -p 23000 -h 127.0.0.1 -d 0`
+- 주요 검증 포인트:
+  - PBIT: 12개 컴포넌트 모두 정상값(열거자 `L_BITResultType_NORMAL`)
+  - CBIT: 1Hz로 전송
+  - Signal: 200Hz로 전송, `A_roundGiro`/`A_upDownGiro`가 `double` 값으로 들어오는지 확인
+  - runBIT 요청 시 동일 `A_referenceNum`로 resultBIT 반환
 
-##### ① PBIT (PowerOn BIT)
-- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
-- **Type**: `P_NSTEL::C_CannonDrivingDevice_PowerOnBIT`
-- **QoS**: `InitialStateProfile` (늦게 연결된 Subscriber도 마지막 1개 수신)
-- **주기**: 비주기 (PowerOnBit 상태에서 1회)
-- **필드**: 12개 BIT 컴포넌트
-  ```json
-  {
-    "A_sourceID": {"A_resourceId": 1, "A_instanceId": 1},
-    "A_timeOfDataGeneration": {"A_second": ..., "A_nanoseconds": ...},
-    "A_BITRunning": false,
-    "A_upDownMotor": true,      // 상하 모터 상태
-    "A_roundMotor": true,        // 회전 모터 상태
-    "A_upDownAmp": true,
-    "A_roundAmp": true,
-    "A_baseGiro": true,          // 베이스 Giro
-    "A_topForwardGiro": true,    // 상단 전방 Giro
-    "A_vehicleForwardGiro": true, // 차량 전방 Giro
-    "A_powerController": true,
-    "A_energyStorage": true,
-    "A_directPower": true,
-    "A_cableLoop": true
-  }
-  ```
-- **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_publish_pbit()`
+문의 및 확장
+----------------
+추가 문서(인터페이스 스펙, 필드명 문제 기록 등)는 이 저장소의 `demo_app/docs`에 위치하며, 메시지 필드명은 `demo_app/include/msg_fields.h`에 중앙화되어 있습니다.
 
-##### ② CBIT (Continuous BIT)
-- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PBIT`
-- **Type**: `P_NSTEL::C_CannonDrivingDevice_PBIT`
-- **QoS**: `LowFreqStatusProfile` (1Hz)
-- **주기**: 1Hz (1000ms마다)
-- **필드**: 15개 BIT 컴포넌트 (PBIT 12개 + 추가 3개)
-  - 추가 필드: `A_upDownPark`, `A_round_Park`, `A_mainCannon_Lock`, `A_commFault`
-- **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_publish_cbit()`
-
-##### ③ resultBIT (IBIT 결과)
-- **Topic**: `P_NSTEL__C_CannonDrivingDevice_IBIT`
-- **Type**: `P_NSTEL::C_CannonDrivingDevice_IBIT`
-- **QoS**: `NonPeriodicEventProfile`
-- **주기**: 비주기 (IBIT 완료 시)
-- **필드**: 12개 BIT 컴포넌트 + `A_referenceNum`
-  - `A_referenceNum`: runBIT 요청 시 받은 참조 번호 그대로 반환
-- **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_publish_result_bit()`
-
-##### ④ Actuator Signal (피드백)
-- **Topic**: `P_NSTEL__C_CannonDrivingDevice_Signal`
-- **Type**: `P_NSTEL::C_CannonDrivingDevice_Signal`
-- **QoS**: `HighFreqPeriodicProfile` (200Hz)
-- **주기**: 200Hz (5ms마다)
-- **필드**: 14개 (4 float + 8 enum + 2 common)
-  ```json
-  {
-    "A_sourceID": {...},
-    "A_timeOfDataGeneration": {...},
-    "A_azAngle": 0.0,                    // 방위각
-    "A_e1AngleVelocity": 0.0,            // E1 각속도
-    "A_roundGiro": 0.0,                  // 회전 Giro
-    "A_upDownGiro": 0.0,                 // 상하 Giro
-    "A_energyStorage": "L_ChangingStatusType_NORMAL",
-    "A_mainCannonFixStatus": "L_MainCannonFixStatusType_NORMAL",
-    "A_deckClearance": "L_DekClearanceType_OUTSIDE",
-    "A_autoArmPositionComplement": "L_ArmPositionType_NORMAL",
-    "A_manualArmPositionComple": "L_ArmPositionType_NORMAL",
-    "A_mainCannonRestoreComplement": "L_MainCannonReturnStatusType_RUNNING",
-    "A_armSafetyMainCannonLock": "L_ArmSafetyMainCannonLock_NORMAL",
-    "A_shutdown": "L_CannonDrivingDeviceShutdownType_UNKNOWN"
-  }
-  ```
-- **시뮬레이션**: 위치/속도 적분, Enum 상태 매핑
-- **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_publish_actuator_signal()`
-
-#### 2.2 수신 메시지 (AgentUI → DemoApp)
-
-##### ⑤ runBIT (IBIT 요청)
-- **Topic**: `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`
-- **Type**: `P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT`
-- **QoS**: `NonPeriodicEventProfile`
-- **주기**: 비주기 (사용자 명령)
-- **필드**: `A_referenceNum`, `A_type`
-  ```json
-  {
-    "A_referenceNum": 1234,
-    "A_type": "L_BITType_I_BIT"
-  }
-  ```
-- **동작**: 
-  - Run 상태에서 수신 시 → IBIT_RUNNING 전이
-  - 3초 대기 후 resultBIT 송신
-- **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_on_runbit()`
-
-##### ⑥ Actuator Control (제어 명령)
-- **Topic**: `P_NSTEL__C_CannonDrivingDevice_commandDriving`
-- **Type**: `P_NSTEL::C_CannonDrivingDevice_commandDriving`
-- **QoS**: `HighFreqPeriodicProfile` (200Hz)
-- **주기**: 200Hz
-- **필드**: 16개 (6 float + 8 enum + 2 common)
-  ```json
-  {
-    "A_drivingPosition": 0.0,           // 목표 방위각
-    "A_upDownPosition": 0.0,            // 목표 고각
-    "A_roundAngleVelocity": 0.0,        // 방위 각속도 명령
-    "A_upDownAngleVelocity": 0.0,       // 고각 각속도 명령
-    "A_cannonUpDownAngle": 0.0,
-    "A_topRelativeAngle": 0.0,
-    "A_operationMode": "L_OperationModeType_NORMAL",
-    "A_parm": "L_OnOffType_OFF",
-    "A_targetDesingation": "L_TargetAllotType_ETC",
-    ...
-  }
-  ```
-- **동작**: 
-  - 위치 제어 모드: `A_drivingPosition` → 목표값 추종
-  - 속도 제어 모드: `A_roundAngleVelocity` → 직접 속도 제어
-- **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_on_actuator_control()`
-
-##### ⑦ Vehicle Speed (차량 속도)
-- **Topic**: `P_NSTEL__C_VehicleSpeed`
-- **Type**: `P_NSTEL::C_VehicleSpeed`
-- **QoS**: `LowFreqVehicleProfile` (1Hz)
-- **주기**: 1Hz
-- **필드**: `A_speed`
-- **구현**: [demo_app_msg.c](src/demo_app_msg.c) `demo_msg_on_vehicle_speed()`
-
----
-
-### 3. 시뮬레이션 엔진
-
-#### 타이머 구조
-- **Base Tick**: 1ms
-- **구현**: 
-  - VxWorks: `taskSpawn()` + `taskDelay()`
-  - Windows: `_beginthreadex()` + `Sleep(1)`
-- **위치**: [demo_app_timer.c](src/demo_app_timer.c)
-
-#### 주기별 동작
-| 주기 | 동작 | 함수 |
-|------|------|------|
-| 1ms | Tick 카운터 증가, 시뮬레이션 업데이트 | `demo_timer_tick()` |
-| 5ms | Actuator Signal 송신 (200Hz) | `demo_msg_publish_actuator_signal()` |
-| 1000ms | CBIT 송신 (1Hz) | `demo_msg_publish_cbit()` |
-
-#### 시뮬레이션 로직 (1ms마다)
-```c
-void demo_timer_update_simulation(DemoAppContext* ctx) {
-    const float dt = 0.001f;  // 1ms
-    
-    // 방위각 제어
-    if (ctrl->roundAngleVelocity != 0.0f) {
-        // 속도 제어 모드
-        sig->e1AngleVelocity = ctrl->roundAngleVelocity;
-        sig->azAngle += sig->e1AngleVelocity * dt;
-    } else {
-        // 위치 제어 모드 (비례 제어)
-        float error = ctrl->drivingPosition - sig->azAngle;
-        sig->e1AngleVelocity = error * 1.0f;  // P gain = 1.0
-        sig->azAngle += sig->e1AngleVelocity * dt;
-    }
-    
-    // 자이로 값 업데이트
-    sig->roundGiro = sig->e1AngleVelocity;
-    sig->upDownGiro = ctrl->upDownAngleVelocity;
-    
-    // Enum 상태 매핑 (Fault 기반)
-    sig->energyStorage = pbit->energyStorage ? 
-        L_ChangingStatusType_DISCHARGE : L_ChangingStatusType_NORMAL;
-    sig->mainCannonFixStatus = pbit->roundMotor ? 
-        L_MainCannonFixStatusType_FIX : L_MainCannonFixStatusType_NORMAL;
-}
-```
-
-**위치**: [demo_app_timer.c](src/demo_app_timer.c) `demo_timer_update_simulation()`
-
----
-
-### 4. Fault Injection (테스트용)
-
-#### 지원 컴포넌트
-| 명령어 | 영향 받는 BIT 컴포넌트 |
-|--------|----------------------|
-| `round` / `azimuth` | roundMotor, roundAmp |
-| `updown` | upDownMotor, upDownAmp |
-| `sensor` / `Giro` | baseGiro, vehicleForwardGiro |
-| `power` | powerController, energyStorage, directPower |
-| `motor` | roundMotor, upDownMotor |
-| `all` (clear) | 모든 12개 컴포넌트 |
-
-#### 사용 예
-```c
-// VxWorks Shell
--> demoAppInjectFault("round")
-[DemoApp Core] Fault injected: Round Motor/Amp
-
--> demoAppClearFault("all")
-[DemoApp Core] All faults cleared
-```
-
-```powershell
-# Windows Console
-> build_win\demo_app.exe
-Press 'h' for commands, 'q' to quit
-f
-Inject fault (round/updown/sensor/power/motor): round
-[DemoApp Core] Fault injected: Round Motor/Amp
-
-c
-Clear fault (component or 'all'): all
-[DemoApp Core] All faults cleared
-```
-
-**구현**: [demo_app_core.c](src/demo_app_core.c) `demo_app_inject_fault()`, `demo_app_clear_fault()`
-
----
-
-### 5. Enum 타입 시스템 (Phase 4.5)
-
-#### 지원 Enum (14개 타입)
-1. `T_BITType` - P_BIT, C_BIT, I_BIT
-2. `T_OperationModeType` - NORMAL, DEGRADED, EMERGENCY
-3. `T_OnOffType` - ON, OFF
-4. `T_TargetAllotType` - AUTO, MANUAL, ETC
-5. `T_ChangingStatusType` - NORMAL, DISCHARGE, CHARGE
-6. `T_MainCannonFixStatusType` - NORMAL, FIX
-7. `T_DekClearanceType` - INSIDE, OUTSIDE, ETC
-8. `T_ArmPositionType` - NORMAL, ABNORMAL
-9. `T_MainCannonReturnStatusType` - STANDBY, RUNNING
-10. `T_ArmSafetyMainCannonLock` - NORMAL, ABNORMAL
-11. `T_CannonDrivingDeviceShutdownType` - NORMAL, UNKNOWN
-12. `T_BoolType` - TRUE, FALSE
-13. `T_CannonSafetyDeviceType` - 7개 값
-14. `T_AimType` - 6개 값
-
-#### 변환 함수
-- **파싱**: 문자열 → Enum
-  ```c
-  T_OperationModeType parse_operation_mode(const char* str);
-  // "L_OperationModeType_NORMAL" → L_OperationModeType_NORMAL
-  ```
-- **포맷팅**: Enum → 문자열
-  ```c
-  const char* format_operation_mode(T_OperationModeType type);
-  // L_OperationModeType_NORMAL → "L_OperationModeType_NORMAL"
-  ```
-
-**위치**: [demo_app_enums.h](include/demo_app_enums.h), [demo_app_enums.c](src/demo_app_enums.c)
-
----
-
-## State Machine
-
-### 상태별 동작 상세
-
-#### IDLE
-- **진입**: 프로그램 시작 시
-- **동작**: 대기
-- **종료**: `demoAppStart()` 호출 → INIT
-
-#### INIT
-- **진입**: `demoAppStart()` 호출
-- **동작**:
-  1. LegacyLib 초기화 (`legacy_agent_init()`)
-  2. Agent 연결 (`agent_ip:agent_port`)
-  3. Hello 메시지 송신
-  4. DDS Participant/Publisher/Subscriber 생성
-  5. 7개 Topic Writer/Reader 생성
-- **성공**: POWERON_BIT 전이
-- **실패**: 에러 로그 후 종료
-
-**코드**: [demo_app_core.c](src/demo_app_core.c#L150-L220)
-
-#### POWERON_BIT
-- **진입**: INIT 성공 후 자동
-- **동작**:
-  1. 내부 BIT 컴포넌트 초기화 (모두 true = 정상)
-  2. PBIT 메시지 1회 송신
-  3. `pbit_completed` 플래그 설정
-- **종료**: RUN 전이 (자동)
-
-**코드**: [demo_app_core.c](src/demo_app_core.c#L220-L250)
 
 #### RUN
 - **진입**: POWERON_BIT 완료 후
@@ -456,8 +186,8 @@ DemoApp 시작 → PBIT 송신 → 주기 메시지(CBIT, Signal) 확인
 - ✅ Actuator Signal 메시지 200Hz로 계속 수신
 
 #### 검증 포인트
-- PBIT: 12개 컴포넌트 모두 `true`
-- CBIT: 15개 컴포넌트 모두 `true`
+- PBIT: 12개 컴포넌트 모두 `L_BITResultType_NORMAL`
+- CBIT: 15개 컴포넌트 모두 `L_BITResultType_NORMAL`
 - Signal: `A_azAngle`, `A_e1AngleVelocity` 값이 0.0 (제어 명령 없음)
 
 ---
@@ -687,9 +417,9 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
   ```json
   {
     "A_BITRunning": false,
-    "A_upDownMotor": true,
-    "A_roundMotor": true,
-    ...  // 12개 모두 true
+    "A_upDownMotor": "L_BITResultType_NORMAL",
+    "A_roundMotor": "L_BITResultType_NORMAL",
+    ...  // 12개 모두 "L_BITResultType_NORMAL"
   }
   ```
 
@@ -743,8 +473,8 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 ```json
 {
   "A_referenceNum": 9999,  // 동일한 값 반환
-  "A_upDownMotor": true,
-  ...
+  "A_upDownMotor": "L_BITResultType_NORMAL",
+  ...  // BIT 결과는 스키마 열거자 문자열로 전달
 }
 ```
 
@@ -799,10 +529,10 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 **AgentUI CBIT 수신:**
 ```json
 {
-  "A_powerController": false,  // ← Fault 반영
-  "A_energyStorage": false,    // ← Fault 반영
-  "A_directPower": false,      // ← Fault 반영
-  "A_upDownMotor": true,
+  "A_powerController": "L_BITResultType_ABNORMAL",  // ← Fault 반영
+  "A_energyStorage": "L_BITResultType_ABNORMAL",    // ← Fault 반영
+  "A_directPower": "L_BITResultType_ABNORMAL",      // ← Fault 반영
+  "A_upDownMotor": "L_BITResultType_NORMAL",
   ...
 }
 ```
@@ -810,7 +540,7 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 **AgentUI Signal 수신:**
 ```json
 {
-  "A_energyStorage": "L_ChangingStatusType_NORMAL",  // false면 NORMAL
+  "A_energyStorage": "L_ChangingStatusType_ABNORMAL",
   ...
 }
 ```
@@ -824,9 +554,9 @@ AgentUI에서 Vehicle Speed 송신 → DemoApp 수신 확인
 **AgentUI CBIT 수신:**
 ```json
 {
-  "A_powerController": true,   // ← 정상 복구
-  "A_energyStorage": true,
-  "A_directPower": true,
+  "A_powerController": "L_BITResultType_NORMAL",   // ← 정상 복구
+  "A_energyStorage": "L_BITResultType_NORMAL",
+  "A_directPower": "L_BITResultType_NORMAL",
   ...
 }
 ```

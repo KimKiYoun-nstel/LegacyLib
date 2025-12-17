@@ -338,9 +338,9 @@ void demoAppStatus(void) {
     printf("  CBIT Active: %s\n", g_demo_ctx->bit_state.cbit_active ? "Yes" : "No");
     printf("  IBIT Running: %s\n", g_demo_ctx->bit_state.ibit_running ? "Yes" : "No");
     printf("\nComponent Status:\n");
-    printf("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor ? "OK" : "FAULT");
-    printf("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor ? "OK" : "FAULT");
-    printf("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro ? "OK" : "FAULT");
-    printf("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController ? "OK" : "FAULT");
+    printf("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
+    printf("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
+    printf("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro == L_BITResultType_NORMAL ? "OK" : "FAULT");
+    printf("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController == L_BITResultType_NORMAL ? "OK" : "FAULT");
     printf("======================\n");
 }

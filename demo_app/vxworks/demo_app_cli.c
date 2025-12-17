@@ -198,10 +198,10 @@ static void process_command(char* line) {
         demo_cli_print("  CBIT Active: %s\n", g_demo_ctx->bit_state.cbit_active ? "Yes" : "No");
         demo_cli_print("  IBIT Running: %s\n", g_demo_ctx->bit_state.ibit_running ? "Yes" : "No");
         demo_cli_print("\nComponent Status:\n");
-        demo_cli_print("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor ? "OK" : "FAULT");
-        demo_cli_print("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor ? "OK" : "FAULT");
-        demo_cli_print("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro ? "OK" : "FAULT");
-        demo_cli_print("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController ? "OK" : "FAULT");
+        demo_cli_print("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
+        demo_cli_print("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
+        demo_cli_print("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro == L_BITResultType_NORMAL ? "OK" : "FAULT");
+        demo_cli_print("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController == L_BITResultType_NORMAL ? "OK" : "FAULT");
         demo_cli_print("======================\n");
     }
     else if (strcmp(cmd, "demo_init") == 0 || strcmp(cmd, "demo_start") == 0) {

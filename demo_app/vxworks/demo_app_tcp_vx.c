@@ -32,7 +32,7 @@ static int g_cli_port = 23000;
 extern void demo_cli_process_command(char* line);
 
 void demo_tcp_cli_print(const char* fmt, ...) {
-    char buffer[1024];
+    char buffer[4096];
     va_list args;
     va_start(args, fmt);
     vsnprintf(buffer, sizeof(buffer), fmt, args);
@@ -64,6 +64,16 @@ void demo_tcp_cli_print(const char* fmt, ...) {
         printf("%s", buffer);
     }
     
+    if (g_cli_mutex) semGive(g_cli_mutex);
+}
+
+/* Disconnect current CLI client only (close client socket, keep server running) */
+void demo_tcp_cli_disconnect_client(void) {
+    if (g_cli_mutex) semTake(g_cli_mutex, WAIT_FOREVER);
+    if (g_cli_client_sock >= 0) {
+        close(g_cli_client_sock);
+        g_cli_client_sock = -1;
+    }
     if (g_cli_mutex) semGive(g_cli_mutex);
 }
 

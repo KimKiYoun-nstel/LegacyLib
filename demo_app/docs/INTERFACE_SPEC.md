@@ -1,78 +1,82 @@
 # DemoApp ↔ AgentUI 인터페이스 규격서
 
 ## 📋 목차
-1. [개요](#개요)
-2. [DemoApp → AgentUI 송신 메시지](#demoapp--agentui-송신-메시지)
-3. [AgentUI → DemoApp 수신 메시지](#agentui--demoapp-수신-메시지)
-4. [시뮬레이션 동작 로직](#시뮬레이션-동작-로직)
-5. [AgentUI 구현 가이드](#agentui-구현-가이드)
-6. [테스트 시나리오](#테스트-시나리오)
+# Interface Specification
 
----
+This document describes the runtime JSON interfaces between DemoApp and the Agent. Field names and enum strings follow the XML schema in `RefDoc/Nstel_PSM.xml`.
 
-## 개요
+Topics and Types
+-----------------
+- `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT` : `P_NSTEL::C_CannonDrivingDevice_PowerOnBIT`
+- `P_NSTEL__C_CannonDrivingDevice_PBIT` : `P_NSTEL::C_CannonDrivingDevice_PBIT`
+- `P_NSTEL__C_CannonDrivingDevice_IBIT` : `P_NSTEL::C_CannonDrivingDevice_IBIT`
+- `P_NSTEL__C_CannonDrivingDevice_Signal` : `P_NSTEL::C_CannonDrivingDevice_Signal`
+- `P_NSTEL__C_CannonDrivingDevice_commandDriving` : `P_NSTEL::C_CannonDrivingDevice_commandDriving`
+- `P_NSTEL__C_VehicleSpeed` : `P_NSTEL::C_VehicleSpeed`
+- `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT` : `P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT`
 
-### 문서 목적
-본 문서는 **DemoApp(포구동장치 시뮬레이터)**와 **AgentUI(운용자 인터페이스)** 간의 데이터 송수신 규격을 정의합니다. 문서의 필드명과 Topic/Type은 RefDoc XML 스키마를 기준으로 정확한 식별자를 사용합니다.
+JSON Payload Examples
+----------------------
+Below payloads are canonical examples — producers and consumers MUST use the exact field names shown. Numeric fields declared as `T_Double` in the XML are `double` in code.
 
-### 명명 규칙
-- Topic: `module__struct` (예: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`)
-- Type: `module::struct` (예: `P_NSTEL::C_CannonDrivingDevice_PowerOnBIT`)
+PBIT (PowerOn BIT) — example
 
----
-
-## DemoApp → AgentUI 송신 메시지
-
-### 1. PBIT (PowerOn BIT)
-
-#### Topic 정보
-- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PowerOnBIT`
-- **Type**: `P_NSTEL::C_CannonDrivingDevice_PowerOnBIT`
-- **QoS**: `InitialStateProfile` (TRANSIENT_LOCAL)
-- **주기**: 비주기 (PowerOn 상태에서 1회 송신)
-
-#### 메시지 구조 (예시)
-```json
 {
-  "A_sourceID": { /* identifier */ },
-  "A_timeOfDataGeneration": "...",
-  "A_cannonDrivingDevice_sourceID": { /* identifier */ },
-  "A_BITRunning": false,
-  "A_upDownMotor": "L_BITResultType_NORMAL",
-  "A_roundMotor": "L_BITResultType_NORMAL",
-  "A_upDownAmp": "L_BITResultType_NORMAL",
-  "A_roundAmp": "L_BITResultType_NORMAL",
-  "A_baseGiro": "L_BITResultType_NORMAL",
-  "A_topForwardGiro": "L_BITResultType_NORMAL",
-  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
-  "A_powerController": "L_BITResultType_NORMAL",
-  "A_energyStorage": "L_BITResultType_NORMAL",
-  "A_directPower": "L_BITResultType_NORMAL",
-  "A_cableLoop": "L_BITResultType_NORMAL"
+  "A_sourceID": { "A_systemID": "DEMO", "A_unitID": 1 },
+  "A_timeOfDataGeneration": { "A_seconds": 123456789 },
+  "A_BITResults": {
+    "roundMotor": "L_BITResultType_NORMAL",
+    "roundAmp": "L_BITResultType_NORMAL",
+    "upDownMotor": "L_BITResultType_NORMAL",
+    "upDownAmp": "L_BITResultType_NORMAL",
+    "powerController": "L_BITResultType_NORMAL",
+    "energyStorage": "L_BITResultType_NORMAL",
+    "directPower": "L_BITResultType_NORMAL",
+    "vehicleForwardGiro": "L_BITResultType_NORMAL",
+    "baseGiro": "L_BITResultType_NORMAL",
+    "commFault": "L_BITResultType_NORMAL",
+    "mainCannonLock": "L_BITResultType_NORMAL",
+    "roundEncoder": "L_BITResultType_NORMAL"
+  }
 }
-```
 
-#### 필드 요약
-- 모든 BIT 결과 필드는 스키마의 `T_BITResultType` 열거형 값을 사용합니다.
-- 자이로 관련 필드명은 `Giro`로 통일: `A_baseGiro`, `A_topForwardGiro`, `A_vehicleForwardGiro`.
+CBIT (Continuous BIT) — example (partial)
 
----
-
-### 2. CBIT (Continuous BIT)
-
-#### Topic 정보
-- **Topic**: `P_NSTEL__C_CannonDrivingDevice_PBIT`
-- **Type**: `P_NSTEL::C_CannonDrivingDevice_PBIT`
-- **QoS**: `LowFreqStatusProfile` (1Hz)
-- **주기**: 1초 (1000ms)
-
-#### 메시지 구조 (예시)
-```json
 {
-  "A_sourceID": { /* identifier */ },
-  "A_timeOfDataGeneration": "...",
-  "A_cannonDrivingDevice_sourceID": { /* identifier */ },
-  "A_upDownMotor": "L_BITResultType_NORMAL",
+  "A_sourceID": { "A_systemID": "DEMO", "A_unitID": 1 },
+  "A_timeOfDataGeneration": { "A_seconds": 123456789 },
+  "A_upDownPark": "L_DekClearanceType_INSIDE",
+  "A_round_Park": "L_DekClearanceType_OUTSIDE",
+  "A_commFault": false
+}
+
+Actuator Signal — example (partial)
+
+{
+  "A_roundGiro": 0.123,                 // double
+  "A_upDownGiro": -0.05,               // double
+  "A_roundVelocity": 0.0,              // double
+  "A_upDownVelocity": 0.0,             // double
+  "A_roundMotorStatus": "L_ArmPositionType_NORMAL"
+}
+
+runBIT (incoming) — example
+
+{
+  "A_referenceNum": 42,
+  "A_type": "L_BITType_PBIT"
+}
+
+Field Name Source
+------------------
+All field names and enum string values are defined centrally in `demo_app/include/msg_fields.h` and `demo_app/include/demo_app_enums.h`.
+
+Notes
+-----
+- Implementation uses `nlohmann::json` (`json.hpp`) for parsing/serializing JSON.
+- Producers must serialize enum values using schema-aligned strings (e.g., `L_OperationModeType_EMERGENCY`).
+- Numeric precision: `T_Double` → `double` in code; `T_Float` → `float` only where schema specifies.
+
   "A_roundMotor": "L_BITResultType_NORMAL",
   "A_upDownAmp": "L_BITResultType_NORMAL",
   "A_roundAmp": "L_BITResultType_NORMAL",
@@ -289,8 +293,8 @@ PBIT: 12/12 정상 ✓
 - **목적**: 시스템 초기화 시 12개 서브시스템의 상태를 운용자에게 알림
 - **시점**: DemoApp 시작 직후 1회 (POWERON_BIT 상태)
 - **기대 동작**: 
-  - 정상: 모든 컴포넌트 `true` → 녹색 표시
-  - 고장: 일부 컴포넌트 `false` → 빨간색 표시 + 경고음
+  - 정상: 모든 컴포넌트 `"L_BITResultType_NORMAL"` → 녹색 표시
+  - 고장: 일부 컴포넌트 `"L_BITResultType_ABNORMAL"` → 빨간색 표시 + 경고음
 
 ---
 
@@ -308,20 +312,20 @@ PBIT: 12/12 정상 ✓
   "A_sourceID": {...},
   "A_timeOfDataGeneration": {...},
   "A_BITRunning": false,
-  "A_upDownMotor": true,
-  "A_roundMotor": true,
-  "A_upDownAmp": true,
-  "A_roundAmp": true,
-  "A_baseGiro": true,
-  "A_topForwardGiro": true,
-  "A_vehicleForwardGiro": true,
-  "A_powerController": true,
-  "A_energyStorage": true,
-  "A_directPower": true,
-  "A_cableLoop": true,
-  "A_upDownPark": true,
-  "A_round_Park": true,
-  "A_mainCannon_Lock": true,
+  "A_upDownMotor": "L_BITResultType_NORMAL",
+  "A_roundMotor": "L_BITResultType_NORMAL",
+  "A_upDownAmp": "L_BITResultType_NORMAL",
+  "A_roundAmp": "L_BITResultType_NORMAL",
+  "A_baseGiro": "L_BITResultType_NORMAL",
+  "A_topForwardGiro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_powerController": "L_BITResultType_NORMAL",
+  "A_energyStorage": "L_BITResultType_NORMAL",
+  "A_directPower": "L_BITResultType_NORMAL",
+  "A_cableLoop": "L_BITResultType_NORMAL",
+  "A_upDownPark": "L_BITResultType_NORMAL",
+  "A_round_Park": "L_BITResultType_NORMAL",
+  "A_mainCannon_Lock": "L_BITResultType_NORMAL",
   "A_commFault": false
 }
 ```
@@ -332,9 +336,9 @@ PBIT: 12/12 정상 ✓
 
 | 필드 | 타입 | 설명 | 정상값 | 고장값 |
 |------|------|------|--------|--------|
-| `A_upDownPark` | boolean | 상하 파킹 상태 | `true` | `false` |
-| `A_round_Park` | boolean | 회전 파킹 상태 | `true` | `false` |
-| `A_mainCannon_Lock` | boolean | 주포 잠금 상태 | `true` | `false` |
+| `A_upDownPark` | T_BITResultType | 상하 파킹 상태 | `L_BITResultType_NORMAL` | `L_BITResultType_ABNORMAL` |
+| `A_round_Park` | T_BITResultType | 회전 파킹 상태 | `L_BITResultType_NORMAL` | `L_BITResultType_ABNORMAL` |
+| `A_mainCannon_Lock` | T_BITResultType | 주포 잠금 상태 | `L_BITResultType_NORMAL` | `L_BITResultType_ABNORMAL` |
 | `A_commFault` | boolean | 통신 고장 | `false` | `true` (반대) |
 
 **주의**: `A_commFault`는 반대 의미 (true = 고장, false = 정상)
@@ -966,7 +970,7 @@ Fault 주입 (power):
   → signal.energyStorage = "L_ChangingStatusType_NORMAL"
 ```
 
-**주의**: BIT 상태가 `true`일 때 오히려 특수 상태 (`DISCHARGE`, `FIX`)로 매핑됨
+**주의**: 코드에서 사용되는 매핑은 다음과 같이 구현되어 있습니다 — 내부 PBIT 값이 `L_BITResultType_NORMAL`(정상)일 때 일부 신호(enum)로는 특수 상태(`L_ChangingStatusType_DISCHARGE` 또는 `L_MainCannonFixStatusType_FIX`)로 매핑됩니다. 이 동작은 현재 구현 규약이며, 직관과 다르므로 사양 담당자에게 의도 확인을 권장합니다.
 
 ---
 
@@ -1181,7 +1185,7 @@ function getCurrentTimestamp() {
 #### 절차
 1. DemoApp 시작
 2. AgentUI에서 PBIT 수신 대기 (5초 이내)
-3. PBIT 검증: 12개 컴포넌트 모두 `true`
+3. PBIT 검증: 12개 컴포넌트 모두 "L_BITResultType_NORMAL"
 4. CBIT 수신 시작 (1Hz)
 
 #### 검증

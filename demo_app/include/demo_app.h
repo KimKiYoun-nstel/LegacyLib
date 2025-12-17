@@ -284,29 +284,30 @@ typedef struct {
 } VehicleSpeedState;
 
 // BIT Component State (12 components from XML schema)
+// Internal representation now uses T_BITResultType to match schema semantics
 typedef struct {
-    bool upDownMotor;
-    bool roundMotor;
-    bool upDownAmp;
-    bool roundAmp;
-    bool baseGiro;
-    bool topForwardGiro;         // A_topForwardGiro
-    bool vehicleForwardGiro;     // A_vehicleForwardGiro
-    bool powerController;
-    bool energyStorage;
-    bool directPower;
-    bool cableLoop;
-    bool bitRunning;             // PBIT/resultBIT only
+    T_BITResultType upDownMotor;
+    T_BITResultType roundMotor;
+    T_BITResultType upDownAmp;
+    T_BITResultType roundAmp;
+    T_BITResultType baseGiro;
+    T_BITResultType topForwardGiro;         // A_topForwardGiro
+    T_BITResultType vehicleForwardGiro;     // A_vehicleForwardGiro
+    T_BITResultType powerController;
+    T_BITResultType energyStorage;
+    T_BITResultType directPower;
+    T_BITResultType cableLoop;
+    T_BITResultType bitRunning;             // PBIT/resultBIT only
 } BITComponentState;
 
 // CBIT has 3 additional components
 typedef struct {
     BITComponentState base;      // 12 base components
-    bool upDownPark;
-    bool round_Park;
-    bool mainCannon_Lock;
-    bool commFault;
-    bool controllerNetwork; /* Added: corresponds to A_controllerNetwork (T_BITResultType) */
+    T_BITResultType upDownPark;
+    T_BITResultType round_Park;
+    T_BITResultType mainCannon_Lock;
+    T_BITResultType commFault;
+    T_BITResultType controllerNetwork; /* corresponds to A_controllerNetwork (T_BITResultType) */
 } CBITComponentState;
 
 // BIT (Built-In Test) State

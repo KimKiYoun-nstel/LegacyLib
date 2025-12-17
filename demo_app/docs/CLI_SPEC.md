@@ -1,3 +1,59 @@
+# DemoApp CLI 명세
+
+간단한 Windows/VxWorks 콘솔용 CLI 명세입니다. 키 입력 또는 TCP CLI를 통해 동작합니다.
+
+명령 요약
+- `h` or `help`: 도움말 출력
+- `s` or `status`: 현재 상태 출력 (State, Tick, 통계, BIT 상태)
+- `i` or `run_ibit <ref>`: IBIT 강제 시작 (옵션으로 참조번호 지정)
+- `f` or `fault_inject <component>`: 결함 주입 (예: `round`, `updown`, `power`, `motor`)
+- `c` or `fault_clear <component|all>`: 결함 해제 (예: `all`)
+- `set_hz <topic> <hz>`: 주기 발행 주파수 설정 (`signal`, `cbit`, `pbit`)
+- `reset_hz`: 발행 주파수 기본값으로 리셋
+- `t` or `test_write <msg>`: 테스트 메시지 발행 (`pbit`, `cbit`, `signal`, `resultbit`)
+- `q` or `quit`: 현재 클라이언트 연결(또는 윈도우에서는 프로그램 종료)
+
+참고
+- `set_hz`로 `hz=0`을 지정하면 해당 주기의 주기적 발행을 비활성화합니다.
+- `quit`은 TCP CLI 환경에서는 클라이언트 소켓만 닫고 서버는 계속 실행합니다; 로컬 콘솔에서는 프로그램을 종료합니다.
+
+예
+```
+> s
+State: Run
+Tick Count: 123456
+Signal Pub: 24691
+CBIT Pub: 123
+Component Status: A_upDownMotor = L_BITResultType_NORMAL
+```
+
+파일: `demo_app/windows/demo_app_tcp_win.c`, `demo_app/vxworks/demo_app_cli.c`
+DemoApp CLI Reference
+=====================
+
+Usage
+-----
+- `demo_app.exe -p <port> -h <host> -d <domain>`
+  - `-p`, `--port` : Agent IPC port (default: 23000)
+  - `-h`, `--host` : Agent host (default: 127.0.0.1)
+  - `-d`, `--domain` : DDS Domain ID (default: 0)
+
+Interactive Console Commands (Windows / VxWorks helper)
+------------------------------------------------------
+- `s` : Show current status (state, counters, BIT component states)
+- `i` : Trigger IBIT manually (prompts for reference number)
+- `f` : Inject fault (prompts for component name: `round`, `updown`, `power`, `sensor`, `motor`, `all`)
+- `c` : Clear fault (prompts for component or `all`)
+- `t` : Send test messages (PBIT/CBIT/Signal/ResultBIT options)
+- `h` : Print this help
+- `q` : Quit application
+
+Behavior notes
+--------------
+- The application uses the Agent IPC (CBOR-over-RTP) to publish/subscribe JSON payloads.
+- JSON serialization/parsing uses `nlohmann::json` (`json.hpp`) in current implementation.
+- Commands are synchronous at the interactive prompt; long-running operations (IBIT) are executed in background timers.
+
 # DemoApp TCP CLI 사용 가이드
 
 ## 개요

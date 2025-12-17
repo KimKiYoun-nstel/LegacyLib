@@ -42,26 +42,26 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->domain_id = 0;  // Default domain
     ctx->agent = NULL;
     
-    // Initialize all BIT components to true (healthy)
-    ctx->bit_state.pbit_components.upDownMotor = true;
-    ctx->bit_state.pbit_components.roundMotor = true;
-    ctx->bit_state.pbit_components.upDownAmp = true;
-    ctx->bit_state.pbit_components.roundAmp = true;
-    ctx->bit_state.pbit_components.baseGiro = true;
-    ctx->bit_state.pbit_components.topForwardGiro = true;
-    ctx->bit_state.pbit_components.vehicleForwardGiro = true;
-    ctx->bit_state.pbit_components.powerController = true;
-    ctx->bit_state.pbit_components.energyStorage = true;
-    ctx->bit_state.pbit_components.directPower = true;
-    ctx->bit_state.pbit_components.cableLoop = true;
-    ctx->bit_state.pbit_components.bitRunning = true;
+    // Initialize all BIT components to NORMAL (healthy)
+    ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.roundMotor = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.roundAmp = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.baseGiro = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.topForwardGiro = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.powerController = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.energyStorage = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.directPower = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.cableLoop = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.bitRunning = L_BITResultType_NORMAL;
     
     // Initialize CBIT components (copy PBIT + 4 additional)
     ctx->bit_state.cbit_components.base = ctx->bit_state.pbit_components;
-    ctx->bit_state.cbit_components.upDownPark = true;
-    ctx->bit_state.cbit_components.round_Park = true;
-    ctx->bit_state.cbit_components.mainCannon_Lock = true;
-    ctx->bit_state.cbit_components.commFault = true;
+    ctx->bit_state.cbit_components.upDownPark = L_BITResultType_NORMAL;
+    ctx->bit_state.cbit_components.round_Park = L_BITResultType_NORMAL;
+    ctx->bit_state.cbit_components.mainCannon_Lock = L_BITResultType_NORMAL;
+    ctx->bit_state.cbit_components.commFault = L_BITResultType_NORMAL;
     
     // Initialize control state with default enum values
     ctx->control_state.operationMode = L_OperationModeType_NORMAL;
@@ -501,32 +501,45 @@ int demo_app_trigger_ibit(DemoAppContext* ctx, uint32_t reference_num, int type)
 
 void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
     if (!ctx || !component) return;
+    /* NOTE:
+     * The PBIT component flags in `ctx->bit_state.pbit_components` are boolean
+     * indicators used internally by the demo app. The JSON messages require
+     * an enumerator from the schema `P_NSTEL::T_BITResultType` which has
+     * values `L_BITResultType_NORMAL` and `L_BITResultType_ABNORMAL`.
+     *
+     * Current convention in this codebase:
+     *   - boolean true  -> component OK  -> serialized as "L_BITResultType_NORMAL"
+     *   - boolean false -> component FAIL -> serialized as "L_BITResultType_ABNORMAL"
+     *
+    * This mapping is performed by `format_bit_result(T_BITResultType ok)` in
+     * `demo_app_enums.c`.
+     */
     
     // Map legacy fault names to new BIT components
     if (strcmp(component, "azimuth") == 0 || strcmp(component, "round") == 0) {
-        ctx->bit_state.pbit_components.roundMotor = false;
-        ctx->bit_state.pbit_components.roundAmp = false;
+        ctx->bit_state.pbit_components.roundMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.pbit_components.roundAmp = L_BITResultType_ABNORMAL;
         printf("[DemoApp Core] Fault injected: Round Motor/Amp\n");
     }
     else if (strcmp(component, "updown") == 0) {
-        ctx->bit_state.pbit_components.upDownMotor = false;
-        ctx->bit_state.pbit_components.upDownAmp = false;
+        ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_ABNORMAL;
         printf("[DemoApp Core] Fault injected: UpDown Motor/Amp\n");
     }
     else if (strcmp(component, "sensor") == 0 || strcmp(component, "Giro") == 0) {
-        ctx->bit_state.pbit_components.baseGiro = false;
-        ctx->bit_state.pbit_components.vehicleForwardGiro = false;
+        ctx->bit_state.pbit_components.baseGiro = L_BITResultType_ABNORMAL;
+        ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_ABNORMAL;
         printf("[DemoApp Core] Fault injected: Base/Vehicle Giro\n");
     }
     else if (strcmp(component, "power") == 0) {
-        ctx->bit_state.pbit_components.powerController = false;
-        ctx->bit_state.pbit_components.energyStorage = false;
-        ctx->bit_state.pbit_components.directPower = false;
+        ctx->bit_state.pbit_components.powerController = L_BITResultType_ABNORMAL;
+        ctx->bit_state.pbit_components.energyStorage = L_BITResultType_ABNORMAL;
+        ctx->bit_state.pbit_components.directPower = L_BITResultType_ABNORMAL;
         printf("[DemoApp Core] Fault injected: Power/Energy\n");
     }
     else if (strcmp(component, "motor") == 0) {
-        ctx->bit_state.pbit_components.roundMotor = false;
-        ctx->bit_state.pbit_components.upDownMotor = false;
+        ctx->bit_state.pbit_components.roundMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_ABNORMAL;
         printf("[DemoApp Core] Fault injected: All Motors\n");
     }
     else {
@@ -537,42 +550,43 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
 
 void demo_app_clear_fault(DemoAppContext* ctx, const char* component) {
     if (!ctx || !component) return;
+    /* See note above: setting flags to 'true' means NORMAL in outgoing JSON. */
     
     if (strcmp(component, "azimuth") == 0 || strcmp(component, "round") == 0) {
-        ctx->bit_state.pbit_components.roundMotor = true;
-        ctx->bit_state.pbit_components.roundAmp = true;
+        ctx->bit_state.pbit_components.roundMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.roundAmp = L_BITResultType_NORMAL;
         printf("[DemoApp Core] Fault cleared: Round Motor/Amp\n");
     }
     else if (strcmp(component, "updown") == 0) {
-        ctx->bit_state.pbit_components.upDownMotor = true;
-        ctx->bit_state.pbit_components.upDownAmp = true;
+        ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_NORMAL;
         printf("[DemoApp Core] Fault cleared: UpDown Motor/Amp\n");
     }
     else if (strcmp(component, "sensor") == 0 || strcmp(component, "Giro") == 0) {
-        ctx->bit_state.pbit_components.baseGiro = true;
-        ctx->bit_state.pbit_components.vehicleForwardGiro = true;
+        ctx->bit_state.pbit_components.baseGiro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_NORMAL;
         printf("[DemoApp Core] Fault cleared: Base/Vehicle Giro\n");
     }
     else if (strcmp(component, "power") == 0) {
-        ctx->bit_state.pbit_components.powerController = true;
-        ctx->bit_state.pbit_components.energyStorage = true;
-        ctx->bit_state.pbit_components.directPower = true;
+        ctx->bit_state.pbit_components.powerController = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.energyStorage = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.directPower = L_BITResultType_NORMAL;
         printf("[DemoApp Core] Fault cleared: Power/Energy\n");
     }
     else if (strcmp(component, "all") == 0) {
         // Clear all PBIT components (12 fields)
-        ctx->bit_state.pbit_components.upDownMotor = true;
-        ctx->bit_state.pbit_components.roundMotor = true;
-        ctx->bit_state.pbit_components.upDownAmp = true;
-        ctx->bit_state.pbit_components.roundAmp = true;
-        ctx->bit_state.pbit_components.baseGiro = true;
-        ctx->bit_state.pbit_components.topForwardGiro = true;
-        ctx->bit_state.pbit_components.vehicleForwardGiro = true;
-        ctx->bit_state.pbit_components.powerController = true;
-        ctx->bit_state.pbit_components.energyStorage = true;
-        ctx->bit_state.pbit_components.directPower = true;
-        ctx->bit_state.pbit_components.cableLoop = true;
-        ctx->bit_state.pbit_components.bitRunning = true;
+        ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.roundMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.roundAmp = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.baseGiro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.topForwardGiro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.powerController = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.energyStorage = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.directPower = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.cableLoop = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.bitRunning = L_BITResultType_NORMAL;
         printf("[DemoApp Core] All faults cleared\n");
     }
     else {

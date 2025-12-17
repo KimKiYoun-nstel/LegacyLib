@@ -31,6 +31,11 @@ int demo_tcp_cli_start(int port);
 void demo_tcp_cli_stop(void);
 
 /**
+ * Disconnect current CLI client (close client socket only, keep server running)
+ */
+void demo_tcp_cli_disconnect_client(void);
+
+/**
  * Check if TCP CLI server is running
  * 
  * @return 1 if running, 0 if not
