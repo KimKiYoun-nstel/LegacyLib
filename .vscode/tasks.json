@@ -12,7 +12,7 @@
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
     },
     {
       "label": "2) VxWorks demoApp (clean+build)",
@@ -25,7 +25,7 @@
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
     },
     {
       "label": "3) Windows demoApp (clean+build, lib 포함)",
@@ -38,7 +38,7 @@
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
     }
   ]
 }
