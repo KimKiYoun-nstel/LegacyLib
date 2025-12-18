@@ -390,17 +390,17 @@ PBIT: 12/12 정상 ✓
   "A_timeOfDataGeneration": {...},
   "A_referenceNum": 1234,
   "A_BITRunning": false,
-  "A_upDownMotor": true,
-  "A_roundMotor": true,
-  "A_upDownAmp": true,
-  "A_roundAmp": true,
-  "A_baseGiro": true,
-  "A_topForwardGiro": true,
-  "A_vehicleForwardGiro": true,
-  "A_powerController": true,
-  "A_energyStorage": true,
-  "A_directPower": true,
-  "A_cableLoop": true
+  "A_upDownMotor": "L_BITResultType_NORMAL",
+  "A_roundMotor": "L_BITResultType_NORMAL",
+  "A_upDownAmp": "L_BITResultType_NORMAL",
+  "A_roundAmp": "L_BITResultType_NORMAL",
+  "A_baseGiro": "L_BITResultType_NORMAL",
+  "A_topForwardGiro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_powerController": "L_BITResultType_NORMAL",
+  "A_energyStorage": "L_BITResultType_NORMAL",
+  "A_directPower": "L_BITResultType_NORMAL",
+  "A_cableLoop": "L_BITResultType_NORMAL"
 }
 ```
 

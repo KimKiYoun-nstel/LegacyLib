@@ -287,15 +287,15 @@ Fault 주입 → BIT 메시지 반영 확인 → Fault 해제
 [DemoApp Core] Fault injected: Round Motor/Amp
 
 # 2. AgentUI에서 CBIT 확인
-# "A_roundMotor": false
-# "A_roundAmp": false
+# "A_roundMotor": "L_BITResultType_ABNORMAL"
+# "A_roundAmp": "L_BITResultType_ABNORMAL"
 
 # 3. 모든 Fault 해제
 -> demoAppClearFault("all")
 [DemoApp Core] All faults cleared
 
 # 4. AgentUI에서 CBIT 확인
-# 모든 컴포넌트 true
+# 모든 컴포넌트 "L_BITResultType_NORMAL"
 ```
 
 #### 절차 (Windows)
