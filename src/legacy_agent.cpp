@@ -6,6 +6,20 @@ struct LegacyAgentHandleImpl {
     IpcJsonClient client;
 };
 
+// Global log callback storage
+static LegacyLogCb g_global_log_cb = nullptr;
+static void* g_global_log_user = nullptr;
+
+void legacy_agent_set_log_callback(LegacyLogCb cb, void* user) {
+    g_global_log_cb = cb;
+    g_global_log_user = user;
+}
+
+void legacy_agent_get_log_callback(LegacyLogCb* out_cb, void** out_user) {
+    if (out_cb) *out_cb = g_global_log_cb;
+    if (out_user) *out_user = g_global_log_user;
+}
+
 extern "C" {
 
 LegacyStatus legacy_agent_init(const LegacyConfig* cfg, LEGACY_HANDLE* outHandle) {

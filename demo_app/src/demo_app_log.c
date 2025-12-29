@@ -137,23 +137,22 @@ void demo_log(LogDirection dir, const char* fmt, ...) {
     
     snprintf(prefixed, sizeof(prefixed), "%s%s", prefix, buffer);
     
+    // Copy needed state under lock, then do IO without holding the log mutex
     log_lock();
-    
     LogOutputMode mode = g_log_mode;
     int tcp_sock = g_tcp_log_client;
-    
-    // Output to console
+    log_unlock();
+
+    // Output to console (do not hold log mutex while performing IO)
     if (mode == LOG_MODE_CONSOLE || mode == LOG_MODE_BOTH) {
         printf("%s", prefixed);
         fflush(stdout);
     }
-    
-    // Output to TCP log client
+
+    // Output to TCP log client (pass the copied socket)
     if ((mode == LOG_MODE_REDIRECT || mode == LOG_MODE_BOTH) && tcp_sock >= 0) {
-        demo_log_send_to_tcp(prefixed);
+        demo_log_send_to_tcp(prefixed, tcp_sock);
     }
-    
-    log_unlock();
 }
 
 void demo_log_set_mode(LogOutputMode mode) {
@@ -183,26 +182,22 @@ const char* demo_log_mode_name(LogOutputMode mode) {
  * TCP Log Redirection
  * ======================================================================== */
 
-void demo_log_send_to_tcp(const char* message) {
-    int sock;
-    
-    log_lock();
-    sock = g_tcp_log_client;
-    log_unlock();
-    
+// Note: This function does NOT take the log mutex. Caller must provide a
+// valid `sock` value (copied under lock) to avoid holding the log mutex
+// during network IO which can block high-frequency paths.
+void demo_log_send_to_tcp(const char* message, int sock) {
     if (sock < 0) return;
-    
+
     // Send line by line with \r\n for proper terminal display
     const char* line_start = message;
     const char* line_end;
-    
+
     while (*line_start) {
         line_end = strchr(line_start, '\n');
-        
+
         if (line_end) {
-            // Send line content (without \n)
             if (line_end > line_start) {
-                int result = send(sock, line_start, line_end - line_start, 0);
+                int result = send(sock, line_start, (int)(line_end - line_start), 0);
                 if (result < 0) {
                     // Client disconnected
                     log_lock();
@@ -211,14 +206,13 @@ void demo_log_send_to_tcp(const char* message) {
                     return;
                 }
             }
-            
+
             // Send \r\n for proper Windows terminal line ending
             send(sock, "\r\n", 2, 0);
             line_start = line_end + 1;
         } else {
-            // Send remaining text without newline
             if (*line_start) {
-                int result = send(sock, line_start, strlen(line_start), 0);
+                int result = send(sock, line_start, (int)strlen(line_start), 0);
                 if (result < 0) {
                     log_lock();
                     g_tcp_log_client = -1;

@@ -29,6 +29,7 @@ LDFLAGS = -lws2_32 -lwinmm
 SRCS_C = src/demo_app_core.c \
 		 src/demo_app_msg.cpp \
 		 src/demo_app_timer.c \
+		 src/demo_app_status.c \
 		 src/demo_app_enums.c \
 		 src/demo_app_log.c \
 		 src/demo_app_cli.c \

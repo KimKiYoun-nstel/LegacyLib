@@ -14,6 +14,11 @@
 #include <string.h>
 #include <semLib.h>
 #include "../include/demo_app.h"
+#include "../include/demo_app_log.h"
+#include <time.h>
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <sys/time.h>
+#endif
 
 /* ========================================================================
  * Global State
@@ -133,7 +138,77 @@ static void process_command(char* line) {
     }
     else if (strcmp(cmd, "help") == 0) {
         print_help();
-    }
+        }
+        else if (strcmp(cmd, "reset") == 0) {
+            if (!g_demo_ctx) {
+                demo_cli_print("DemoApp context not initialized\n");
+                return;
+            }
+            if (demo_app_reset(g_demo_ctx) == 0) {
+                demo_cli_print("Demo reset complete, state=Idle\n");
+            } else {
+                demo_cli_print("Demo reset failed\n");
+            }
+        }
+        else if (strcmp(cmd, "test_write") == 0) {
+            if (!g_demo_ctx) {
+                demo_cli_print("DemoApp context not initialized\n");
+                return;
+            }
+            if (token_count < 2) {
+                demo_cli_print("Usage: test_write \"pbit|cbit|result_bit|signal|all\"\n");
+                return;
+            }
+            const char* topic = tokens[1];
+            int result = 0;
+            if (strcmp(topic, "pbit") == 0) {
+                result = demo_msg_test_write_pbit(g_demo_ctx);
+                demo_cli_print("Test write: PBIT %s\n", result == 0 ? "sent" : "failed");
+            } else if (strcmp(topic, "cbit") == 0) {
+                result = demo_msg_test_write_cbit(g_demo_ctx);
+                demo_cli_print("Test write: CBIT %s\n", result == 0 ? "sent" : "failed");
+            } else if (strcmp(topic, "result_bit") == 0) {
+                result = demo_msg_test_write_result_bit(g_demo_ctx);
+                demo_cli_print("Test write: resultBIT %s\n", result == 0 ? "sent" : "failed");
+            } else if (strcmp(topic, "signal") == 0) {
+                result = demo_msg_test_write_signal(g_demo_ctx);
+                demo_cli_print("Test write: Actuator Signal %s\n", result == 0 ? "sent" : "failed");
+            } else if (strcmp(topic, "all") == 0) {
+                int r1 = demo_msg_test_write_pbit(g_demo_ctx);
+                taskDelay(sysClkRateGet() / 10);  // 100ms delay
+                int r2 = demo_msg_test_write_cbit(g_demo_ctx);
+                taskDelay(sysClkRateGet() / 10);
+                int r3 = demo_msg_test_write_result_bit(g_demo_ctx);
+                taskDelay(sysClkRateGet() / 10);
+                int r4 = demo_msg_test_write_signal(g_demo_ctx);
+                result = (r1 | r2 | r3 | r4);
+                demo_cli_print("Test write: All 4 messages %s\n", result == 0 ? "sent" : "failed");
+            } else {
+                demo_cli_print("ERROR: Unknown topic '%s'\n", topic);
+                demo_cli_print("Valid topics: pbit, cbit, result_bit, signal, all\n");
+            }
+        }
+        else if (strcmp(cmd, "log_mode") == 0) {
+            if (token_count < 2) {
+                demo_cli_print("Usage: log_mode \"console|redirect|both\"\n");
+                return;
+            }
+            const char* mode = tokens[1];
+            LogOutputMode log_mode;
+            if (strcmp(mode, "console") == 0) {
+                log_mode = LOG_MODE_CONSOLE;
+            } else if (strcmp(mode, "redirect") == 0) {
+                log_mode = LOG_MODE_REDIRECT;
+            } else if (strcmp(mode, "both") == 0) {
+                log_mode = LOG_MODE_BOTH;
+            } else {
+                demo_cli_print("ERROR: Invalid mode '%s'\n", mode);
+                demo_cli_print("Valid modes: console, redirect, both\n");
+                return;
+            }
+            demo_log_set_mode(log_mode);
+            demo_cli_print("Log mode set to: %s\n", mode);
+        }
     else if (strcmp(cmd, "connect") == 0) {
         if (!g_demo_ctx) {
             demo_cli_print("DemoApp context not initialized\n");
@@ -184,25 +259,7 @@ static void process_command(char* line) {
             demo_cli_print("DemoApp context not initialized\n");
             return;
         }
-        
-        demo_cli_print("\n=== DemoApp Status ===\n");
-        demo_cli_print("State: %s\n", demo_state_name(g_demo_ctx->current_state));
-        demo_cli_print("Tick Count: %llu\n", g_demo_ctx->tick_count);
-        demo_cli_print("\nStatistics:\n");
-        demo_cli_print("  Signal Published: %u\n", g_demo_ctx->signal_pub_count);
-        demo_cli_print("  CBIT Published: %u\n", g_demo_ctx->cbit_pub_count);
-        demo_cli_print("  Control Received: %u\n", g_demo_ctx->control_rx_count);
-        demo_cli_print("  Speed Received: %u\n", g_demo_ctx->speed_rx_count);
-        demo_cli_print("\nBIT State:\n");
-        demo_cli_print("  PBIT Completed: %s\n", g_demo_ctx->bit_state.pbit_completed ? "Yes" : "No");
-        demo_cli_print("  CBIT Active: %s\n", g_demo_ctx->bit_state.cbit_active ? "Yes" : "No");
-        demo_cli_print("  IBIT Running: %s\n", g_demo_ctx->bit_state.ibit_running ? "Yes" : "No");
-        demo_cli_print("\nComponent Status:\n");
-        demo_cli_print("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
-        demo_cli_print("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
-        demo_cli_print("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro == L_BITResultType_NORMAL ? "OK" : "FAULT");
-        demo_cli_print("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController == L_BITResultType_NORMAL ? "OK" : "FAULT");
-        demo_cli_print("======================\n");
+        demo_app_print_status(1);
     }
     else if (strcmp(cmd, "demo_init") == 0 || strcmp(cmd, "demo_start") == 0) {
         if (!g_demo_ctx) {

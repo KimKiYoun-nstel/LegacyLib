@@ -79,64 +79,8 @@ static void cmd_status(void) {
         demo_tcp_cli_print("ERROR: DemoApp context not initialized\n");
         return;
     }
-    
-    uint64_t tick_ms = g_demo_ctx->tick_count;
-    uint64_t tick_sec = tick_ms / 1000;
-    uint64_t tick_min = tick_sec / 60;
-    uint64_t tick_sec_remain = tick_sec % 60;
-    
-    demo_tcp_cli_print("\n=== DemoApp Status ===\n");
-    demo_tcp_cli_print("State: %s\n", demo_state_name(g_demo_ctx->current_state));
-    
-    if (tick_min > 0) {
-        demo_tcp_cli_print("Uptime: %llu min %llu sec (%llu ms)\n", 
-            (unsigned long long)tick_min, 
-            (unsigned long long)tick_sec_remain,
-            (unsigned long long)tick_ms);
-    } else {
-        demo_tcp_cli_print("Uptime: %llu.%03llu sec (%llu ms)\n", 
-            (unsigned long long)tick_sec,
-            (unsigned long long)(tick_ms % 1000),
-            (unsigned long long)tick_ms);
-    }
-    
-    demo_tcp_cli_print("\n[Published Messages - Total / Current Hz]\n");
-    uint32_t target_signal_hz = (g_demo_ctx->signal_period_ms == 0) ? 0 : (1000u / g_demo_ctx->signal_period_ms);
-    uint32_t target_cbit_hz = (g_demo_ctx->cbit_period_ms == 0) ? 0 : (1000u / g_demo_ctx->cbit_period_ms);
-    uint32_t target_pbit_hz = (g_demo_ctx->pbit_period_ms == 0) ? 0 : (1000u / g_demo_ctx->pbit_period_ms);
-
-    demo_tcp_cli_print("  Signal (target %u Hz) : %5u total (%3u Hz)\n", 
-        target_signal_hz, g_demo_ctx->signal_pub_count, g_demo_ctx->signal_pub_hz);
-    demo_tcp_cli_print("  CBIT   (target %u Hz) : %5u total (%3u Hz)\n", 
-        target_cbit_hz, g_demo_ctx->cbit_pub_count, g_demo_ctx->cbit_pub_hz);
-    demo_tcp_cli_print("  PBIT   (target %u Hz) : %5u total (%3u Hz)\n", 
-        target_pbit_hz, g_demo_ctx->pbit_pub_count, g_demo_ctx->pbit_pub_hz);
-    demo_tcp_cli_print("  ResultBIT             : %5u total (%3u Hz)\n", 
-        g_demo_ctx->result_pub_count, g_demo_ctx->result_pub_hz);
-    
-    demo_tcp_cli_print("\n[Subscribed Messages - Total / Current Hz]\n");
-    demo_tcp_cli_print("  Control            : %5u total (%3u Hz)\n", 
-        g_demo_ctx->control_rx_count, g_demo_ctx->control_rx_hz);
-    demo_tcp_cli_print("  Speed              : %5u total (%3u Hz)\n", 
-        g_demo_ctx->speed_rx_count, g_demo_ctx->speed_rx_hz);
-    demo_tcp_cli_print("  RunBIT             : %5u total (%3u Hz)\n", 
-        g_demo_ctx->runbit_rx_count, g_demo_ctx->runbit_rx_hz);
-    
-    demo_tcp_cli_print("\n[BIT State]\n");
-    demo_tcp_cli_print("  PBIT Completed: %s\n", g_demo_ctx->bit_state.pbit_completed ? "Yes" : "No");
-    demo_tcp_cli_print("  CBIT Active: %s\n", g_demo_ctx->bit_state.cbit_active ? "Yes" : "No");
-    demo_tcp_cli_print("  IBIT Running: %s\n", g_demo_ctx->bit_state.ibit_running ? "Yes" : "No");
-    
-    demo_tcp_cli_print("\n[System Status]\n");
-    demo_tcp_cli_print("  Timer Running: %s\n", demo_timer_is_running() ? "Yes" : "No");
-    demo_tcp_cli_print("  Log Mode: %s\n", demo_log_mode_name(demo_log_get_mode()));
-    
-    if (!demo_timer_is_running() && g_demo_ctx->current_state == DEMO_STATE_RUN) {
-        demo_tcp_cli_print("\n[WARNING] Timer not running but state is Run!\n");
-        demo_tcp_cli_print("          Uptime counter is frozen.\n");
-    }
-    
-    demo_tcp_cli_print("======================\n");
+    /* Delegate to shared status printer (prints to TCP client when to_tcp=1) */
+    demo_app_print_status(1);
 }
 
 /* ========================================================================

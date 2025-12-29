@@ -66,7 +66,7 @@ public:
     // Data Plane
     LegacyStatus writeJson(const LegacyWriteJsonOptions* opt, uint32_t timeout_ms, LegacyWriteCb cb, void* user);
     LegacyStatus writeStruct(const char* topic, const char* type_name, const void* user_struct, uint32_t timeout_ms, LegacyWriteCb cb, void* user);
-
+    
     // Events
     LegacyStatus subscribeEvent(const char* topic, const char* type, LegacyEventCb cb, void* user);
     LegacyStatus subscribeTyped(const char* topic, const char* type_name, LegacyTypedEventCb cb, void* user);
@@ -83,8 +83,8 @@ private:
     uint32_t generateRequestId();
     void registerRequest(uint32_t reqId, const PendingRequest& req);
     
-    // Logging helper
-    void logInfo(const char* msg);
+    // Logging helper (printf-style)
+    void logInfo(const char* fmt, ...);
     
     // Helper to send raw JSON with header
     LegacyStatus sendRequest(const std::string& json_body, uint16_t type = 0x1000, uint32_t req_id = 0);

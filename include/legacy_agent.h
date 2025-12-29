@@ -41,6 +41,11 @@ typedef struct {
 LegacyStatus legacy_agent_init(const LegacyConfig* cfg, LEGACY_HANDLE* outHandle);
 void         legacy_agent_close(LEGACY_HANDLE h);
 
+// Global log callback registration (optional)
+// If demos/apps want a global adapter for library logs they can register here.
+void legacy_agent_set_log_callback(LegacyLogCb cb, void* user);
+void legacy_agent_get_log_callback(LegacyLogCb* out_cb, void** out_user);
+
 /* --- Common Response Structures --- */
 
 typedef uint32_t LegacyRequestId;

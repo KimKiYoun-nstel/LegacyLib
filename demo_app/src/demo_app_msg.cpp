@@ -561,7 +561,24 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     j[F_A_ROUNDGIRO] = round_v;
     j[F_A_UPDOWNGIRO] = updown_v;
 
+    uint64_t jd0 = 0, jd1 = 0;
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    unsigned long _tk0 = tickGet(); int _tr0 = sysClkRateGet(); jd0 = (uint64_t)_tk0 * (1000000000ULL / (_tr0 > 0 ? _tr0 : 1));
+#else
+    struct timespec _ts0; clock_gettime(CLOCK_MONOTONIC, &_ts0); jd0 = (uint64_t)_ts0.tv_sec*1000000000ULL + _ts0.tv_nsec;
+#endif
+#endif
     std::string s = j.dump();
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    unsigned long _tk1 = tickGet(); int _tr1 = sysClkRateGet(); jd1 = (uint64_t)_tk1 * (1000000000ULL / (_tr1 > 0 ? _tr1 : 1));
+#else
+    struct timespec _ts1; clock_gettime(CLOCK_MONOTONIC, &_ts1); jd1 = (uint64_t)_ts1.tv_sec*1000000000ULL + _ts1.tv_nsec;
+#endif
+    ctx->json_dump_ns_total += (jd1 > jd0) ? (jd1 - jd0) : 0ULL;
+    ctx->json_dump_count++;
+#endif
 
     LegacyWriteJsonOptions wopt = {
         TOPIC_Signal,
@@ -572,8 +589,25 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
     
+    uint64_t lw0 = 0, lw1 = 0;
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    unsigned long _lwk0 = tickGet(); int _lwr0 = sysClkRateGet(); lw0 = (uint64_t)_lwk0 * (1000000000ULL / (_lwr0 > 0 ? _lwr0 : 1));
+#else
+    struct timespec _lwt0; clock_gettime(CLOCK_MONOTONIC, &_lwt0); lw0 = (uint64_t)_lwt0.tv_sec*1000000000ULL + _lwt0.tv_nsec;
+#endif
+#endif
     LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 500,
                                                   on_write_complete, (void*)"Signal");
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    unsigned long _lwk1 = tickGet(); int _lwr1 = sysClkRateGet(); lw1 = (uint64_t)_lwk1 * (1000000000ULL / (_lwr1 > 0 ? _lwr1 : 1));
+#else
+    struct timespec _lwt1; clock_gettime(CLOCK_MONOTONIC, &_lwt1); lw1 = (uint64_t)_lwt1.tv_sec*1000000000ULL + _lwt1.tv_nsec;
+#endif
+    ctx->legacy_write_ns_total += (lw1 > lw0) ? (lw1 - lw0) : 0ULL;
+    ctx->legacy_write_count++;
+#endif
     if (status != LEGACY_OK) {
         return -1;
     }

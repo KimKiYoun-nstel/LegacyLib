@@ -90,7 +90,7 @@ const char* demo_log_mode_name(LogOutputMode mode);
  * 
  * @param message  Log message string
  */
-void demo_log_send_to_tcp(const char* message);
+void demo_log_send_to_tcp(const char* message, int sock);
 
 /**
  * Set TCP log client socket

@@ -144,6 +144,10 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
     }
 
     // Use send() since we are connected
+    
+#ifdef DEMO_TIMING_INSTRUMENTATION
+    auto t0 = std::chrono::steady_clock::now();
+#endif
     int sent = ::send(sock_, (const char*)packet.data(), (int)packet.size(), 0);
     
     if (sent == SOCKET_ERROR) {
@@ -154,6 +158,11 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
 #endif
         return false;
     }
+#ifdef DEMO_TIMING_INSTRUMENTATION
+    auto t1 = std::chrono::steady_clock::now();
+    auto send_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+    std::cerr << "[TIMING] DkmRtpIpc::send() took " << send_us << " us (sent=" << sent << ")\n";
+#endif
     std::cout << "[DkmRtpIpc] Sent " << sent << " bytes (Header: " << sizeof(Header) << " + Payload: " << len << ")" << std::endl;
     return true;
 }

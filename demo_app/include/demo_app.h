@@ -381,7 +381,33 @@ typedef struct {
     uint32_t control_rx_prev;
     uint32_t speed_rx_prev;
     uint32_t runbit_rx_prev;
-    
+
+    /* Performance instrumentation accumulators (nanoseconds / counts) */
+    uint64_t timer_tick_ns_total;    // total time spent in timer tick (ns)
+    uint32_t timer_tick_ns_count;    // samples
+
+    uint64_t pub_signal_ns_total;    // total time spent in signal publish (ns)
+    uint32_t pub_signal_count;
+
+    uint64_t pub_cbit_ns_total;      // total time spent in cbit publish (ns)
+    uint32_t pub_cbit_count;
+
+    uint64_t pub_pbit_ns_total;      // one-shot pbit publish
+    uint32_t pub_pbit_count;
+
+    uint64_t pub_result_ns_total;    // resultBIT publish
+    uint32_t pub_result_count;
+
+    uint64_t json_dump_ns_total;     // time spent in j.dump()
+    uint32_t json_dump_count;
+
+    uint64_t legacy_write_ns_total;  // time spent in legacy_agent_write_json call
+    uint32_t legacy_write_count;
+
+    // Scenario start time (wall-clock) recorded when scenario starts
+    T_DateTimeType scenario_start_time;
+    int scenario_started; /* boolean: 0 = not started, 1 = started */
+
 } DemoAppContext;
 
 /* Publish period control APIs */
@@ -391,7 +417,6 @@ void demo_app_reset_publish_periods(DemoAppContext* ctx);
 /* ========================================================================
  * Core API (demo_app_core.c)
  * ======================================================================== */
-
 // Initialize context structure
 void demo_app_context_init(DemoAppContext* ctx);
 
@@ -493,6 +518,10 @@ int demoAppStop(void);
 // Usage: demoAppStatus()
 void demoAppStatus(void);
 
+#include <stddef.h>
+
+// Print status to either console or TCP CLI (use to_tcp=1 for TCP client)
+void demo_app_print_status(int to_tcp);
 #ifdef __cplusplus
 }
 #endif

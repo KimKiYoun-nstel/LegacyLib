@@ -17,6 +17,10 @@
 #include <string.h>
 #include "../include/demo_app.h"
 #include "../include/demo_app_log.h"
+#include <time.h>
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <sys/time.h>
+#endif
 
 /* ========================================================================
  * External Functions
@@ -32,8 +36,8 @@ extern void demo_cli_print(const char* fmt, ...);
  * ======================================================================== */
 
 DemoAppContext* g_demo_ctx = NULL;
-static int g_cli_port = 23000;
-static char g_agent_ip[64] = "127.0.0.1";
+int g_cli_port = 23000;
+char g_agent_ip[64] = "127.0.0.1";
 
 /* ========================================================================
  * VxWorks Shell Commands
@@ -317,30 +321,5 @@ STATUS demoAppStop(void) {
  * Show DemoApp status
  */
 void demoAppStatus(void) {
-    if (!g_demo_ctx) {
-        printf("[DemoApp DKM] Not running\n");
-        printf("Use: demoAppStart(23000, \"127.0.0.1\")\n");
-        return;
-    }
-    
-    printf("\n=== DemoApp Status ===\n");
-    printf("State: %s\n", demo_state_name(g_demo_ctx->current_state));
-    printf("CLI Port: %d\n", g_cli_port);
-    printf("Agent IP: %s\n", g_agent_ip);
-    printf("Tick Count: %llu\n", g_demo_ctx->tick_count);
-    printf("\nStatistics:\n");
-    printf("  Signal Published: %u\n", g_demo_ctx->signal_pub_count);
-    printf("  CBIT Published: %u\n", g_demo_ctx->cbit_pub_count);
-    printf("  Control Received: %u\n", g_demo_ctx->control_rx_count);
-    printf("  Speed Received: %u\n", g_demo_ctx->speed_rx_count);
-    printf("\nBIT State:\n");
-    printf("  PBIT Completed: %s\n", g_demo_ctx->bit_state.pbit_completed ? "Yes" : "No");
-    printf("  CBIT Active: %s\n", g_demo_ctx->bit_state.cbit_active ? "Yes" : "No");
-    printf("  IBIT Running: %s\n", g_demo_ctx->bit_state.ibit_running ? "Yes" : "No");
-    printf("\nComponent Status:\n");
-    printf("  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
-    printf("  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
-    printf("  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro == L_BITResultType_NORMAL ? "OK" : "FAULT");
-    printf("  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController == L_BITResultType_NORMAL ? "OK" : "FAULT");
-    printf("======================\n");
+    demo_app_print_status(0);
 }

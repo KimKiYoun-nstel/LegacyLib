@@ -8,6 +8,7 @@
 #elif defined(_VXWORKS_)
 #include <sockLib.h>
 #include <inetLib.h>
+#include <tickLib.h>
 // VxWorks mbuf.h defines m_data and m_type macros which conflict with nlohmann json
 // Undefine them before including json.hpp
 #ifdef m_data
@@ -23,6 +24,7 @@
 #include "json.hpp"
 
 using json = nlohmann::json;
+#include <cstdarg>
 
 // Simple JSON helper for Phase 1 (Replace with real lib later)
 static uint32_t extract_req_id(const std::string& json) {
@@ -178,14 +180,40 @@ LegacyStatus IpcJsonClient::sendRequest(const std::string& json_body, uint16_t t
     // DkmRtpIpc now handles the protocol header (24 bytes).
     // We convert JSON string to CBOR payload.
     try {
+#ifdef DEMO_PERF_INSTRUMENTATION
+    uint64_t p0 = 0, p1 = 0, c0 = 0, c1 = 0;
+#if defined(_VXWORKS_)
+    unsigned long _t0 = tickGet(); int _tr = sysClkRateGet(); p0 = (uint64_t)_t0 * (1000000000ULL / (_tr > 0 ? _tr : 1));
+#else
+    struct timespec _ts0; clock_gettime(CLOCK_MONOTONIC, &_ts0); p0 = (uint64_t)_ts0.tv_sec*1000000000ULL + _ts0.tv_nsec;
+#endif
+#endif
         json j = json::parse(json_body);
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    unsigned long _t1 = tickGet(); int _tr1 = sysClkRateGet(); p1 = (uint64_t)_t1 * (1000000000ULL / (_tr1 > 0 ? _tr1 : 1));
+#else
+    struct timespec _ts1; clock_gettime(CLOCK_MONOTONIC, &_ts1); p1 = (uint64_t)_ts1.tv_sec*1000000000ULL + _ts1.tv_nsec;
+#endif
+#endif
         std::vector<uint8_t> cbor = json::to_cbor(j);
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    unsigned long _t2 = tickGet(); int _tr2 = sysClkRateGet(); c1 = (uint64_t)_t2 * (1000000000ULL / (_tr2 > 0 ? _tr2 : 1));
+#else
+    struct timespec _ts2; clock_gettime(CLOCK_MONOTONIC, &_ts2); c1 = (uint64_t)_ts2.tv_sec*1000000000ULL + _ts2.tv_nsec;
+#endif
+    // Log parse/CBOR durations
+    uint64_t parse_ns = (p1 > p0) ? (p1 - p0) : 0ULL;
+    uint64_t cbor_ns = (c1 > p1) ? (c1 - p1) : 0ULL;
+    logInfo("[PERF] IpcJsonClient parse=%llu us, to_cbor=%llu us", (unsigned long long)(parse_ns/1000ULL), (unsigned long long)(cbor_ns/1000ULL));
+#endif
         
         if (!transport_.send(cbor.data(), cbor.size(), type, req_id)) {
             return LEGACY_ERR_TRANSPORT;
         }
     } catch (const std::exception& e) {
-        std::cerr << "[IpcJsonClient] Failed to encode CBOR: " << e.what() << std::endl;
+        logInfo("[IpcJsonClient] Failed to encode CBOR: %s", e.what());
         return LEGACY_ERR_PARAM;
     }
     return LEGACY_OK;
@@ -209,7 +237,7 @@ void IpcJsonClient::receiveLoop() {
                 // Log only in debug, too verbose for normal operation
                 // logInfo(("[IpcJsonClient] RECV: " + json_payload).c_str());
             } catch (const std::exception& e) {
-                std::cerr << "[IpcJsonClient] Failed to decode CBOR: " << e.what() << std::endl;
+                logInfo("[IpcJsonClient] Failed to decode CBOR: %s", e.what());
                 continue;
             }
             
@@ -537,11 +565,19 @@ LegacyStatus IpcJsonClient::writeJson(const LegacyWriteJsonOptions* opt, uint32_
     if (opt->publisher) j["args"]["publisher"] = opt->publisher;
     if (opt->qos) j["args"]["qos"] = opt->qos;
     
+#ifdef DEMO_TIMING_INSTRUMENTATION
+    auto t0 = std::chrono::steady_clock::now();
+#endif
     try {
         j["data"] = json::parse(opt->data_json);
     } catch (...) {
         j["data"] = opt->data_json; 
     }
+#ifdef DEMO_TIMING_INSTRUMENTATION
+    auto t1 = std::chrono::steady_clock::now();
+    auto parse_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+    logInfo("[TIMING] IpcJsonClient::parse data_json took %llu us", (unsigned long long)parse_us);
+#endif
     
     j["proto"] = 1;
     
@@ -647,8 +683,22 @@ const LegacyTypeAdapter* IpcJsonClient::findTypeAdapter(const char* topic, const
     return nullptr;
 }
 
-void IpcJsonClient::logInfo(const char* msg) {
+void IpcJsonClient::logInfo(const char* fmt, ...) {
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
     if (config_.log_cb) {
-        config_.log_cb(2, msg, config_.log_user); // level 2 = INFO
+        config_.log_cb(2, buf, config_.log_user); // level 2 = INFO
+    }
+    else {
+        LegacyLogCb gcb = nullptr;
+        void* guser = nullptr;
+        legacy_agent_get_log_callback(&gcb, &guser);
+        if (gcb) gcb(2, buf, guser);
     }
 }
+// If instance callback not set, try global callback registered via legacy_agent
+// (legacy_agent_get_log_callback declared in legacy_agent.h)

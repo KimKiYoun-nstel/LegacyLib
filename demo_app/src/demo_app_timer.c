@@ -4,12 +4,14 @@
 
 #include "../include/demo_app.h"
 #include <stdio.h>
+#include <time.h>
 
 #ifdef _VXWORKS_
 #include <vxWorks.h>
 #include <taskLib.h>
 #include <sysLib.h>
 #include <wdLib.h>
+#include <tickLib.h>
 #else
 // Windows/Linux threading
 #ifdef _WIN32
@@ -51,14 +53,18 @@ extern DemoAppContext* g_demo_ctx;
 #ifdef _VXWORKS_
 static void timerTask(void) {
     int tick_rate = sysClkRateGet();  // System ticks per second
-    int delay_ticks = tick_rate / 1000;  // 1ms in ticks
-    
+    int delay_ticks = 0; // 1ms in ticks (computed below)
+
+    // Compute delay_ticks as ticks representing ~1ms. Use ceil to avoid 0.
+    if (tick_rate > 0) {
+        delay_ticks = (tick_rate + 999) / 1000; // ceil(tick_rate/1000)
+    }
     if (delay_ticks < 1) {
         delay_ticks = 1;
-        printf("[DemoApp Timer] WARNING: System tick rate is %d Hz (<%d Hz required for 1ms)\n", 
+        printf("[DemoApp Timer] WARNING: System tick rate is %d Hz (<%d Hz required for 1ms)\n",
                tick_rate, 1000);
-        printf("[DemoApp Timer] Timer will run at %d ms interval instead\n", 
-               1000 / tick_rate);
+        printf("[DemoApp Timer] Timer will run at %d ms interval instead\n",
+               1000 / (tick_rate > 0 ? tick_rate : 1));
     }
     
     printf("[DemoApp Timer] Timer task started\n");
@@ -68,8 +74,26 @@ static void timerTask(void) {
     
     while (g_timer_running) {
         if (g_demo_ctx) {
+#ifdef DEMO_TIMING_INSTRUMENTATION
+            uint64_t t0 = 0;
+#ifdef _VXWORKS_
+            t0 = (uint64_t)tickGet() * (1000000000ULL / (tick_rate > 0 ? tick_rate : 1));
+#else
+            struct timespec ts0; clock_gettime(CLOCK_MONOTONIC, &ts0); t0 = (uint64_t)ts0.tv_sec*1000000000ULL + ts0.tv_nsec;
+#endif
             demo_timer_tick(g_demo_ctx);
+            uint64_t t1 = 0;
+#ifdef _VXWORKS_
+            t1 = (uint64_t)tickGet() * (1000000000ULL / (tick_rate > 0 ? tick_rate : 1));
+#else
+            struct timespec ts1; clock_gettime(CLOCK_MONOTONIC, &ts1); t1 = (uint64_t)ts1.tv_sec*1000000000ULL + ts1.tv_nsec;
+#endif
+            printf("[TIMING] demo_timer_tick took %llu us (ticks=%d)\n", (unsigned long long)((t1 - t0) / 1000ULL), delay_ticks);
+#else
+            demo_timer_tick(g_demo_ctx);
+#endif
         }
+
         taskDelay(delay_ticks);
     }
     
@@ -303,7 +327,34 @@ void demo_timer_tick(DemoAppContext* ctx) {
     // Signal processing (configurable period)
     if (ctx->signal_period_ms > 0) {
         if ((ctx->tick_count - ctx->last_200hz_tick) >= ctx->signal_period_ms) {
+            /* Measure publish duration if instrumentation enabled */
+#ifdef DEMO_PERF_INSTRUMENTATION
+            uint64_t t0 = 0, t1 = 0;
+            /* now_ns: VxWorks use tickGet conversion, otherwise clock_gettime */
+#if defined(_VXWORKS_)
+            {
+                unsigned long tk = tickGet();
+                int tr = sysClkRateGet();
+                t0 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+            }
+#else
+            struct timespec ts0; clock_gettime(CLOCK_MONOTONIC, &ts0); t0 = (uint64_t)ts0.tv_sec*1000000000ULL + ts0.tv_nsec;
+#endif
             demo_msg_publish_actuator_signal(ctx);
+#if defined(_VXWORKS_)
+            {
+                unsigned long tk = tickGet();
+                int tr = sysClkRateGet();
+                t1 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+            }
+#else
+            struct timespec ts1; clock_gettime(CLOCK_MONOTONIC, &ts1); t1 = (uint64_t)ts1.tv_sec*1000000000ULL + ts1.tv_nsec;
+#endif
+            ctx->pub_signal_ns_total += (t1 > t0) ? (t1 - t0) : 0ULL;
+            ctx->pub_signal_count++;
+#else
+            demo_msg_publish_actuator_signal(ctx);
+#endif
             ctx->last_200hz_tick = ctx->tick_count;
         }
     }
@@ -311,7 +362,33 @@ void demo_timer_tick(DemoAppContext* ctx) {
     // CBIT processing (configurable period)
     if (ctx->cbit_period_ms > 0) {
         if ((ctx->tick_count - ctx->last_1hz_tick) >= ctx->cbit_period_ms) {
+            /* Measure CBIT publish duration */
+#ifdef DEMO_PERF_INSTRUMENTATION
+            uint64_t t0 = 0, t1 = 0;
+#if defined(_VXWORKS_)
+            {
+                unsigned long tk = tickGet();
+                int tr = sysClkRateGet();
+                t0 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+            }
+#else
+            struct timespec ts0; clock_gettime(CLOCK_MONOTONIC, &ts0); t0 = (uint64_t)ts0.tv_sec*1000000000ULL + ts0.tv_nsec;
+#endif
             demo_msg_publish_cbit(ctx);
+#if defined(_VXWORKS_)
+            {
+                unsigned long tk = tickGet();
+                int tr = sysClkRateGet();
+                t1 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+            }
+#else
+            struct timespec ts1; clock_gettime(CLOCK_MONOTONIC, &ts1); t1 = (uint64_t)ts1.tv_sec*1000000000ULL + ts1.tv_nsec;
+#endif
+            ctx->pub_cbit_ns_total += (t1 > t0) ? (t1 - t0) : 0ULL;
+            ctx->pub_cbit_count++;
+#else
+            demo_msg_publish_cbit(ctx);
+#endif
             ctx->last_1hz_tick = ctx->tick_count;
         }
     }

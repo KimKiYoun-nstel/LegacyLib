@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <sys/time.h>
+#endif
 
 #ifdef _VXWORKS_
 #include <vxWorks.h>
@@ -358,6 +362,25 @@ int demo_app_start_scenario(DemoAppContext* ctx) {
     
     printf("[DemoApp Core] Scenario started successfully\n");
     printf("[DemoApp Core] Periodic publishing: 200Hz Signal, 1Hz CBIT\n");
+
+    /* Record wall-clock scenario start time */
+    if (ctx) {
+#if defined(_WIN32) || defined(_WIN64)
+        time_t now = time(NULL);
+        ctx->scenario_start_time.A_second = (int64_t)now;
+        ctx->scenario_start_time.A_nanoseconds = 0;
+#else
+        struct timeval tv;
+        if (gettimeofday(&tv, NULL) == 0) {
+            ctx->scenario_start_time.A_second = (int64_t)tv.tv_sec;
+            ctx->scenario_start_time.A_nanoseconds = (int32_t)(tv.tv_usec * 1000);
+        } else {
+            ctx->scenario_start_time.A_second = (int64_t)time(NULL);
+            ctx->scenario_start_time.A_nanoseconds = 0;
+        }
+#endif
+        ctx->scenario_started = 1;
+    }
     return 0;
 }
 

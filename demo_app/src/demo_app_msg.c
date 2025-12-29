@@ -575,6 +575,14 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     ActuatorSignalState* sig = &ctx->signal_state;
     
     // --- Quantize / Clamp outputs according to spec ---
+#ifdef DEMO_TIMING_INSTRUMENTATION
+    uint64_t t_publish_start = 0;
+#ifdef _VXWORKS_
+    t_publish_start = ctx ? ctx->tick_count : 0;
+#else
+    struct timespec tps; clock_gettime(CLOCK_MONOTONIC, &tps); t_publish_start = (uint64_t)tps.tv_sec*1000ULL + (uint64_t)(tps.tv_nsec/1000000ULL);
+#endif
+#endif
     // A_azAngle: send current azimuth velocity (sig->e1AngleVelocity) but keep field name
     float az_v = sig->e1AngleVelocity; // treat A_azAngle as velocity
     if (az_v > 800.0f) az_v = 800.0f;
@@ -650,9 +658,21 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         "pub1",
         "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
-    
+
     LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 500,
                                                   on_write_complete, (void*)"Signal");
+#ifdef DEMO_TIMING_INSTRUMENTATION
+    uint64_t t_publish_end = 0;
+#ifdef _VXWORKS_
+    t_publish_end = ctx ? ctx->tick_count : 0;
+    printf("[TIMING] publish_signal JSON+send approx %llu ms (ticks delta=%llu)\n",
+           (unsigned long long)(t_publish_end - t_publish_start),
+           (unsigned long long)(t_publish_end - t_publish_start));
+#else
+    struct timespec tpe; clock_gettime(CLOCK_MONOTONIC, &tpe); t_publish_end = (uint64_t)tpe.tv_sec*1000ULL + (uint64_t)(tpe.tv_nsec/1000000ULL);
+    printf("[TIMING] publish_signal JSON+send took %llu ms\n", (unsigned long long)(t_publish_end - t_publish_start));
+#endif
+#endif
     if (status != LEGACY_OK) {
         return -1;
     }

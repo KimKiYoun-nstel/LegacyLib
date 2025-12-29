@@ -60,7 +60,7 @@ ifeq ($(MODE),vxworks)
                    -D_VXWORKS_ \
                    -Iinclude \
                    -Isrc/internal \
-                   -Wall
+                   -Wall -DDEMO_PERF_INSTRUMENTATION
     
     CFLAGS    = $(COMMON_FLAGS)
     CXXFLAGS  = $(COMMON_FLAGS) -std=c++11
