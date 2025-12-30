@@ -3,8 +3,10 @@
  */
 
 #include "../include/demo_app.h"
+#include "../include/demo_app_log.h"
 #include <stdio.h>
 #include <time.h>
+#include "../include/demo_app_publisher.h"
 
 #ifdef _VXWORKS_
 #include <vxWorks.h>
@@ -59,22 +61,22 @@ static void timerTask(void) {
     if (tick_rate > 0) {
         delay_ticks = (tick_rate + 999) / 1000; // ceil(tick_rate/1000)
     }
-    if (delay_ticks < 1) {
-        delay_ticks = 1;
-        printf("[DemoApp Timer] WARNING: System tick rate is %d Hz (<%d Hz required for 1ms)\n",
+        if (delay_ticks < 1) {
+         delay_ticks = 1;
+         demo_log(LOG_DIR_INFO, "[DemoApp Timer] WARNING: System tick rate is %d Hz (<%d Hz required for 1ms)\n",
                tick_rate, 1000);
-        printf("[DemoApp Timer] Timer will run at %d ms interval instead\n",
+         demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer will run at %d ms interval instead\n",
                1000 / (tick_rate > 0 ? tick_rate : 1));
-    }
+        }
     
-    printf("[DemoApp Timer] Timer task started\n");
-    printf("[DemoApp Timer]   System tick rate: %d Hz\n", tick_rate);
-    printf("[DemoApp Timer]   Delay ticks: %d (%.1f ms)\n", 
-           delay_ticks, (float)delay_ticks * 1000.0f / tick_rate);
+        demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer task started\n");
+        demo_log(LOG_DIR_INFO, "[DemoApp Timer]   System tick rate: %d Hz\n", tick_rate);
+        demo_log(LOG_DIR_INFO, "[DemoApp Timer]   Delay ticks: %d (%.1f ms)\n", 
+              delay_ticks, (float)delay_ticks * 1000.0f / tick_rate);
     
     while (g_timer_running) {
         if (g_demo_ctx) {
-#ifdef DEMO_TIMING_INSTRUMENTATION
+#ifdef DEMO_PERF_INSTRUMENTATION
             uint64_t t0 = 0;
 #ifdef _VXWORKS_
             t0 = (uint64_t)tickGet() * (1000000000ULL / (tick_rate > 0 ? tick_rate : 1));
@@ -88,7 +90,7 @@ static void timerTask(void) {
 #else
             struct timespec ts1; clock_gettime(CLOCK_MONOTONIC, &ts1); t1 = (uint64_t)ts1.tv_sec*1000000000ULL + ts1.tv_nsec;
 #endif
-            printf("[TIMING] demo_timer_tick took %llu us (ticks=%d)\n", (unsigned long long)((t1 - t0) / 1000ULL), delay_ticks);
+            demo_log(LOG_DIR_INFO, "[TIMING] demo_timer_tick took %llu us (ticks=%d)\n", (unsigned long long)((t1 - t0) / 1000ULL), delay_ticks);
 #else
             demo_timer_tick(g_demo_ctx);
 #endif
@@ -97,7 +99,7 @@ static void timerTask(void) {
         taskDelay(delay_ticks);
     }
     
-    printf("[DemoApp Timer] Timer task exiting\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer task exiting\n");
 }
 #else
 // Windows/Linux Timer Thread
@@ -111,7 +113,7 @@ static unsigned int __stdcall timerThreadFunc(void* arg) {
     UINT wTimerRes = min(max(tc.wPeriodMin, 1), tc.wPeriodMax);
     timeBeginPeriod(wTimerRes);
     
-    printf("[DemoApp Timer] Timer thread started (1ms interval, resolution=%ums)\n", wTimerRes);
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread started (1ms interval, resolution=%ums)\n", wTimerRes);
     
     LARGE_INTEGER freq, start, now;
     QueryPerformanceFrequency(&freq);
@@ -137,13 +139,13 @@ static unsigned int __stdcall timerThreadFunc(void* arg) {
     }
     
     timeEndPeriod(wTimerRes);
-    printf("[DemoApp Timer] Timer thread exiting\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread exiting\n");
     return 0;
 }
 #else
 static void* timerThreadFunc(void* arg) {
     (void)arg;
-    printf("[DemoApp Timer] Timer thread started (1ms interval)\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread started (1ms interval)\n");
     
     while (g_timer_running) {
         if (g_demo_ctx) {
@@ -152,7 +154,7 @@ static void* timerThreadFunc(void* arg) {
         usleep(1000);  // 1ms = 1000us
     }
     
-    printf("[DemoApp Timer] Timer thread exiting\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread exiting\n");
     return NULL;
 }
 #endif
@@ -165,7 +167,7 @@ static void* timerThreadFunc(void* arg) {
 int demo_timer_init(DemoAppContext* ctx) {
     if (!ctx) return -1;
     
-    printf("[DemoApp Timer] Initializing timer subsystem...\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Initializing timer subsystem...\n");
     
     ctx->tick_count = 0;
     ctx->last_200hz_tick = 0;
@@ -185,12 +187,12 @@ int demo_timer_init(DemoAppContext* ctx) {
     );
     
     if (g_timer_task == TASK_ID_ERROR) {
-        printf("[DemoApp Timer] ERROR: Failed to spawn timer task\n");
+        demo_log(LOG_DIR_INFO, "[DemoApp Timer] ERROR: Failed to spawn timer task\n");
         g_timer_running = 0;
         return -1;
     }
     
-    printf("[DemoApp Timer] Timer task spawned (taskId=%d)\n", g_timer_task);
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer task spawned (taskId=%d)\n", g_timer_task);
 #else
     // Windows/Linux thread
     g_timer_running = 1;
@@ -198,29 +200,31 @@ int demo_timer_init(DemoAppContext* ctx) {
 #ifdef _WIN32
     g_timer_thread = (HANDLE)_beginthreadex(NULL, 0, timerThreadFunc, NULL, 0, NULL);
     if (g_timer_thread == NULL) {
-        printf("[DemoApp Timer] ERROR: Failed to create timer thread\n");
+        demo_log(LOG_DIR_INFO, "[DemoApp Timer] ERROR: Failed to create timer thread\n");
         g_timer_running = 0;
         return -1;
     }
-    printf("[DemoApp Timer] Timer thread created\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread created\n");
 #else
     if (pthread_create(&g_timer_thread, NULL, timerThreadFunc, NULL) != 0) {
-        printf("[DemoApp Timer] ERROR: Failed to create timer thread\n");
+        demo_log(LOG_DIR_INFO, "[DemoApp Timer] ERROR: Failed to create timer thread\n");
         g_timer_running = 0;
         return -1;
     }
-    printf("[DemoApp Timer] Timer thread created\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread created\n");
 #endif
 #endif
     
-    printf("[DemoApp Timer] Timer initialized\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer initialized\n");
+    // Start publisher (queue + worker)
+    demo_publisher_init();
     return 0;
 }
 
 void demo_timer_cleanup(DemoAppContext* ctx) {
     if (!ctx) return;
     
-    printf("[DemoApp Timer] Cleaning up timer subsystem...\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Cleaning up timer subsystem...\n");
     
     g_timer_running = 0;
     
@@ -251,7 +255,9 @@ void demo_timer_cleanup(DemoAppContext* ctx) {
 #endif
 #endif
     
-    printf("[DemoApp Timer] Timer cleanup complete\n");
+    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer cleanup complete\n");
+    // Shutdown publisher
+    demo_publisher_shutdown();
 }
 
 /* ========================================================================
@@ -298,7 +304,7 @@ void demo_timer_tick(DemoAppContext* ctx) {
         
         // IBIT duration: 3 seconds (3000ms)
         if (elapsed >= 3000) {
-            printf("[DemoApp Timer] IBIT completed after %llu ms\n", elapsed);
+            demo_log(LOG_DIR_INFO, "[DemoApp Timer] IBIT completed after %llu ms\n", elapsed);
             
             // Publish resultBIT
             demo_msg_publish_result_bit(ctx);
@@ -310,7 +316,7 @@ void demo_timer_tick(DemoAppContext* ctx) {
             extern void enter_state(DemoAppContext* ctx, DemoState new_state);
             enter_state(ctx, DEMO_STATE_RUN);
             
-            printf("[DemoApp Timer] Returned to Run state\n");
+            demo_log(LOG_DIR_INFO, "[DemoApp Timer] Returned to Run state\n");
         }
         
         return;  // Don't publish periodic messages during IBIT
@@ -340,7 +346,11 @@ void demo_timer_tick(DemoAppContext* ctx) {
 #else
             struct timespec ts0; clock_gettime(CLOCK_MONOTONIC, &ts0); t0 = (uint64_t)ts0.tv_sec*1000000000ULL + ts0.tv_nsec;
 #endif
-            demo_msg_publish_actuator_signal(ctx);
+            // Enqueue publish to publisher task to avoid blocking timer
+            if (demo_publisher_enqueue_signal(ctx) != 0) {
+                // If enqueue failed (queue full), optionally drop and log
+                demo_log(LOG_DIR_INFO, "[Timer] Publisher queue full, dropped signal event\n");
+            }
 #if defined(_VXWORKS_)
             {
                 unsigned long tk = tickGet();
@@ -353,7 +363,9 @@ void demo_timer_tick(DemoAppContext* ctx) {
             ctx->pub_signal_ns_total += (t1 > t0) ? (t1 - t0) : 0ULL;
             ctx->pub_signal_count++;
 #else
-            demo_msg_publish_actuator_signal(ctx);
+            if (demo_publisher_enqueue_signal(ctx) != 0) {
+                demo_log(LOG_DIR_INFO, "[Timer] Publisher queue full, dropped signal event\n");
+            }
 #endif
             ctx->last_200hz_tick = ctx->tick_count;
         }

@@ -32,6 +32,7 @@ static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static LogOutputMode g_log_mode = LOG_MODE_CONSOLE;
 static int g_tcp_log_client = -1;
+static int g_log_enabled = 1; /* runtime enable/disable */
 
 /* ========================================================================
  * Platform-specific Mutex
@@ -110,6 +111,7 @@ void demo_log_cleanup(void) {
 }
 
 void demo_log(LogDirection dir, const char* fmt, ...) {
+    if (!g_log_enabled) return;
     char buffer[1024];
     char prefixed[1088];  // buffer + prefix
     va_list args;
@@ -159,6 +161,20 @@ void demo_log_set_mode(LogOutputMode mode) {
     log_lock();
     g_log_mode = mode;
     log_unlock();
+}
+
+void demo_log_set_enabled(int enabled) {
+    log_lock();
+    g_log_enabled = enabled ? 1 : 0;
+    log_unlock();
+}
+
+int demo_log_get_enabled(void) {
+    int v;
+    log_lock();
+    v = g_log_enabled;
+    log_unlock();
+    return v;
 }
 
 LogOutputMode demo_log_get_mode(void) {

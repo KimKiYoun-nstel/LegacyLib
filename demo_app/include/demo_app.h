@@ -404,6 +404,9 @@ typedef struct {
     uint64_t legacy_write_ns_total;  // time spent in legacy_agent_write_json call
     uint32_t legacy_write_count;
 
+    uint64_t pub_worker_write_ns_total; // time spent in publisher worker (dequeue->write)
+    uint32_t pub_worker_write_count;
+
     // Scenario start time (wall-clock) recorded when scenario starts
     T_DateTimeType scenario_start_time;
     int scenario_started; /* boolean: 0 = not started, 1 = started */

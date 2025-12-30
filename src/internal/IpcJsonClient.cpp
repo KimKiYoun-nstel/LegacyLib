@@ -24,6 +24,7 @@
 #include "json.hpp"
 
 using json = nlohmann::json;
+#include <chrono>
 #include <cstdarg>
 
 // Simple JSON helper for Phase 1 (Replace with real lib later)
@@ -206,10 +207,18 @@ LegacyStatus IpcJsonClient::sendRequest(const std::string& json_body, uint16_t t
     // Log parse/CBOR durations
     uint64_t parse_ns = (p1 > p0) ? (p1 - p0) : 0ULL;
     uint64_t cbor_ns = (c1 > p1) ? (c1 - p1) : 0ULL;
-    logInfo("[PERF] IpcJsonClient parse=%llu us, to_cbor=%llu us", (unsigned long long)(parse_ns/1000ULL), (unsigned long long)(cbor_ns/1000ULL));
+         logInfo("[PERF] IpcJsonClient parse=%llu us, to_cbor=%llu us", (unsigned long long)(parse_ns/1000ULL), (unsigned long long)(cbor_ns/1000ULL));
+         // Accumulate into client-level perf counters
+        parse_ns_total_.fetch_add(parse_ns);
+        parse_count_.fetch_add(1);
+        cbor_ns_total_.fetch_add(cbor_ns);
+        cbor_count_.fetch_add(1);
 #endif
         
-        if (!transport_.send(cbor.data(), cbor.size(), type, req_id)) {
+        // Move CBOR into per-instance buffer to reuse capacity and avoid per-call allocations
+        cbor_buf_ = std::move(cbor);
+
+        if (!transport_.send(cbor_buf_.data(), cbor_buf_.size(), type, req_id)) {
             return LEGACY_ERR_TRANSPORT;
         }
     } catch (const std::exception& e) {
@@ -555,8 +564,8 @@ LegacyStatus IpcJsonClient::setQosProfile(const LegacyQosSetOptions* opt, uint32
 
 LegacyStatus IpcJsonClient::writeJson(const LegacyWriteJsonOptions* opt, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
     uint32_t req_id = generateRequestId();
-    
-    // Match Sample: {"args":{...},"data":{...},"op":"write","proto":1,"target":{"kind":"writer","topic":"..."}}
+
+    // Build JSON payload
     json j;
     j["op"] = "write";
     j["target"]["kind"] = "writer";
@@ -564,32 +573,43 @@ LegacyStatus IpcJsonClient::writeJson(const LegacyWriteJsonOptions* opt, uint32_
     j["args"]["domain"] = opt->domain;
     if (opt->publisher) j["args"]["publisher"] = opt->publisher;
     if (opt->qos) j["args"]["qos"] = opt->qos;
-    
-#ifdef DEMO_TIMING_INSTRUMENTATION
+
+#ifdef DEMO_PERF_INSTRUMENTATION
     auto t0 = std::chrono::steady_clock::now();
 #endif
     try {
         j["data"] = json::parse(opt->data_json);
     } catch (...) {
-        j["data"] = opt->data_json; 
+        j["data"] = opt->data_json;
     }
-#ifdef DEMO_TIMING_INSTRUMENTATION
+#ifdef DEMO_PERF_INSTRUMENTATION
     auto t1 = std::chrono::steady_clock::now();
     auto parse_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
-    logInfo("[TIMING] IpcJsonClient::parse data_json took %llu us", (unsigned long long)parse_us);
+    logInfo("[PERF] IpcJsonClient::parse data_json took %llu us", (unsigned long long)parse_us);
 #endif
-    
+
     j["proto"] = 1;
-    
     std::string json_str = j.dump();
-    
+
     PendingRequest req;
     req.simple_cb = cb;
     req.hello_cb = nullptr;
     req.user = user;
-    
+
     registerRequest(req_id, req);
-    return sendRequest(json_str, 0x1000, req_id);
+
+#ifdef DEMO_PERF_INSTRUMENTATION
+    auto tw0 = std::chrono::steady_clock::now();
+#endif
+    LegacyStatus st = sendRequest(json_str, 0x1000, req_id);
+#ifdef DEMO_PERF_INSTRUMENTATION
+    auto tw1 = std::chrono::steady_clock::now();
+    auto write_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(tw1 - tw0).count();
+    write_ns_total_.fetch_add((uint64_t)write_ns);
+    write_count_.fetch_add(1);
+    logInfo("[PERF] IpcJsonClient::writeJson total=%llu us", (unsigned long long)(write_ns/1000ULL));
+#endif
+    return st;
 }
 
 LegacyStatus IpcJsonClient::writeStruct(const char* topic, const char* type_name, const void* user_struct, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
@@ -702,3 +722,28 @@ void IpcJsonClient::logInfo(const char* fmt, ...) {
 }
 // If instance callback not set, try global callback registered via legacy_agent
 // (legacy_agent_get_log_callback declared in legacy_agent.h)
+
+void IpcJsonClient::getPerfStats(LegacyPerfStats* out_stats) {
+    if (!out_stats) return;
+#ifdef DEMO_PERF_INSTRUMENTATION
+    out_stats->ipc_parse_ns_total = parse_ns_total_.load();
+    out_stats->ipc_parse_count = parse_count_.load();
+    out_stats->ipc_cbor_ns_total = cbor_ns_total_.load();
+    out_stats->ipc_cbor_count = cbor_count_.load();
+    out_stats->write_ns_total = write_ns_total_.load();
+    out_stats->write_count = write_count_.load();
+    uint64_t send_us_total = 0; uint32_t send_count = 0;
+    transport_.getPerfStats(&send_us_total, &send_count);
+    out_stats->transport_send_us_total = send_us_total;
+    out_stats->transport_send_count = send_count;
+#else
+    out_stats->ipc_parse_ns_total = 0;
+    out_stats->ipc_parse_count = 0;
+    out_stats->ipc_cbor_ns_total = 0;
+    out_stats->ipc_cbor_count = 0;
+    out_stats->write_ns_total = 0;
+    out_stats->write_count = 0;
+    out_stats->transport_send_us_total = 0;
+    out_stats->transport_send_count = 0;
+#endif
+}

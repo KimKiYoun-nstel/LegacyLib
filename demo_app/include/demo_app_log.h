@@ -80,6 +80,12 @@ LogOutputMode demo_log_get_mode(void);
  */
 const char* demo_log_mode_name(LogOutputMode mode);
 
+/**
+ * Enable or disable logging at runtime. When disabled, `demo_log` is a no-op.
+ */
+void demo_log_set_enabled(int enabled);
+int  demo_log_get_enabled(void);
+
 /* ========================================================================
  * TCP Log Redirection (Internal)
  * ======================================================================== */

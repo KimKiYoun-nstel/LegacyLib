@@ -1,8 +1,13 @@
 #include "DkmRtpIpc.h"
+#include "legacy_agent.h"
+#include <cstdarg>
+#include <cstdio>
 #include <iostream>
 #include <cstring>
 #include <vector>
 #include <chrono>
+#include <mutex>
+#include <cstdarg>
 
 #ifdef _WIN32
 // Windows specific includes are in header
@@ -65,6 +70,14 @@ DkmRtpIpc::DkmRtpIpc() : sock_(INVALID_SOCKET), initialized_(false) {
     memset(&dest_addr_, 0, sizeof(dest_addr_));
 }
 
+static void dap_log(int level, const char* fmt, ...) {
+    LegacyLogCb cb = nullptr; void* user = nullptr; legacy_agent_get_log_callback(&cb, &user);
+    if (!cb) return;
+    char buf[512];
+    va_list ap; va_start(ap, fmt); vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap);
+    cb(level, buf, user);
+}
+
 DkmRtpIpc::~DkmRtpIpc() {
     close();
 }
@@ -73,14 +86,14 @@ bool DkmRtpIpc::init(const char* ip, uint16_t port) {
 #ifdef _WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        std::cerr << "[DkmRtpIpc] WSAStartup failed" << std::endl;
+        dap_log(4, "[DkmRtpIpc] WSAStartup failed");
         return false;
     }
 #endif
 
     sock_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock_ == INVALID_SOCKET) {
-        std::cerr << "[DkmRtpIpc] socket creation failed" << std::endl;
+        dap_log(4, "[DkmRtpIpc] socket creation failed");
         return false;
     }
 
@@ -98,16 +111,26 @@ bool DkmRtpIpc::init(const char* ip, uint16_t port) {
     // It does NOT perform a handshake or verify the server exists.
     if (connect(sock_, (struct sockaddr*)&dest_addr_, sizeof(dest_addr_)) == SOCKET_ERROR) {
 #ifdef _WIN32
-        std::cerr << "[DkmRtpIpc] connect (set default dest) failed. Error: " << WSAGetLastError() << std::endl;
+        dap_log(4, "[DkmRtpIpc] connect (set default dest) failed. Error: %d", WSAGetLastError());
 #else
-        std::cerr << "[DkmRtpIpc] connect (set default dest) failed. Error: " << errno << std::endl;
+        dap_log(4, "[DkmRtpIpc] connect (set default dest) failed. Error: %d", errno);
 #endif
         closesocket(sock_);
         return false;
     }
 
     initialized_ = true;
-    std::cout << "[DkmRtpIpc] Socket Initialized. Default Destination: " << ip << ":" << port << std::endl;
+    // Log via global legacy agent callback if present
+    {
+        LegacyLogCb cb = nullptr;
+        void* user = nullptr;
+        legacy_agent_get_log_callback(&cb, &user);
+        if (cb) {
+            char buf[256];
+            snprintf(buf, sizeof(buf), "[DkmRtpIpc] Socket Initialized. Default Destination: %s:%u", ip, port);
+            cb(2, buf, user); // level=2 INFO
+        }
+    }
     return true;
 }
 
@@ -136,35 +159,80 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
     h.length = htonl((uint32_t)len);
     h.ts_ns = htonll(now_ns());
 
-    // Combine Header + Payload
-    std::vector<uint8_t> packet(sizeof(Header) + len);
-    memcpy(packet.data(), &h, sizeof(Header));
-    if (len > 0) {
-        memcpy(packet.data() + sizeof(Header), data, len);
-    }
-
-    // Use send() since we are connected
-    
-#ifdef DEMO_TIMING_INSTRUMENTATION
+#if defined(_WIN32)
+    // For Windows use simple send() (WSASend alternative could be used)
+#else
+    // Use scatter-gather I/O to avoid copying header+payload into a temporary buffer
+#endif
+#ifdef DEMO_PERF_INSTRUMENTATION
     auto t0 = std::chrono::steady_clock::now();
 #endif
-    int sent = ::send(sock_, (const char*)packet.data(), (int)packet.size(), 0);
+    int sent = 0;
+#if defined(_WIN32)
+    // Fallback: keep existing simple send on Windows
+    std::vector<uint8_t> packet(sizeof(Header) + len);
+    memcpy(packet.data(), &h, sizeof(Header));
+    if (len > 0) memcpy(packet.data() + sizeof(Header), data, len);
+    sent = ::send(sock_, (const char*)packet.data(), (int)packet.size(), 0);
+#else
+    struct msghdr msg;
+    struct iovec iov[2];
+    memset(&msg, 0, sizeof(msg));
+    iov[0].iov_base = (void*)&h;
+    iov[0].iov_len = sizeof(Header);
+    iov[1].iov_base = (void*)data;
+    iov[1].iov_len = len;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 2;
+    sent = (int)sendmsg(sock_, &msg, 0);
+#endif
     
+#ifdef DEMO_PERF_INSTRUMENTATION
+    auto t1 = std::chrono::steady_clock::now();
+    auto send_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+    {
+        LegacyLogCb cb = nullptr; void* user = nullptr; legacy_agent_get_log_callback(&cb, &user);
+        if (cb) {
+            char buf[128];
+            snprintf(buf, sizeof(buf), "[PERF] DkmRtpIpc::send() took %lld us (sent=%d)", (long long)send_us, sent);
+            cb(1, buf, user); // DEBUG
+        }
+    }
+#ifdef _WIN32
+    // no-op
+#endif
+    // Accumulate transport perf counters
+    send_us_total_.fetch_add((uint64_t)send_us);
+    send_count_.fetch_add(1);
+#endif
+
     if (sent == SOCKET_ERROR) {
 #ifdef _WIN32
-        std::cerr << "[DkmRtpIpc] send failed. Error: " << WSAGetLastError() << std::endl;
+        dap_log(4, "[DkmRtpIpc] send failed. Error: %d", WSAGetLastError());
 #else
-        std::cerr << "[DkmRtpIpc] send failed. Error: " << errno << std::endl;
+        dap_log(4, "[DkmRtpIpc] send failed. Error: %d", errno);
 #endif
         return false;
     }
-#ifdef DEMO_TIMING_INSTRUMENTATION
-    auto t1 = std::chrono::steady_clock::now();
-    auto send_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
-    std::cerr << "[TIMING] DkmRtpIpc::send() took " << send_us << " us (sent=" << sent << ")\n";
-#endif
-    std::cout << "[DkmRtpIpc] Sent " << sent << " bytes (Header: " << sizeof(Header) << " + Payload: " << len << ")" << std::endl;
+/* timing/print previously duplicated and removed to avoid redefinition */
+    {
+        LegacyLogCb cb = nullptr; void* user = nullptr; legacy_agent_get_log_callback(&cb, &user);
+        if (cb) {
+            char buf[128];
+            snprintf(buf, sizeof(buf), "[DkmRtpIpc] Sent %d bytes (Header: %zu + Payload: %zu)", sent, sizeof(Header), len);
+            cb(2, buf, user);
+        }
+    }
     return true;
+}
+
+void DkmRtpIpc::getPerfStats(uint64_t* out_send_us_total, uint32_t* out_send_count) const {
+    if (out_send_us_total) *out_send_us_total = 0;
+    if (out_send_count) *out_send_count = 0;
+#ifdef DEMO_PERF_INSTRUMENTATION
+    if (out_send_us_total) *out_send_us_total = send_us_total_.load();
+    if (out_send_count) *out_send_count = send_count_.load();
+#endif
 }
 
 int DkmRtpIpc::receive(void* buffer, size_t max_len, int timeout_ms) {
@@ -189,52 +257,59 @@ int DkmRtpIpc::receive(void* buffer, size_t max_len, int timeout_ms) {
         
         if (bytes > 0) {
             if (bytes < sizeof(Header)) {
-                std::cerr << "[DkmRtpIpc] Received packet too small for header: " << bytes << std::endl;
-                return 0; // Ignore invalid packet
-            }
+                    dap_log(4, "[DkmRtpIpc] Received packet too small for header: %d", bytes);
+                    return 0; // Ignore invalid packet
+                }
 
             Header* h = (Header*)recv_buf.data();
             uint32_t magic = ntohl(h->magic);
             if (magic != MAGIC_VALUE) {
-                std::cerr << "[DkmRtpIpc] Invalid Magic: " << std::hex << magic << std::dec << std::endl;
+                dap_log(4, "[DkmRtpIpc] Invalid Magic: 0x%08x", magic);
                 return 0; // Ignore invalid packet
             }
 
             uint32_t payload_len = ntohl(h->length);
-            if (bytes - sizeof(Header) < payload_len) {
-                 std::cerr << "[DkmRtpIpc] Incomplete payload. Expected: " << payload_len << ", Got: " << (bytes - sizeof(Header)) << std::endl;
-                 return 0;
-            }
+              if (bytes - sizeof(Header) < payload_len) {
+                  dap_log(4, "[DkmRtpIpc] Incomplete payload. Expected: %u, Got: %d", payload_len, (bytes - (int)sizeof(Header)));
+                  return 0;
+              }
 
             // Copy payload to user buffer
             size_t copy_len = (payload_len < max_len) ? payload_len : max_len;
             memcpy(buffer, recv_buf.data() + sizeof(Header), copy_len);
             
-            std::cout << "[DkmRtpIpc] Recv Valid Packet. Payload: " << copy_len << " bytes" << std::endl;
+            {
+                LegacyLogCb cb = nullptr; void* user = nullptr; legacy_agent_get_log_callback(&cb, &user);
+                if (cb) {
+                    char buf[128];
+                    snprintf(buf, sizeof(buf), "[DkmRtpIpc] Recv Valid Packet. Payload: %zu bytes", copy_len);
+                    cb(2, buf, user);
+                }
+            }
             return (int)copy_len;
 
         } else if (bytes == SOCKET_ERROR) {
 #ifdef _WIN32
             int err = WSAGetLastError();
             if (err == WSAECONNRESET) {
-                std::cerr << "[DkmRtpIpc] Error: Agent Port Unreachable (WSAECONNRESET). Agent is NOT running or Port is closed." << std::endl;
+                dap_log(3, "[DkmRtpIpc] Error: Agent Port Unreachable (WSAECONNRESET). Agent is NOT running or Port is closed.");
             } else {
-                std::cerr << "[DkmRtpIpc] recv failed. Error: " << err << std::endl;
+                dap_log(4, "[DkmRtpIpc] recv failed. Error: %d", err);
             }
 #else
-            std::cerr << "[DkmRtpIpc] recv failed. Error: " << errno << std::endl;
+            dap_log(4, "[DkmRtpIpc] recv failed. Error: %d", errno);
 #endif
             return -1;
         }
         return bytes;
     } else if (ret == 0) {
         return 0; // Timeout
-    } else {
-#ifdef _WIN32
-        std::cerr << "[DkmRtpIpc] select error: " << WSAGetLastError() << std::endl;
-#else
-        std::cerr << "[DkmRtpIpc] select error: " << errno << std::endl;
-#endif
+        } else {
+    #ifdef _WIN32
+        dap_log(4, "[DkmRtpIpc] select error: %d", WSAGetLastError());
+    #else
+        dap_log(4, "[DkmRtpIpc] select error: %d", errno);
+    #endif
         return -1; // Error
-    }
+        }
 }

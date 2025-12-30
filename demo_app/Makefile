@@ -61,13 +61,15 @@ CFLAGS = -dkm \
          -D_VX_CPU=_VX_PPCE6500 \
          -D_WRS_KERNEL \
          -D_VXWORKS_ \
-         -Wall -O2 \
-		 -DDEMO_PERF_INSTRUMENTATION
+         -Wall -O2
+		 
+#		 -DDEMO_PERF_INSTRUMENTATION
 
 # Source Files
 SRCS = src/demo_app_core.c \
 	src/demo_app_msg.cpp \
-       src/demo_app_timer.c \
+	src/demo_app_timer.c \
+	src/demo_app_publisher.c \
 	src/demo_app_status.c \
        src/demo_app_enums.c \
        src/demo_app_log.c \

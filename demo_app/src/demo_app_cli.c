@@ -61,6 +61,7 @@ static void cmd_help(void) {
         "  log_mode <mode>           : Set log output mode\n"
         "    Modes: console, redirect, both\n"
         "  log_status                : Show current log mode\n"
+        "  log on|off                : Enable or disable logging at runtime\n"
         "\n[Other]\n"
         "  help                      : Show this help\n"
         "  quit                      : Close CLI client connection (server remains)\n"
@@ -294,6 +295,23 @@ static void cmd_log_mode(int token_count, char** tokens) {
     demo_log_set_mode(mode);
     demo_tcp_cli_print("OK: Log mode set to '%s'\n", demo_log_mode_name(mode));
 }
+        // New command for enabling/disabling logging
+    static void cmd_log_control(int token_count, char** tokens) {
+        if (token_count < 2) {
+            demo_tcp_cli_print("Usage: log on|off\n");
+            return;
+        }
+        const char* arg = tokens[1];
+        if (strcmp(arg, "on") == 0) {
+            demo_log_set_enabled(1);
+            demo_tcp_cli_print("OK: logging enabled\n");
+        } else if (strcmp(arg, "off") == 0) {
+            demo_log_set_enabled(0);
+            demo_tcp_cli_print("OK: logging disabled\n");
+        } else {
+            demo_tcp_cli_print("Usage: log on|off\n");
+        }
+    }
 
 static void cmd_log_status(void) {
     LogOutputMode mode = demo_log_get_mode();
@@ -393,6 +411,9 @@ void demo_cli_process_command(char* line) {
     else if (strcmp(cmd, "log_mode") == 0) {
         cmd_log_mode(token_count, tokens);
     }
+        else if (strcmp(cmd, "log") == 0) {
+            cmd_log_control(token_count, tokens);
+        }
     else if (strcmp(cmd, "log_status") == 0) {
         cmd_log_status();
     }

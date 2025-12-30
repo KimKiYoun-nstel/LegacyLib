@@ -115,6 +115,12 @@ LegacyStatus legacy_agent_register_type_adapter(LEGACY_HANDLE h, const LegacyTyp
     return h->client.registerTypeAdapter(adapter);
 }
 
+LegacyStatus legacy_agent_get_perf_stats(LEGACY_HANDLE h, LegacyPerfStats* out_stats) {
+    if (!h || !out_stats) return LEGACY_ERR_PARAM;
+    h->client.getPerfStats(out_stats);
+    return LEGACY_OK;
+}
+
 LegacyStatus legacy_agent_unregister_type_adapter(LEGACY_HANDLE h, const char* topic, const char* type_name) {
     if (!h || !topic || !type_name) return LEGACY_ERR_PARAM;
     return h->client.unregisterTypeAdapter(topic, type_name);

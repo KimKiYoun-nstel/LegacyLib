@@ -13,6 +13,7 @@
 #include <vxWorks.h>
 #include <taskLib.h>
 #include <sysLib.h>
+#include <tickLib.h>
 #endif
 
 /* ========================================================================
@@ -424,6 +425,19 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
     char cbit_json[2048];
     CBITComponentState* cbit = &ctx->bit_state.cbit_components;
 
+#ifdef DEMO_PERF_INSTRUMENTATION
+    uint64_t t_build0 = 0, t_build1 = 0;
+#if defined(_VXWORKS_)
+    {
+        unsigned long tk = tickGet();
+        int tr = sysClkRateGet();
+        t_build0 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+    }
+#else
+    struct timespec tbs; clock_gettime(CLOCK_MONOTONIC, &tbs); t_build0 = (uint64_t)tbs.tv_sec*1000000000ULL + tbs.tv_nsec;
+#endif
+#endif
+
     snprintf(cbit_json, sizeof(cbit_json),
         "{"
         "\"" F_A_SOURCEID "\":{"
@@ -485,8 +499,46 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
         "NstelCustomQosLib::LowFrequencyStatusProfile"
     };
     
+    
+#ifdef DEMO_PERF_INSTRUMENTATION
+    uint64_t t_write0 = 0, t_write1 = 0;
+#if defined(_VXWORKS_)
+    {
+        unsigned long tk = tickGet();
+        int tr = sysClkRateGet();
+        t_write0 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+    }
+#else
+    struct timespec tws; clock_gettime(CLOCK_MONOTONIC, &tws); t_write0 = (uint64_t)tws.tv_sec*1000000000ULL + tws.tv_nsec;
+#endif
+#endif
+
     LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 1000,
                                                   on_write_complete, (void*)"CBIT");
+
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    {
+        unsigned long tk = tickGet();
+        int tr = sysClkRateGet();
+        t_write1 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+    }
+#else
+    struct timespec twe; clock_gettime(CLOCK_MONOTONIC, &twe); t_write1 = (uint64_t)twe.tv_sec*1000000000ULL + twe.tv_nsec;
+#endif
+    /* accumulate build and write times */
+    if (t_build1 == 0) {
+#if defined(_VXWORKS_)
+        unsigned long tk = tickGet(); int tr = sysClkRateGet(); t_build1 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+#else
+        struct timespec tbe; clock_gettime(CLOCK_MONOTONIC, &tbe); t_build1 = (uint64_t)tbe.tv_sec*1000000000ULL + tbe.tv_nsec;
+#endif
+    }
+    ctx->json_dump_ns_total += (t_build1 > t_build0) ? (t_build1 - t_build0) : 0ULL;
+    ctx->json_dump_count++;
+    ctx->legacy_write_ns_total += (t_write1 > t_write0) ? (t_write1 - t_write0) : 0ULL;
+    ctx->legacy_write_count++;
+#endif
     if (status != LEGACY_OK) {
         return -1;
     }
@@ -568,6 +620,15 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
 
 int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
+
+#ifdef DEMO_PERF_INSTRUMENTATION
+    uint64_t t_publish_start = 0;
+#ifdef _VXWORKS_
+    t_publish_start = ctx ? ctx->tick_count : 0;
+#else
+    struct timespec tps0; clock_gettime(CLOCK_MONOTONIC, &tps0); t_publish_start = (uint64_t)tps0.tv_sec*1000ULL + (uint64_t)(tps0.tv_nsec/1000000ULL);
+#endif
+#endif
     
     // Build Actuator Signal JSON payload (200Hz feedback with 14 fields)
     // Note: A_manualArmPositionComple has typo (Comple not Complement)
@@ -575,12 +636,17 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     ActuatorSignalState* sig = &ctx->signal_state;
     
     // --- Quantize / Clamp outputs according to spec ---
-#ifdef DEMO_TIMING_INSTRUMENTATION
-    uint64_t t_publish_start = 0;
-#ifdef _VXWORKS_
-    t_publish_start = ctx ? ctx->tick_count : 0;
+#ifdef DEMO_PERF_INSTRUMENTATION
+    uint64_t t_build0 = 0, t_build1 = 0;
+    uint64_t t_write0 = 0, t_write1 = 0;
+#if defined(_VXWORKS_)
+    {
+        unsigned long tk = tickGet();
+        int tr = sysClkRateGet();
+        t_build0 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+    }
 #else
-    struct timespec tps; clock_gettime(CLOCK_MONOTONIC, &tps); t_publish_start = (uint64_t)tps.tv_sec*1000ULL + (uint64_t)(tps.tv_nsec/1000000ULL);
+    struct timespec tps; clock_gettime(CLOCK_MONOTONIC, &tps); t_build0 = (uint64_t)tps.tv_sec*1000000000ULL + tps.tv_nsec;
 #endif
 #endif
     // A_azAngle: send current azimuth velocity (sig->e1AngleVelocity) but keep field name
@@ -658,19 +724,56 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         "pub1",
         "NstelCustomQosLib::HighFrequencyPeriodicProfile"
     };
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    {
+        unsigned long tk = tickGet();
+        int tr = sysClkRateGet();
+        t_build1 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+    }
+#else
+    struct timespec tbend; clock_gettime(CLOCK_MONOTONIC, &tbend); t_build1 = (uint64_t)tbend.tv_sec*1000000000ULL + tbend.tv_nsec;
+#endif
+#endif
+
+    /* measure write/send time */
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    {
+        unsigned long tk = tickGet(); int tr = sysClkRateGet(); t_write0 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+    }
+#else
+    struct timespec tw0; clock_gettime(CLOCK_MONOTONIC, &tw0); t_write0 = (uint64_t)tw0.tv_sec*1000000000ULL + tw0.tv_nsec;
+#endif
+#endif
 
     LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 500,
                                                   on_write_complete, (void*)"Signal");
-#ifdef DEMO_TIMING_INSTRUMENTATION
+
+#ifdef DEMO_PERF_INSTRUMENTATION
+#if defined(_VXWORKS_)
+    {
+        unsigned long tk = tickGet(); int tr = sysClkRateGet(); t_write1 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
+    }
+#else
+    struct timespec tw1; clock_gettime(CLOCK_MONOTONIC, &tw1); t_write1 = (uint64_t)tw1.tv_sec*1000000000ULL + tw1.tv_nsec;
+#endif
+    /* accumulate */
+    ctx->json_dump_ns_total += (t_build1 > t_build0) ? (t_build1 - t_build0) : 0ULL;
+    ctx->json_dump_count++;
+    ctx->legacy_write_ns_total += (t_write1 > t_write0) ? (t_write1 - t_write0) : 0ULL;
+    ctx->legacy_write_count++;
+#endif
+#ifdef DEMO_PERF_INSTRUMENTATION
     uint64_t t_publish_end = 0;
 #ifdef _VXWORKS_
     t_publish_end = ctx ? ctx->tick_count : 0;
-    printf("[TIMING] publish_signal JSON+send approx %llu ms (ticks delta=%llu)\n",
-           (unsigned long long)(t_publish_end - t_publish_start),
-           (unsigned long long)(t_publish_end - t_publish_start));
+    demo_log(LOG_DIR_INFO, "[TIMING] publish_signal JSON+send approx %llu ms (ticks delta=%llu)\n",
+             (unsigned long long)(t_publish_end - t_publish_start),
+             (unsigned long long)(t_publish_end - t_publish_start));
 #else
     struct timespec tpe; clock_gettime(CLOCK_MONOTONIC, &tpe); t_publish_end = (uint64_t)tpe.tv_sec*1000ULL + (uint64_t)(tpe.tv_nsec/1000000ULL);
-    printf("[TIMING] publish_signal JSON+send took %llu ms\n", (unsigned long long)(t_publish_end - t_publish_start));
+    demo_log(LOG_DIR_INFO, "[TIMING] publish_signal JSON+send took %llu ms\n", (unsigned long long)(t_publish_end - t_publish_start));
 #endif
 #endif
     if (status != LEGACY_OK) {

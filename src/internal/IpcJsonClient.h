@@ -133,4 +133,18 @@ private:
     std::mutex adapter_mutex_;
 #endif
     std::map<std::string, LegacyTypeAdapter> type_adapters_;
+    // Perf accumulation (when DEMO_PERF_INSTRUMENTATION enabled)
+    std::atomic<uint64_t> parse_ns_total_{0};
+    std::atomic<uint32_t> parse_count_{0};
+    std::atomic<uint64_t> cbor_ns_total_{0};
+    std::atomic<uint32_t> cbor_count_{0};
+    std::atomic<uint64_t> write_ns_total_{0};
+    std::atomic<uint32_t> write_count_{0};
+
+    // Per-instance reusable CBOR buffer to avoid per-call allocations
+    std::vector<uint8_t> cbor_buf_;
+
+public:
+    // Fill a LegacyPerfStats structure with accumulated library perf counters
+    void getPerfStats(LegacyPerfStats* out_stats);
 };

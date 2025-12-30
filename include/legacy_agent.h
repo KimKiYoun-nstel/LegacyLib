@@ -9,6 +9,11 @@
 extern "C" {
 #endif
 
+/* Instrumentation: use single macro `DEMO_PERF_INSTRUMENTATION`.
+ * Older `DEMO_TIMING_INSTRUMENTATION` uses were removed to keep
+ * instrumentation controlled by the single Makefile macro.
+ */
+
 /* --- Basic Types & Initialization --- */
 
 typedef struct LegacyAgentHandleImpl* LEGACY_HANDLE;
@@ -45,6 +50,23 @@ void         legacy_agent_close(LEGACY_HANDLE h);
 // If demos/apps want a global adapter for library logs they can register here.
 void legacy_agent_set_log_callback(LegacyLogCb cb, void* user);
 void legacy_agent_get_log_callback(LegacyLogCb* out_cb, void** out_user);
+
+/* --- Performance Instrumentation Exposure --- */
+typedef struct {
+    uint64_t ipc_parse_ns_total;    // total time spent parsing JSON -> ns
+    uint32_t ipc_parse_count;
+    uint64_t ipc_cbor_ns_total;     // total time spent json::to_cbor -> ns
+    uint32_t ipc_cbor_count;
+    uint64_t transport_send_us_total; // total transport send time (microseconds)
+    uint32_t transport_send_count;
+    uint64_t write_ns_total;        // total time spent in writeJson() (nanoseconds)
+    uint32_t write_count;
+} LegacyPerfStats;
+
+/* Query library-side accumulated perf counters. Returns LEGACY_OK if handle valid.
+ * Counters are accumulated only when code is built with DEMO_PERF_INSTRUMENTATION.
+ */
+LegacyStatus legacy_agent_get_perf_stats(LEGACY_HANDLE h, LegacyPerfStats* out_stats);
 
 /* --- Common Response Structures --- */
 
