@@ -378,9 +378,9 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
     j[F_A_ROUNDMOTOR] = format_bit_result(comp->roundMotor);
     j[F_A_UPDOWNAMP] = format_bit_result(comp->upDownAmp);
     j[F_A_ROUNDAMP] = format_bit_result(comp->roundAmp);
-    j[F_A_BASEGIRO] = format_bit_result(comp->baseGiro);
-    j[F_A_TOPFORWARDGIRO] = format_bit_result(comp->topForwardGiro);
-    j[F_A_VEHICLEFORWARDGIRO] = format_bit_result(comp->vehicleForwardGiro);
+    j[F_A_BASEGYRO] = format_bit_result(comp->baseGyro);
+    j[F_A_TOPFORWARDGYRO] = format_bit_result(comp->topForwardGyro);
+    j[F_A_VEHICLEFORWARDGYRO] = format_bit_result(comp->vehicleForwardGyro);
     j[F_A_POWER_CONTROLLER] = format_bit_result(comp->powerController);
     j[F_A_ENERGY_STORAGE] = format_bit_result(comp->energyStorage);
     j[F_A_DIRECTPOWER] = format_bit_result(comp->directPower);
@@ -423,9 +423,9 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
     j[F_A_ROUNDMOTOR] = format_bit_result(cbit->base.roundMotor);
     j[F_A_UPDOWNAMP] = format_bit_result(cbit->base.upDownAmp);
     j[F_A_ROUNDAMP] = format_bit_result(cbit->base.roundAmp);
-    j[F_A_BASEGIRO] = format_bit_result(cbit->base.baseGiro);
-    j[F_A_TOPFORWARDGIRO] = format_bit_result(cbit->base.topForwardGiro);
-    j[F_A_VEHICLEFORWARDGIRO] = format_bit_result(cbit->base.vehicleForwardGiro);
+    j[F_A_BASEGYRO] = format_bit_result(cbit->base.baseGyro);
+    j[F_A_TOPFORWARDGYRO] = format_bit_result(cbit->base.topForwardGyro);
+    j[F_A_VEHICLEFORWARDGYRO] = format_bit_result(cbit->base.vehicleForwardGyro);
     j[F_A_POWER_CONTROLLER] = format_bit_result(cbit->base.powerController);
     j[F_A_ENERGY_STORAGE] = format_bit_result(cbit->base.energyStorage);
     j[F_A_DIRECTPOWER] = format_bit_result(cbit->base.directPower);
@@ -469,9 +469,9 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     j[F_A_ROUNDMOTOR] = format_bit_result(result->roundMotor);
     j[F_A_UPDOWNAMP] = format_bit_result(result->upDownAmp);
     j[F_A_ROUNDAMP] = format_bit_result(result->roundAmp);
-    j[F_A_BASEGIRO] = format_bit_result(result->baseGiro);
-    j[F_A_TOPFORWARDGIRO] = format_bit_result(result->topForwardGiro);
-    j[F_A_VEHICLEFORWARDGIRO] = format_bit_result(result->vehicleForwardGiro);
+    j[F_A_BASEGYRO] = format_bit_result(result->baseGyro);
+    j[F_A_TOPFORWARDGYRO] = format_bit_result(result->topForwardGyro);
+    j[F_A_VEHICLEFORWARDGYRO] = format_bit_result(result->vehicleForwardGyro);
     j[F_A_POWER_CONTROLLER] = format_bit_result(result->powerController);
     j[F_A_ENERGY_STORAGE] = format_bit_result(result->energyStorage);
     j[F_A_DIRECTPOWER] = format_bit_result(result->directPower);
@@ -502,9 +502,9 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
         result->roundMotor == L_BITResultType_NORMAL &&
         result->upDownAmp == L_BITResultType_NORMAL &&
         result->roundAmp == L_BITResultType_NORMAL &&
-        result->baseGiro == L_BITResultType_NORMAL &&
-        result->topForwardGiro == L_BITResultType_NORMAL &&
-        result->vehicleForwardGiro == L_BITResultType_NORMAL &&
+        result->baseGyro == L_BITResultType_NORMAL &&
+        result->topForwardGyro == L_BITResultType_NORMAL &&
+        result->vehicleForwardGyro == L_BITResultType_NORMAL &&
         result->powerController == L_BITResultType_NORMAL &&
         result->energyStorage == L_BITResultType_NORMAL &&
         result->directPower == L_BITResultType_NORMAL &&
@@ -534,12 +534,12 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     if (e1_v < -450.0) e1_v = -450.0;
     e1_v = round(e1_v / 0.01) * 0.01;
 
-    double round_v = sig->roundGiro;
+    double round_v = sig->roundGyro;
     if (round_v > 655.0) round_v = 655.0;
     if (round_v < -655.0) round_v = -655.0;
     round_v = round(round_v / 0.02) * 0.02;
 
-    double updown_v = sig->upDownGiro;
+    double updown_v = sig->upDownGyro;
     if (updown_v > 655.0) updown_v = 655.0;
     if (updown_v < -655.0) updown_v = -655.0;
     updown_v = round(updown_v / 0.02) * 0.02;
@@ -558,8 +558,8 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     j[F_A_MAIN_CANNON_RESTORE_COMPLEMENT] = format_cannon_driving_from_return(sig->mainCannonRestoreComplement);
     j[F_A_ARM_SAFETY_MAIN_CANNON_LOCK] = format_arm_safety_lock(sig->armSafetyMainCannonLock);
     j[F_A_SHUTDOWN] = format_shutdown_type(sig->shutdown);
-    j[F_A_ROUNDGIRO] = round_v;
-    j[F_A_UPDOWNGIRO] = updown_v;
+    j[F_A_ROUNDGYRO] = round_v;
+    j[F_A_UPDOWNGYRO] = updown_v;
 
     uint64_t jd0 = 0, jd1 = 0;
 #ifdef DEMO_PERF_INSTRUMENTATION

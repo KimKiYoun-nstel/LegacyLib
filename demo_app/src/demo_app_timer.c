@@ -440,9 +440,9 @@ void demo_timer_update_simulation(DemoAppContext* ctx) {
         }
     }
     
-    // Update giro values (simplified - just copy velocity)
-    sig->roundGiro = sig->e1AngleVelocity;
-    sig->upDownGiro = ctrl->upDownAngleVelocity;
+    // Update gyro values (simplified - just copy velocity)
+    sig->roundGyro = sig->e1AngleVelocity;
+    sig->upDownGyro = ctrl->upDownAngleVelocity;
     
     // Update enum status fields based on component faults
     // Set to NORMAL if no faults, otherwise indicate fault conditions

@@ -21,6 +21,6 @@
   "A_mainCannonRestoreComplement": "L_CannonDrivingType_DRIVING",
   "A_armSafetyMainCannonLock": "L_CannonLockType_NORMAL",
   "A_shutdown": "L_ShutdownType_UNKNOWN",
-  "A_roundGiro": 1.0,
-  "A_upDownGiro": 1.0
+  "A_roundGyro": 1.0,
+  "A_upDownGyro": 1.0
 }

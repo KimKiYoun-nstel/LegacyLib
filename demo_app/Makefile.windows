@@ -23,11 +23,12 @@ CFLAGS = -Wall -Wextra -O2 -I./include -I../include -DWIN32 -D_WIN32
 CXXFLAGS = -Wall -Wextra -O2 -I./include -I../include -I../src/internal -DWIN32 -D_WIN32 -std=c++11
 
 # Linker Flags
-LDFLAGS = -lws2_32 -lwinmm
+LDFLAGS = -lws2_32 -lwinmm -lpthread
 
 # Source Files
 SRCS_C = src/demo_app_core.c \
 		 src/demo_app_msg.cpp \
+		 src/demo_app_publisher.c \
 		 src/demo_app_timer.c \
 		 src/demo_app_status.c \
 		 src/demo_app_enums.c \
@@ -69,6 +70,12 @@ $(TARGET): $(OBJS_C) $(OBJS_CPP)
 $(BUILD_DIR)/%.o: src/%.c
 	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# Some source files use C++ features but live under src/*.c (platform fallbacks);
+# compile `demo_app_publisher.c` with the C++ compiler to support <queue>, mutex, etc.
+$(BUILD_DIR)/demo_app_publisher.o: src/demo_app_publisher.c
+	@echo "Compiling $< with C++ compiler..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: src/%.cpp
 	@echo "Compiling $<..."

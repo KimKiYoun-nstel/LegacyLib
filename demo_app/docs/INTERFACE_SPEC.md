@@ -32,8 +32,8 @@ PBIT (PowerOn BIT) — example
     "powerController": "L_BITResultType_NORMAL",
     "energyStorage": "L_BITResultType_NORMAL",
     "directPower": "L_BITResultType_NORMAL",
-    "vehicleForwardGiro": "L_BITResultType_NORMAL",
-    "baseGiro": "L_BITResultType_NORMAL",
+    "vehicleForwardGyro": "L_BITResultType_NORMAL",
+    "baseGyro": "L_BITResultType_NORMAL",
     "commFault": "L_BITResultType_NORMAL",
     "mainCannonLock": "L_BITResultType_NORMAL",
     "roundEncoder": "L_BITResultType_NORMAL"
@@ -53,8 +53,8 @@ CBIT (Continuous BIT) — example (partial)
 Actuator Signal — example (partial)
 
 {
-  "A_roundGiro": 0.123,                 // double
-  "A_upDownGiro": -0.05,               // double
+  "A_roundGyro": 0.123,                 // double
+  "A_upDownGyro": -0.05,               // double
   "A_roundVelocity": 0.0,              // double
   "A_upDownVelocity": 0.0,             // double
   "A_roundMotorStatus": "L_ArmPositionType_NORMAL"
@@ -80,9 +80,9 @@ Notes
   "A_roundMotor": "L_BITResultType_NORMAL",
   "A_upDownAmp": "L_BITResultType_NORMAL",
   "A_roundAmp": "L_BITResultType_NORMAL",
-  "A_baseGiro": "L_BITResultType_NORMAL",
-  "A_topForwardGiro": "L_BITResultType_NORMAL",
-  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_baseGyro": "L_BITResultType_NORMAL",
+  "A_topForwardGyro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGyro": "L_BITResultType_NORMAL",
   "A_powerController": "L_BITResultType_NORMAL",
   "A_energyStorage": "L_BITResultType_NORMAL",
   "A_directPower": "L_BITResultType_NORMAL",
@@ -121,9 +121,9 @@ Notes
   "A_roundMotor": "L_BITResultType_NORMAL",
   "A_upDownAmp": "L_BITResultType_NORMAL",
   "A_roundAmp": "L_BITResultType_NORMAL",
-  "A_baseGiro": "L_BITResultType_NORMAL",
-  "A_topForwardGiro": "L_BITResultType_NORMAL",
-  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_baseGyro": "L_BITResultType_NORMAL",
+  "A_topForwardGyro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGyro": "L_BITResultType_NORMAL",
   "A_powerController": "L_BITResultType_NORMAL",
   "A_energyStorage": "L_BITResultType_NORMAL",
   "A_directPower": "L_BITResultType_NORMAL",
@@ -153,8 +153,8 @@ Notes
   "A_recipientID": { /* identifier */ },
   "A_azAngle": 45.5,
   "A_e1AngleVelocity": 2.3,
-  "A_roundGiro": 2.3,
-  "A_upDownGiro": 0.5,
+  "A_roundGyro": 2.3,
+  "A_upDownGyro": 0.5,
   "A_energyStorage": "L_EnergyStorageStatusType_NORMAL",
   "A_mainCannonFixStatus": "L_CannonFixType_RELEASE",
   "A_deckCleance": "L_DeckClearanceType_OUT_OF_DECK",
@@ -167,8 +167,8 @@ Notes
 ```
 
 #### 필드 요약
-- 자이로 표기는 스키마 기준으로 `Giro`로 통일: `A_roundGiro`, `A_upDownGiro`.
-- `A_roundGiro`/`A_upDownGiro`는 `P_LDM_Common::T_Double` (double) 타입입니다。
+- 자이로 표기는 스키마 기준으로 `Gyro`로 통일: `A_roundGyro`, `A_upDownGyro`.
+- `A_roundGyro`/`A_upDownGyro`는 `P_LDM_Common::T_Double` (double) 타입입니다。
 
 ---
 
@@ -261,7 +261,7 @@ Notes
 
 ## 테스트 시나리오 (간단)
 - IBIT 요청: AgentUI가 `P_Usage_And_Condition_Monitoring_PSM__C_Monitored_Entity_runBIT`로 `A_referenceNum` 포함하여 전송 → DemoApp이 `P_NSTEL__C_CannonDrivingDevice_IBIT`로 동일 `A_referenceNum` 반환
-- Signal 수신/표시: AgentUI는 `P_NSTEL__C_CannonDrivingDevice_Signal`의 `A_roundGiro`/`A_upDownGiro` 값을 사용하여 실시간 게이지를 갱신
++ Signal 수신/표시: AgentUI는 `P_NSTEL__C_CannonDrivingDevice_Signal`의 `A_roundGyro`/`A_upDownGyro` 값을 사용하여 실시간 게이지를 갱신
 
 ---
 
@@ -316,9 +316,9 @@ PBIT: 12/12 정상 ✓
   "A_roundMotor": "L_BITResultType_NORMAL",
   "A_upDownAmp": "L_BITResultType_NORMAL",
   "A_roundAmp": "L_BITResultType_NORMAL",
-  "A_baseGiro": "L_BITResultType_NORMAL",
-  "A_topForwardGiro": "L_BITResultType_NORMAL",
-  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_baseGyro": "L_BITResultType_NORMAL",
+  "A_topForwardGyro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGyro": "L_BITResultType_NORMAL",
   "A_powerController": "L_BITResultType_NORMAL",
   "A_energyStorage": "L_BITResultType_NORMAL",
   "A_directPower": "L_BITResultType_NORMAL",
@@ -394,9 +394,9 @@ PBIT: 12/12 정상 ✓
   "A_roundMotor": "L_BITResultType_NORMAL",
   "A_upDownAmp": "L_BITResultType_NORMAL",
   "A_roundAmp": "L_BITResultType_NORMAL",
-  "A_baseGiro": "L_BITResultType_NORMAL",
-  "A_topForwardGiro": "L_BITResultType_NORMAL",
-  "A_vehicleForwardGiro": "L_BITResultType_NORMAL",
+  "A_baseGyro": "L_BITResultType_NORMAL",
+  "A_topForwardGyro": "L_BITResultType_NORMAL",
+  "A_vehicleForwardGyro": "L_BITResultType_NORMAL",
   "A_powerController": "L_BITResultType_NORMAL",
   "A_energyStorage": "L_BITResultType_NORMAL",
   "A_directPower": "L_BITResultType_NORMAL",
@@ -464,8 +464,8 @@ PBIT: 12/12 정상 ✓
   "A_timeOfDataGeneration": {...},
   "A_azAngle": 45.5,
   "A_e1AngleVelocity": 2.3,
-  "A_roundGiro": 2.3,
-  "A_upDownGiro": 0.5,
+  "A_roundGyro": 2.3,
+  "A_upDownGyro": 0.5,
   "A_energyStorage": "L_ChangingStatusType_NORMAL",
   "A_mainCannonFixStatus": "L_MainCannonFixStatusType_NORMAL",
   "A_deckClearance": "L_DekClearanceType_OUTSIDE",
@@ -485,8 +485,8 @@ PBIT: 12/12 정상 ✓
 |------|------|------|------|------|
 | `A_azAngle` | float | deg | 현재 방위각 (E1 각도) | 0~360 |
 | `A_e1AngleVelocity` | float | deg/s | E1 각속도 | -360~360 |
-| `A_roundGiro` | float | deg/s | 회전 자이로 값 | -360~360 |
-| `A_upDownGiro` | float | deg/s | 상하 자이로 값 | -90~90 |
+| `A_roundGyro` | float | deg/s | 회전 자이로 값 | -360~360 |
+| `A_upDownGyro` | float | deg/s | 상하 자이로 값 | -90~90 |
 
 **Enum 필드 (8개)**:
 
@@ -911,13 +911,13 @@ signal.e1AngleVelocity = error * 1.0f;  // P gain = 1.0
 signal.azAngle += signal.e1AngleVelocity * dt;
 
 // 자이로 값 업데이트
-signal.roundGiro = signal.e1AngleVelocity;
+signal.roundGyro = signal.e1AngleVelocity;
 ```
 
 #### 출력 (5ms마다)
 - `signal.azAngle`: 현재 각도
 - `signal.e1AngleVelocity`: 현재 각속도
--- `signal.roundGiro`: 자이로 값 (각속도와 동일)
+-- `signal.roundGyro`: 자이로 값 (각속도와 동일)
 
 ---
 
@@ -937,13 +937,13 @@ signal.e1AngleVelocity = control.roundAngleVelocity;
 signal.azAngle += signal.e1AngleVelocity * dt;
 
 // 자이로 값 업데이트
-signal.roundGiro = signal.e1AngleVelocity;
+signal.roundGyro = signal.e1AngleVelocity;
 ```
 
 #### 출력 (5ms마다)
 - `signal.azAngle`: 계속 증가/감소
 - `signal.e1AngleVelocity`: 목표 속도
--- `signal.roundGiro`: 목표 속도
+-- `signal.roundGyro`: 목표 속도
 
 ---
 
@@ -1345,9 +1345,9 @@ L_BoolType_FALSE
 
 | 필드 | 사용처 |
 |------|--------|
-| `A_baseGiro` | PBIT, CBIT, IBIT |
-| `A_topForwardGiro` | PBIT, CBIT, IBIT |
-| `A_vehicleForwardGiro` | PBIT, CBIT, IBIT |
+| `A_baseGyro` | PBIT, CBIT, IBIT |
+| `A_topForwardGyro` | PBIT, CBIT, IBIT |
+| `A_vehicleForwardGyro` | PBIT, CBIT, IBIT |
 
 ---
 

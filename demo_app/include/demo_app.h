@@ -99,8 +99,8 @@ typedef struct {
     T_CannonDrivingType         A_mainCannonRestoreComplement;
     T_CannonLockType            A_armSafetyMainCannonLock;
     T_CannonDrivingDeviceShutdownType A_shutdown;
-    double                      A_roundGiro;
-    double                      A_upDownGiro;
+    double                      A_roundGyro;
+    double                      A_upDownGyro;
 } C_CannonDrivingDevice_Signal;
 
 // P_NSTEL::C_VehicleSpeed
@@ -122,9 +122,9 @@ typedef struct {
     int32_t          A_roundMotor;
     int32_t          A_upDownAmp;
     int32_t          A_roundAmp;
-    int32_t          A_baseGiro;
-    int32_t          A_topForwardGiro;
-    int32_t          A_vehicleForwardGiro;
+    int32_t          A_baseGyro;
+    int32_t          A_topForwardGyro;
+    int32_t          A_vehicleForwardGyro;
     int32_t          A_powerController;
     int32_t          A_energyStorage;
     int32_t          A_directPower;
@@ -140,9 +140,9 @@ typedef struct {
     int32_t          A_roundMotor;
     int32_t          A_upDownAmp;
     int32_t          A_roundAmp;
-    int32_t          A_baseGiro;
-    int32_t          A_topForwardGiro;
-    int32_t          A_vehicleForwardGiro;
+    int32_t          A_baseGyro;
+    int32_t          A_topForwardGyro;
+    int32_t          A_vehicleForwardGyro;
     int32_t          A_powerController;
     int32_t          A_energyStorage;
     int32_t          A_directPower;
@@ -164,9 +164,9 @@ typedef struct {
     int32_t          A_roundMotor;
     int32_t          A_upDownAmp;
     int32_t          A_roundAmp;
-    int32_t          A_baseGiro;
-    int32_t          A_topForwardGiro;
-    int32_t          A_vehicleForwardGiro;
+    int32_t          A_baseGyro;
+    int32_t          A_topForwardGyro;
+    int32_t          A_vehicleForwardGyro;
     int32_t          A_powerController;
     int32_t          A_energyStorage;
     int32_t          A_directPower;
@@ -256,8 +256,8 @@ typedef struct {
     // Sensor values
     double azAngle;               // A_azAngle (azimuth angle)
     double e1AngleVelocity;       // A_e1AngleVelocity
-    double roundGiro;             // A_roundGiro
-    double upDownGiro;            // A_upDownGiro
+    double roundGyro;             // A_roundGyro
+    double upDownGyro;            // A_upDownGyro
     
     // Enum status fields
     T_ChangingStatusType energyStorage;                      // A_energyStorage
@@ -290,9 +290,9 @@ typedef struct {
     T_BITResultType roundMotor;
     T_BITResultType upDownAmp;
     T_BITResultType roundAmp;
-    T_BITResultType baseGiro;
-    T_BITResultType topForwardGiro;         // A_topForwardGiro
-    T_BITResultType vehicleForwardGiro;     // A_vehicleForwardGiro
+    T_BITResultType baseGyro;
+    T_BITResultType topForwardGyro;         // A_topForwardGyro
+    T_BITResultType vehicleForwardGyro;     // A_vehicleForwardGyro
     T_BITResultType powerController;
     T_BITResultType energyStorage;
     T_BITResultType directPower;

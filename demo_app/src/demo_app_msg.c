@@ -371,7 +371,7 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
     printf("[DemoApp Msg] Publishing PBIT...\n");
     
     // Build PBIT JSON payload (12 components from XML schema)
-    // Field names use 'Giro' spelling per XML canonicalization
+    // Field names use 'Gyro' spelling per XML canonicalization
     char pbit_json[2048];
     BITComponentState* comp = &ctx->bit_state.pbit_components;
     
@@ -386,9 +386,9 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
     ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_ROUNDMOTOR, format_bit_result(comp->roundMotor));
     ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_UPDOWNAMP, format_bit_result(comp->upDownAmp));
     ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_ROUNDAMP, format_bit_result(comp->roundAmp));
-    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_BASEGIRO, format_bit_result(comp->baseGiro));
-    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_TOPFORWARDGIRO, format_bit_result(comp->topForwardGiro));
-    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_VEHICLEFORWARDGIRO, format_bit_result(comp->vehicleForwardGiro));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_BASEGYRO, format_bit_result(comp->baseGyro));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_TOPFORWARDGYRO, format_bit_result(comp->topForwardGyro));
+    ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_VEHICLEFORWARDGYRO, format_bit_result(comp->vehicleForwardGyro));
     ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_POWER_CONTROLLER, format_bit_result(comp->powerController));
     ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_ENERGY_STORAGE, format_bit_result(comp->energyStorage));
     ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "\"%s\":\"%s\",", F_A_DIRECTPOWER, format_bit_result(comp->directPower));
@@ -458,9 +458,9 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
         "\"" F_A_ROUNDMOTOR "\":\"%s\"," 
         "\"" F_A_UPDOWNAMP "\":\"%s\"," 
         "\"" F_A_ROUNDAMP "\":\"%s\"," 
-        "\"" F_A_BASEGIRO "\":\"%s\"," 
-        "\"" F_A_TOPFORWARDGIRO "\":\"%s\"," 
-        "\"" F_A_VEHICLEFORWARDGIRO "\":\"%s\"," 
+        "\"" F_A_BASEGYRO "\":\"%s\"," 
+        "\"" F_A_TOPFORWARDGYRO "\":\"%s\"," 
+        "\"" F_A_VEHICLEFORWARDGYRO "\":\"%s\"," 
         "\"" F_A_POWER_CONTROLLER "\":\"%s\"," 
         "\"" F_A_ENERGY_STORAGE "\":\"%s\"," 
         "\"" F_A_DIRECTPOWER "\":\"%s\"," 
@@ -476,9 +476,9 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
         format_bit_result(cbit->base.roundMotor),
         format_bit_result(cbit->base.upDownAmp),
         format_bit_result(cbit->base.roundAmp),
-        format_bit_result(cbit->base.baseGiro),
-        format_bit_result(cbit->base.topForwardGiro),
-        format_bit_result(cbit->base.vehicleForwardGiro),
+        format_bit_result(cbit->base.baseGyro),
+        format_bit_result(cbit->base.topForwardGyro),
+        format_bit_result(cbit->base.vehicleForwardGyro),
         format_bit_result(cbit->base.powerController),
         format_bit_result(cbit->base.energyStorage),
         format_bit_result(cbit->base.directPower),
@@ -568,9 +568,9 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_ROUNDMOTOR, format_bit_result(result->roundMotor));
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_UPDOWNAMP, format_bit_result(result->upDownAmp));
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_ROUNDAMP, format_bit_result(result->roundAmp));
-    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_BASEGIRO, format_bit_result(result->baseGiro));
-    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_TOPFORWARDGIRO, format_bit_result(result->topForwardGiro));
-    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_VEHICLEFORWARDGIRO, format_bit_result(result->vehicleForwardGiro));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_BASEGYRO, format_bit_result(result->baseGyro));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_TOPFORWARDGYRO, format_bit_result(result->topForwardGyro));
+    rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_VEHICLEFORWARDGYRO, format_bit_result(result->vehicleForwardGyro));
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_POWER_CONTROLLER, format_bit_result(result->powerController));
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_ENERGY_STORAGE, format_bit_result(result->energyStorage));
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\",", F_A_DIRECTPOWER, format_bit_result(result->directPower));
@@ -602,9 +602,9 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
         result->roundMotor == L_BITResultType_NORMAL &&
         result->upDownAmp == L_BITResultType_NORMAL &&
         result->roundAmp == L_BITResultType_NORMAL &&
-        result->baseGiro == L_BITResultType_NORMAL &&
-        result->topForwardGiro == L_BITResultType_NORMAL &&
-        result->vehicleForwardGiro == L_BITResultType_NORMAL &&
+        result->baseGyro == L_BITResultType_NORMAL &&
+        result->topForwardGyro == L_BITResultType_NORMAL &&
+        result->vehicleForwardGyro == L_BITResultType_NORMAL &&
         result->powerController == L_BITResultType_NORMAL &&
         result->energyStorage == L_BITResultType_NORMAL &&
         result->directPower == L_BITResultType_NORMAL &&
@@ -661,14 +661,14 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     if (e1_v < -450.0f) e1_v = -450.0f;
     e1_v = roundf(e1_v / 0.01f) * 0.01f;
 
-    // A_roundGiro
-    float round_v = sig->roundGiro;
+    // A_roundGyro
+    float round_v = sig->roundGyro;
     if (round_v > 655.0f) round_v = 655.0f;
     if (round_v < -655.0f) round_v = -655.0f;
     round_v = roundf(round_v / 0.02f) * 0.02f;
 
-    // A_upDownGiro
-    float updown_v = sig->upDownGiro;
+    // A_upDownGyro
+    float updown_v = sig->upDownGyro;
     if (updown_v > 655.0f) updown_v = 655.0f;
     if (updown_v < -655.0f) updown_v = -655.0f;
     updown_v = roundf(updown_v / 0.02f) * 0.02f;
@@ -697,8 +697,8 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         "\"" F_A_MAIN_CANNON_RESTORE_COMPLEMENT "\":\"%s\","
         "\"" F_A_ARM_SAFETY_MAIN_CANNON_LOCK "\":\"%s\","
         "\"" F_A_SHUTDOWN "\":\"%s\","
-        "\"" F_A_ROUNDGIRO "\":%.3f,"
-        "\"" F_A_UPDOWNGIRO "\":%.3f"
+        "\"" F_A_ROUNDGYRO "\":%.3f,"
+        "\"" F_A_UPDOWNGYRO "\":%.3f"
         "}",
         (long long)(ctx->tick_count / 1000),
         (int)((ctx->tick_count % 1000) * 1000000),

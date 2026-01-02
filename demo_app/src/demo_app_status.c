@@ -194,9 +194,7 @@ void demo_app_print_status(int to_tcp) {
     status_print(to_tcp, "\nComponent Status:\n");
     status_print(to_tcp, "  Round Motor: %s\n", g_demo_ctx->bit_state.pbit_components.roundMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
     status_print(to_tcp, "  UpDown Motor: %s\n", g_demo_ctx->bit_state.pbit_components.upDownMotor == L_BITResultType_NORMAL ? "OK" : "FAULT");
-    status_print(to_tcp, "  Base Giro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGiro == L_BITResultType_NORMAL ? "OK" : "FAULT");
+    status_print(to_tcp, "  Base Gyro: %s\n", g_demo_ctx->bit_state.pbit_components.baseGyro == L_BITResultType_NORMAL ? "OK" : "FAULT");
     status_print(to_tcp, "  Power Controller: %s\n", g_demo_ctx->bit_state.pbit_components.powerController == L_BITResultType_NORMAL ? "OK" : "FAULT");
     status_print(to_tcp, "======================\n");
-}
-
 }

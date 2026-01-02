@@ -57,7 +57,7 @@
   - 전송: IBIT 완료 시 (runBIT 요청으로 시작)
 
 - Actuator Signal (Topic: `P_NSTEL__C_CannonDrivingDevice_Signal`)
-  - 위치/속도/자이로(`A_roundGiro`, `A_upDownGiro`)는 `double`
+  - 위치/속도/자이로(`A_roundGyro`, `A_upDownGyro`)는 `double`
   - Enum 필드들은 스키마 열거자 문자열로 직렬화
   - 주기: 200Hz
 
@@ -70,7 +70,7 @@
 - 주요 검증 포인트:
   - PBIT: 12개 컴포넌트 모두 정상값(열거자 `L_BITResultType_NORMAL`)
   - CBIT: 1Hz로 전송
-  - Signal: 200Hz로 전송, `A_roundGiro`/`A_upDownGiro`가 `double` 값으로 들어오는지 확인
+  - Signal: 200Hz로 전송, `A_roundGyro`/`A_upDownGyro`가 `double` 값으로 들어오는지 확인
   - runBIT 요청 시 동일 `A_referenceNum`로 resultBIT 반환
 
 문의 및 확장
@@ -145,7 +145,7 @@
 ```
 
 ### XML 스키마 일치
-문서와 구현은 RefDoc XML 스키마를 우선으로 하며, 자이로 관련 필드명은 `Giro`로 통일합니다.
+문서와 구현은 RefDoc XML 스키마를 우선으로 하며, 자이로 관련 필드명은 `Gyro`로 통일합니다.
 
 ## 테스트 시나리오
 
@@ -576,7 +576,7 @@ Control Rx: 456
 Component Status:
   Round Motor: OK
   UpDown Motor: OK
-  Base Giro: OK
+  Base Gyro: OK
   Power: OK
 ======================
 ```

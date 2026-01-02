@@ -51,9 +51,9 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->bit_state.pbit_components.roundMotor = L_BITResultType_NORMAL;
     ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_NORMAL;
     ctx->bit_state.pbit_components.roundAmp = L_BITResultType_NORMAL;
-    ctx->bit_state.pbit_components.baseGiro = L_BITResultType_NORMAL;
-    ctx->bit_state.pbit_components.topForwardGiro = L_BITResultType_NORMAL;
-    ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.baseGyro = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.topForwardGyro = L_BITResultType_NORMAL;
+    ctx->bit_state.pbit_components.vehicleForwardGyro = L_BITResultType_NORMAL;
     ctx->bit_state.pbit_components.powerController = L_BITResultType_NORMAL;
     ctx->bit_state.pbit_components.energyStorage = L_BITResultType_NORMAL;
     ctx->bit_state.pbit_components.directPower = L_BITResultType_NORMAL;
@@ -549,10 +549,10 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_ABNORMAL;
         printf("[DemoApp Core] Fault injected: UpDown Motor/Amp\n");
     }
-    else if (strcmp(component, "sensor") == 0 || strcmp(component, "Giro") == 0) {
-        ctx->bit_state.pbit_components.baseGiro = L_BITResultType_ABNORMAL;
-        ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_ABNORMAL;
-        printf("[DemoApp Core] Fault injected: Base/Vehicle Giro\n");
+    else if (strcmp(component, "sensor") == 0 || strcmp(component, "Gyro") == 0) {
+        ctx->bit_state.pbit_components.baseGyro = L_BITResultType_ABNORMAL;
+        ctx->bit_state.pbit_components.vehicleForwardGyro = L_BITResultType_ABNORMAL;
+        printf("[DemoApp Core] Fault injected: Base/Vehicle Gyro\n");
     }
     else if (strcmp(component, "power") == 0) {
         ctx->bit_state.pbit_components.powerController = L_BITResultType_ABNORMAL;
@@ -585,10 +585,10 @@ void demo_app_clear_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_NORMAL;
         printf("[DemoApp Core] Fault cleared: UpDown Motor/Amp\n");
     }
-    else if (strcmp(component, "sensor") == 0 || strcmp(component, "Giro") == 0) {
-        ctx->bit_state.pbit_components.baseGiro = L_BITResultType_NORMAL;
-        ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_NORMAL;
-        printf("[DemoApp Core] Fault cleared: Base/Vehicle Giro\n");
+    else if (strcmp(component, "sensor") == 0 || strcmp(component, "Gyro") == 0) {
+        ctx->bit_state.pbit_components.baseGyro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.vehicleForwardGyro = L_BITResultType_NORMAL;
+        printf("[DemoApp Core] Fault cleared: Base/Vehicle Gyro\n");
     }
     else if (strcmp(component, "power") == 0) {
         ctx->bit_state.pbit_components.powerController = L_BITResultType_NORMAL;
@@ -602,9 +602,9 @@ void demo_app_clear_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.pbit_components.roundMotor = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.roundAmp = L_BITResultType_NORMAL;
-        ctx->bit_state.pbit_components.baseGiro = L_BITResultType_NORMAL;
-        ctx->bit_state.pbit_components.topForwardGiro = L_BITResultType_NORMAL;
-        ctx->bit_state.pbit_components.vehicleForwardGiro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.baseGyro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.topForwardGyro = L_BITResultType_NORMAL;
+        ctx->bit_state.pbit_components.vehicleForwardGyro = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.powerController = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.energyStorage = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.directPower = L_BITResultType_NORMAL;

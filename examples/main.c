@@ -158,11 +158,11 @@ void process_command(char* line) {
             "\"A_mainCannonRestoreComplement\":\"L_MainCannonReturnStatusType_RUNNING\","
             "\"A_manualArmPositionComple\":\"L_ArmPositionType_NORMAL\","
             "\"A_recipientID\":{\"A_instanceId\":1,\"A_resourceId\":1},"
-            "\"A_roundGiro\":1.0,"
+            "\"A_roundGyro\":1.0,"
             "\"A_shutdown\":\"L_CannonDrivingDeviceShutdownType_UNKNOWN\","
             "\"A_sourceID\":{\"A_instanceId\":1,\"A_resourceId\":1},"
             "\"A_timeOfDataGeneration\":{\"A_nanoseconds\":1,\"A_second\":1},"
-            "\"A_upDownGiro\":1.0"
+            "\"A_upDownGyro\":1.0"
         "}";
 
         LegacyWriteJsonOptions wopt = { 

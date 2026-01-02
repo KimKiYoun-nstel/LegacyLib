@@ -19,8 +19,8 @@
  */
 #define F_A_AZANGLEVELOCITY "A_azAngleVelocity"
 #define F_A_E1ANGLEVELOCITY "A_e1AngleVelocity"
-#define F_A_ROUNDGIRO "A_roundGiro"
-#define F_A_UPDOWNGIRO "A_upDownGiro"
+#define F_A_ROUNDGYRO "A_roundGyro"
+#define F_A_UPDOWNGYRO "A_upDownGyro"
 /* Control/command position naming (attachment uses A_roundPosition)
  * keep alias name for compatibility
  */
@@ -61,8 +61,8 @@
 #define F_A_MAIN_CANNON_RESTORE_COMPLEMENT "A_mainCannonRestoreComplement"
 #define F_A_ARM_SAFETY_MAIN_CANNON_LOCK "A_armSafetyMainCannonLock"
 #define F_A_SHUTDOWN "A_shutdown"
-#define F_A_TOPFORWARDGIRO "A_topForwardGiro"
-#define F_A_VEHICLEFORWARDGIRO "A_vehicleForwardGiro"
+#define F_A_TOPFORWARDGYRO "A_topForwardGyro"
+#define F_A_VEHICLEFORWARDGYRO "A_vehicleForwardGyro"
 #define F_A_POWER_CONTROLLER "A_powerController"
 #define F_A_ROUND_PARK "A_roundPark"
 #define F_A_RUNBITENTITY_SOURCEID "A_runBITEntity_sourceID"
@@ -70,7 +70,7 @@
 #define F_A_ROUNDMOTOR "A_roundMotor"
 #define F_A_UPDOWNAMP "A_upDownAmp"
 #define F_A_ROUNDAMP "A_roundAmp"
-#define F_A_BASEGIRO "A_baseGiro"
+#define F_A_BASEGYRO "A_baseGyro"
 #define F_A_DIRECTPOWER "A_directPower"
 #define F_A_CABLELOOP "A_cableLoop"
 #define F_A_UPDOWNPARK "A_upDownPark"

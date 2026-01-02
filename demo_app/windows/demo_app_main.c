@@ -31,9 +31,9 @@
 
 DemoAppContext* g_demo_ctx = NULL;
 static volatile int g_running = 1;
-static int g_cli_port = 23000;
+int g_cli_port = 23000;
 static int g_log_port = 24000;
-static char g_agent_host[128] = "127.0.0.1";
+char g_agent_ip[64] = "127.0.0.1";
 static int g_agent_port = 25000;
 
 /* ========================================================================
@@ -105,8 +105,8 @@ int main(int argc, char* argv[]) {
             g_log_port = atoi(argv[++i]);
         }
         else if (strcmp(argv[i], "-agent_host") == 0 && i + 1 < argc) {
-            strncpy(g_agent_host, argv[++i], sizeof(g_agent_host) - 1);
-            g_agent_host[sizeof(g_agent_host) - 1] = '\0';
+            strncpy(g_agent_ip, argv[++i], sizeof(g_agent_ip) - 1);
+            g_agent_ip[sizeof(g_agent_ip) - 1] = '\0';
         }
         else if (strcmp(argv[i], "-agent_port") == 0 && i + 1 < argc) {
             g_agent_port = atoi(argv[++i]);
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     printf("----------------------------------------\n");
     printf("CLI Port:   %d\n", g_cli_port);
     printf("Log Port:   %d\n", g_log_port);
-    printf("Agent:      %s:%d\n", g_agent_host, g_agent_port);
+    printf("Agent:      %s:%d\n", g_agent_ip, g_agent_port);
     printf("Log Mode:   %s\n",
            log_mode == LOG_MODE_CONSOLE ? "console" :
            log_mode == LOG_MODE_REDIRECT ? "redirect" : "both");
