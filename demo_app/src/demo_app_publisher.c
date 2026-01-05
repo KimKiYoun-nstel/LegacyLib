@@ -31,7 +31,7 @@ static void publisherTask(void) {
         int n = msgQReceive(g_pubQ, (char*)&evt, sizeof(evt), WAIT_FOREVER);
         if (n == sizeof(evt)) {
             if (evt.type == PUB_EVT_SIGNAL && evt.ctx) {
-                demo_log(LOG_DIR_INFO, "[Publisher] Dequeued signal event\n");
+                LOG_DEBUG("Dequeued signal event\n");
                 /* Measure worker dequeue->publish duration when instrumentation enabled */
 #ifdef DEMO_PERF_INSTRUMENTATION
                 uint64_t _tw0 = 0, _tw1 = 0;
@@ -64,18 +64,18 @@ int demo_publisher_init(void) {
     g_pubq_max = 4096;
     g_pubQ = msgQCreate(g_pubq_max, sizeof(PubEvent), MSG_Q_FIFO);
     if (!g_pubQ) {
-        demo_log(LOG_DIR_INFO, "[Publisher] ERROR: msgQCreate failed\n");
+        LOG_ERROR("msgQCreate failed\n");
         return -1;
     }
 
     g_pubTask = taskSpawn("tDemoPub", 80, 0, 32768, (FUNCPTR)publisherTask, 0,0,0,0,0,0,0,0,0,0);
     if (g_pubTask == TASK_ID_ERROR) {
-        demo_log(LOG_DIR_INFO, "[Publisher] ERROR: taskSpawn failed\n");
+        LOG_ERROR("taskSpawn failed\n");
         msgQDelete(g_pubQ);
         g_pubQ = NULL;
         return -1;
     }
-    demo_log(LOG_DIR_INFO, "[Publisher] Started (taskId=%d)\n", g_pubTask);
+    LOG_INFO("Started (taskId=%d)\n", g_pubTask);
     return 0;
 }
 

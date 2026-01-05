@@ -60,7 +60,9 @@ static void cmd_help(void) {
         "\n[Log Control]\n"
         "  log_mode <mode>           : Set log output mode\n"
         "    Modes: console, redirect, both\n"
-        "  log_status                : Show current log mode\n"
+        "  log_level <level>         : Set log verbosity level\n"
+        "    Levels: error, info, debug\n"
+        "  log_status                : Show current log mode and level\n"
         "  log on|off                : Enable or disable logging at runtime\n"
         "\n[Other]\n"
         "  help                      : Show this help\n"
@@ -295,6 +297,36 @@ static void cmd_log_mode(int token_count, char** tokens) {
     demo_log_set_mode(mode);
     demo_tcp_cli_print("OK: Log mode set to '%s'\n", demo_log_mode_name(mode));
 }
+
+static void cmd_log_level(int token_count, char** tokens) {
+    if (token_count < 2) {
+        demo_tcp_cli_print("Usage: log_level <level>\n");
+        demo_tcp_cli_print("  Levels: error, info, debug\n");
+        return;
+    }
+    
+    const char* level_str = tokens[1];
+    LogLevel level;
+    
+    if (strcmp(level_str, "error") == 0) {
+        level = LOG_LEVEL_ERROR;
+    }
+    else if (strcmp(level_str, "info") == 0) {
+        level = LOG_LEVEL_INFO;
+    }
+    else if (strcmp(level_str, "debug") == 0) {
+        level = LOG_LEVEL_DEBUG;
+    }
+    else {
+        demo_tcp_cli_print("ERROR: Unknown level: %s\n", level_str);
+        demo_tcp_cli_print("Valid levels: error, info, debug\n");
+        return;
+    }
+    
+    demo_log_set_level(level);
+    demo_tcp_cli_print("OK: Log level set to '%s'\n", level_str);
+}
+
         // New command for enabling/disabling logging
     static void cmd_log_control(int token_count, char** tokens) {
         if (token_count < 2) {
@@ -315,7 +347,17 @@ static void cmd_log_mode(int token_count, char** tokens) {
 
 static void cmd_log_status(void) {
     LogOutputMode mode = demo_log_get_mode();
+    LogLevel level = demo_log_get_level();
+    
     demo_tcp_cli_print("Current log mode: %s\n", demo_log_mode_name(mode));
+    
+    const char* level_name = "UNKNOWN";
+    switch (level) {
+        case LOG_LEVEL_ERROR: level_name = "ERROR"; break;
+        case LOG_LEVEL_INFO:  level_name = "INFO"; break;
+        case LOG_LEVEL_DEBUG: level_name = "DEBUG"; break;
+    }
+    demo_tcp_cli_print("Current log level: %s\n", level_name);
     
     int tcp_client = demo_log_get_tcp_client();
     if (tcp_client >= 0) {
@@ -410,6 +452,9 @@ void demo_cli_process_command(char* line) {
     }
     else if (strcmp(cmd, "log_mode") == 0) {
         cmd_log_mode(token_count, tokens);
+    }
+    else if (strcmp(cmd, "log_level") == 0) {
+        cmd_log_level(token_count, tokens);
     }
         else if (strcmp(cmd, "log") == 0) {
             cmd_log_control(token_count, tokens);

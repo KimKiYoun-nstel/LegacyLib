@@ -63,15 +63,15 @@ static void timerTask(void) {
     }
         if (delay_ticks < 1) {
          delay_ticks = 1;
-         demo_log(LOG_DIR_INFO, "[DemoApp Timer] WARNING: System tick rate is %d Hz (<%d Hz required for 1ms)\n",
+         LOG_INFO("WARNING: System tick rate is %d Hz (<%d Hz required for 1ms)\n",
                tick_rate, 1000);
-         demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer will run at %d ms interval instead\n",
+         LOG_INFO("Timer will run at %d ms interval instead\n",
                1000 / (tick_rate > 0 ? tick_rate : 1));
         }
     
-        demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer task started\n");
-        demo_log(LOG_DIR_INFO, "[DemoApp Timer]   System tick rate: %d Hz\n", tick_rate);
-        demo_log(LOG_DIR_INFO, "[DemoApp Timer]   Delay ticks: %d (%.1f ms)\n", 
+        LOG_INFO("Timer task started\n");
+        LOG_INFO("  System tick rate: %d Hz\n", tick_rate);
+        LOG_INFO("  Delay ticks: %d (%.1f ms)\n", 
               delay_ticks, (float)delay_ticks * 1000.0f / tick_rate);
     
     while (g_timer_running) {
@@ -90,7 +90,7 @@ static void timerTask(void) {
 #else
             struct timespec ts1; clock_gettime(CLOCK_MONOTONIC, &ts1); t1 = (uint64_t)ts1.tv_sec*1000000000ULL + ts1.tv_nsec;
 #endif
-            demo_log(LOG_DIR_INFO, "[TIMING] demo_timer_tick took %llu us (ticks=%d)\n", (unsigned long long)((t1 - t0) / 1000ULL), delay_ticks);
+            LOG_INFO("[TIMING] demo_timer_tick took %llu us (ticks=%d)\n", (unsigned long long)((t1 - t0) / 1000ULL), delay_ticks);
 #else
             demo_timer_tick(g_demo_ctx);
 #endif
@@ -200,22 +200,22 @@ int demo_timer_init(DemoAppContext* ctx) {
 #ifdef _WIN32
     g_timer_thread = (HANDLE)_beginthreadex(NULL, 0, timerThreadFunc, NULL, 0, NULL);
     if (g_timer_thread == NULL) {
-        demo_log(LOG_DIR_INFO, "[DemoApp Timer] ERROR: Failed to create timer thread\n");
+        LOG_ERROR("Failed to create timer thread\n");
         g_timer_running = 0;
         return -1;
     }
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread created\n");
+    LOG_INFO("Timer thread created\n");
 #else
     if (pthread_create(&g_timer_thread, NULL, timerThreadFunc, NULL) != 0) {
-        demo_log(LOG_DIR_INFO, "[DemoApp Timer] ERROR: Failed to create timer thread\n");
+        LOG_ERROR("Failed to create timer thread\n");
         g_timer_running = 0;
         return -1;
     }
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread created\n");
+    LOG_INFO("Timer thread created\n");
 #endif
 #endif
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer initialized\n");
+    LOG_INFO("Timer initialized\n");
     // Start publisher (queue + worker)
     demo_publisher_init();
     return 0;
@@ -224,7 +224,7 @@ int demo_timer_init(DemoAppContext* ctx) {
 void demo_timer_cleanup(DemoAppContext* ctx) {
     if (!ctx) return;
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Cleaning up timer subsystem...\n");
+    LOG_INFO("Cleaning up timer subsystem...\n");
     
     g_timer_running = 0;
     
@@ -255,7 +255,7 @@ void demo_timer_cleanup(DemoAppContext* ctx) {
 #endif
 #endif
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer cleanup complete\n");
+    LOG_INFO("Timer cleanup complete\n");
     // Shutdown publisher
     demo_publisher_shutdown();
 }

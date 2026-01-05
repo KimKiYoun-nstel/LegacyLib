@@ -4,6 +4,7 @@
 
 #include "../include/demo_app.h"
 #include "../include/demo_app_enums.h"
+#include "../include/demo_app_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -222,6 +223,21 @@ static int create_dds_entities(DemoAppContext* ctx) {
 }
 
 /* ========================================================================
+ * Log Callback
+ * ======================================================================== */
+
+static void on_legacy_log(int level, const char* msg, void* user) {
+    // Map Legacy levels to DemoApp levels
+    // 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERR
+    LogLevel demo_level;
+    if (level >= 4) demo_level = LOG_LEVEL_ERROR;
+    else if (level >= 2) demo_level = LOG_LEVEL_INFO;
+    else demo_level = LOG_LEVEL_DEBUG;
+    
+    demo_log(demo_level, "[Lib] %s\n", msg);
+}
+
+/* ========================================================================
  * Start/Stop
  * ======================================================================== */
 
@@ -229,13 +245,12 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     if (!ctx) return -1;
     
     if (ctx->current_state != DEMO_STATE_IDLE) {
-        printf("[DemoApp Core] ERROR: Cannot start from state %s\n",
-               demo_state_name(ctx->current_state));
+        LOG_ERROR("Cannot start from state %s\n", demo_state_name(ctx->current_state));
         return -1;
     }
     
-    printf("[DemoApp Core] Starting demo application...\n");
-    printf("[DemoApp Core] Agent: %s:%d\n", agent_ip, agent_port);
+    LOG_INFO("Starting demo application...\n");
+    LOG_INFO("Agent: %s:%d\n", agent_ip, agent_port);
     
     // Transition: Idle -> Init
     enter_state(ctx, DEMO_STATE_INIT);
@@ -248,23 +263,23 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
         64*1024,  // recv_task_stack
         100,      // send_task_priority
         64*1024,  // send_task_stack
-        NULL,     // log_cb
+        on_legacy_log, // log_cb
         NULL      // log_user
     };
     
     LegacyStatus status = legacy_agent_init(&cfg, &ctx->agent);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Core] ERROR: Failed to initialize LegacyLib\n");
+        LOG_ERROR("Failed to initialize LegacyLib\n");
         enter_state(ctx, DEMO_STATE_IDLE);
         return -1;
     }
     
-    printf("[DemoApp Core] LegacyLib initialized\n");
+    LOG_INFO("LegacyLib initialized\n");
     
     // Send Hello
     status = legacy_agent_hello(ctx->agent, 2000, on_hello, ctx);
     if (status != LEGACY_OK) {
-        printf("[DemoApp Core] ERROR: Failed to send hello\n");
+        LOG_ERROR("Failed to send hello\n");
         legacy_agent_close(ctx->agent);
         ctx->agent = NULL;
         enter_state(ctx, DEMO_STATE_IDLE);
@@ -277,11 +292,11 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     #endif
     
     // Clear existing DDS entities (clean slate)
-    printf("[DemoApp Core] Clearing existing DDS entities...\n");
+    LOG_INFO("Clearing existing DDS entities...\n");
     status = legacy_agent_clear_dds_entities(ctx->agent, 2000,
                                              on_entity_cleared, (void*)"ClearEntities");
     if (status != LEGACY_OK) {
-        printf("[DemoApp Core] WARNING: Failed to clear DDS entities\n");
+        LOG_INFO("WARNING: Failed to clear DDS entities\n");
     }
     
     // Wait for clear response
@@ -289,9 +304,9 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     taskDelay(sysClkRateGet() / 2);  // 500ms
     #endif
     
-    printf("[DemoApp Core] Agent connection established\n");
-    printf("[DemoApp Core] Ready to create DDS entities\n");
-    printf("[DemoApp Core] Use 'demoAppCreateEntities()' to proceed\n");
+    LOG_INFO("Agent connection established\n");
+    LOG_INFO("Ready to create DDS entities\n");
+    LOG_INFO("Use 'demoAppCreateEntities()' to proceed\n");
     return 0;
 }
 
@@ -299,28 +314,28 @@ int demo_app_create_entities(DemoAppContext* ctx) {
     if (!ctx) return -1;
     
     if (ctx->current_state != DEMO_STATE_INIT) {
-        printf("[DemoApp Core] ERROR: Cannot create entities from state %s\n",
+        LOG_ERROR("Cannot create entities from state %s\n",
                demo_state_name(ctx->current_state));
-        printf("[DemoApp Core] Run 'demoAppStart()' first\n");
+        LOG_INFO("Run 'demoAppStart()' first\n");
         return -1;
     }
     
-    printf("[DemoApp Core] Creating DDS entities...\n");
+    LOG_INFO("Creating DDS entities...\n");
     
     // Create DDS entities (Participant, Publisher, Subscriber)
     if (create_dds_entities(ctx) != 0) {
-        printf("[DemoApp Core] ERROR: Failed to create DDS entities\n");
+        LOG_ERROR("Failed to create DDS entities\n");
         return -1;
     }
     
     // Initialize message handlers (Writers/Readers)
     if (demo_msg_init(ctx) != 0) {
-        printf("[DemoApp Core] ERROR: Failed to initialize message handlers\n");
+        LOG_ERROR("Failed to initialize message handlers\n");
         return -1;
     }
     
-    printf("[DemoApp Core] DDS entities created successfully\n");
-    printf("[DemoApp Core] Use 'demoAppStartScenario()' to begin simulation\n");
+    LOG_INFO("DDS entities created successfully\n");
+    LOG_INFO("Use 'demoAppStartScenario()' to begin simulation\n");
     return 0;
 }
 
@@ -328,18 +343,18 @@ int demo_app_start_scenario(DemoAppContext* ctx) {
     if (!ctx) return -1;
     
     if (ctx->current_state != DEMO_STATE_INIT && ctx->current_state != DEMO_STATE_PEND) {
-        printf("[DemoApp Core] ERROR: Cannot start scenario from state %s\n",
+        LOG_ERROR("Cannot start scenario from state %s\n",
                demo_state_name(ctx->current_state));
         return -1;
     }
     
-    printf("[DemoApp Core] Starting scenario...\n");
+    LOG_INFO("Starting scenario...\n");
     
     // Transition: Init -> PowerOnBit
     enter_state(ctx, DEMO_STATE_POWERON_BIT);
     
     // Perform PowerOn BIT
-    printf("[DemoApp Core] Performing PowerOn BIT...\n");
+    LOG_INFO("Performing PowerOn BIT...\n");
     
     // Simulate PBIT execution
     #ifdef _VXWORKS_
@@ -348,7 +363,7 @@ int demo_app_start_scenario(DemoAppContext* ctx) {
     
     // Publish PBIT result
     if (demo_msg_publish_pbit(ctx) != 0) {
-        printf("[DemoApp Core] WARNING: Failed to publish PBIT\n");
+        LOG_INFO("WARNING: Failed to publish PBIT\n");
     }
     
     // Transition: PowerOnBit -> Run
@@ -356,12 +371,12 @@ int demo_app_start_scenario(DemoAppContext* ctx) {
     
     // Initialize timer subsystem (start periodic tasks)
     if (demo_timer_init(ctx) != 0) {
-        printf("[DemoApp Core] ERROR: Failed to initialize timer\n");
+        LOG_ERROR("Failed to initialize timer\n");
         return -1;
     }
     
-    printf("[DemoApp Core] Scenario started successfully\n");
-    printf("[DemoApp Core] Periodic publishing: 200Hz Signal, 1Hz CBIT\n");
+    LOG_INFO("Scenario started successfully\n");
+    LOG_INFO("Periodic publishing: 200Hz Signal, 1Hz CBIT\n");
 
     /* Record wall-clock scenario start time */
     if (ctx) {
@@ -427,21 +442,21 @@ void demo_app_stop(DemoAppContext* ctx) {
     // Stop/ pause scenario: stop only the timer and keep DDS/agent open
     if (!ctx) return;
 
-    printf("[DemoApp Core] Pausing demo scenario (timers will be stopped)...\n");
+    LOG_INFO("Pausing demo scenario (timers will be stopped)...\n");
 
     // Stop timer only
     demo_timer_cleanup(ctx);
 
     // Transition to PEND (paused) state - we'll resume from here
     enter_state(ctx, DEMO_STATE_PEND);
-    printf("[DemoApp Core] Scenario paused (state=PEND)\n");
+    LOG_INFO("Scenario paused (state=PEND)\n");
 }
 
 /* Full cleanup and reset: stop timers, cleanup messages/entities and close agent, then go to Idle */
 int demo_app_reset(DemoAppContext* ctx) {
     if (!ctx) return -1;
 
-    printf("[DemoApp Core] Resetting DemoApp (full cleanup)...\n");
+    LOG_INFO("Resetting DemoApp (full cleanup)...\n");
 
     // Stop timer
     demo_timer_cleanup(ctx);
@@ -451,7 +466,7 @@ int demo_app_reset(DemoAppContext* ctx) {
 
     // Clear DDS entities and close agent
     if (ctx->agent) {
-        printf("[DemoApp Core] Clearing DDS entities...\n");
+        LOG_INFO("Clearing DDS entities...\n");
         legacy_agent_clear_dds_entities(ctx->agent, 2000,
                                         on_entity_created, (void*)"ClearEntities");
         #ifdef _VXWORKS_
@@ -465,7 +480,7 @@ int demo_app_reset(DemoAppContext* ctx) {
     demo_app_context_init(ctx);
 
     enter_state(ctx, DEMO_STATE_IDLE);
-    printf("[DemoApp Core] Reset complete (state=Idle)\n");
+    LOG_INFO("Reset complete (state=Idle)\n");
     return 0;
 }
 
@@ -497,11 +512,11 @@ int demo_app_trigger_ibit(DemoAppContext* ctx, uint32_t reference_num, int type)
     if (!ctx) return -1;
     
     if (ctx->current_state != DEMO_STATE_RUN) {
-        printf("[DemoApp Core] ERROR: IBIT can only run from Run state\n");
+        LOG_ERROR("IBIT can only run from Run state\n");
         return -1;
     }
     
-    printf("[DemoApp Core] Triggering IBIT: ref=%u, type=%d\n", reference_num, type);
+    LOG_INFO("Triggering IBIT: ref=%u, type=%d\n", reference_num, type);
     
     ctx->bit_state.ibit_running = true;
     ctx->bit_state.ibit_reference_num = reference_num;
@@ -512,7 +527,7 @@ int demo_app_trigger_ibit(DemoAppContext* ctx, uint32_t reference_num, int type)
     
     enter_state(ctx, DEMO_STATE_IBIT_RUNNING);
     
-    printf("[DemoApp Core] IBIT started at tick %llu (will complete in 3 seconds)\n",
+    LOG_INFO("IBIT started at tick %llu (will complete in 3 seconds)\n",
            ctx->bit_state.ibit_start_time);
     
     return 0;
@@ -549,7 +564,7 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.result_components.roundMotor = L_BITResultType_ABNORMAL;
         ctx->bit_state.result_components.roundAmp = L_BITResultType_ABNORMAL;
         
-        printf("[DemoApp Core] Fault injected: Round Motor/Amp (All BIT types)\n");
+        LOG_INFO("Fault injected: Round Motor/Amp (All BIT types)\n");
     }
     else if (strcmp(component, "updown") == 0) {
         ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_ABNORMAL;
@@ -561,7 +576,7 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.result_components.upDownMotor = L_BITResultType_ABNORMAL;
         ctx->bit_state.result_components.upDownAmp = L_BITResultType_ABNORMAL;
         
-        printf("[DemoApp Core] Fault injected: UpDown Motor/Amp (All BIT types)\n");
+        LOG_INFO("Fault injected: UpDown Motor/Amp (All BIT types)\n");
     }
     else if (strcmp(component, "sensor") == 0 || strcmp(component, "Gyro") == 0) {
         ctx->bit_state.pbit_components.baseGyro = L_BITResultType_ABNORMAL;
@@ -573,7 +588,7 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.result_components.baseGyro = L_BITResultType_ABNORMAL;
         ctx->bit_state.result_components.vehicleForwardGyro = L_BITResultType_ABNORMAL;
         
-        printf("[DemoApp Core] Fault injected: Base/Vehicle Gyro (All BIT types)\n");
+        LOG_INFO("Fault injected: Base/Vehicle Gyro (All BIT types)\n");
     }
     else if (strcmp(component, "power") == 0) {
         ctx->bit_state.pbit_components.powerController = L_BITResultType_ABNORMAL;
@@ -588,7 +603,7 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.result_components.energyStorage = L_BITResultType_ABNORMAL;
         ctx->bit_state.result_components.directPower = L_BITResultType_ABNORMAL;
         
-        printf("[DemoApp Core] Fault injected: Power/Energy (All BIT types)\n");
+        LOG_INFO("Fault injected: Power/Energy (All BIT types)\n");
     }
     else if (strcmp(component, "motor") == 0) {
         ctx->bit_state.pbit_components.roundMotor = L_BITResultType_ABNORMAL;
@@ -600,11 +615,11 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.result_components.roundMotor = L_BITResultType_ABNORMAL;
         ctx->bit_state.result_components.upDownMotor = L_BITResultType_ABNORMAL;
         
-        printf("[DemoApp Core] Fault injected: All Motors (All BIT types)\n");
+        LOG_INFO("Fault injected: All Motors (All BIT types)\n");
     }
     else {
-        printf("[DemoApp Core] Unknown component: %s\n", component);
-        printf("  Available: azimuth, updown, sensor, power, motor\n");
+        LOG_INFO("Unknown component: %s\n", component);
+        LOG_INFO("  Available: azimuth, updown, sensor, power, motor\n");
     }
 }
 

@@ -85,6 +85,8 @@ private:
     
     // Logging helper (printf-style)
     void logInfo(const char* fmt, ...);
+    void logError(const char* fmt, ...);
+    void logDebug(const char* fmt, ...);
     
     // Helper to send raw JSON with header
     LegacyStatus sendRequest(const std::string& json_body, uint16_t type = 0x1000, uint32_t req_id = 0);

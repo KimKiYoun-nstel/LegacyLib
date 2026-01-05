@@ -117,7 +117,7 @@ LegacyStatus IpcJsonClient::init(const LegacyConfig* cfg) {
     if (recv_task_ == TASK_ID_ERROR) {
         running_ = false;
         transport_.close();
-        logInfo("[IpcJsonClient] Failed to spawn receive task");
+        logError("[IpcJsonClient] Failed to spawn receive task");
         return LEGACY_ERR_TRANSPORT;
     }
     
@@ -149,7 +149,7 @@ void IpcJsonClient::close() {
         
         // Check if task is still alive
         if (taskIdVerify(recv_task_) == OK) {
-            logInfo("[IpcJsonClient] Warning: Receive task still running, deleting...");
+            logError("[IpcJsonClient] Warning: Receive task still running, deleting...");
             taskDelete(recv_task_);
         }
         recv_task_ = TASK_ID_ERROR;
@@ -207,7 +207,7 @@ LegacyStatus IpcJsonClient::sendRequest(const std::string& json_body, uint16_t t
     // Log parse/CBOR durations
     uint64_t parse_ns = (p1 > p0) ? (p1 - p0) : 0ULL;
     uint64_t cbor_ns = (c1 > p1) ? (c1 - p1) : 0ULL;
-         logInfo("[PERF] IpcJsonClient parse=%llu us, to_cbor=%llu us", (unsigned long long)(parse_ns/1000ULL), (unsigned long long)(cbor_ns/1000ULL));
+         logDebug("[PERF] IpcJsonClient parse=%llu us, to_cbor=%llu us", (unsigned long long)(parse_ns/1000ULL), (unsigned long long)(cbor_ns/1000ULL));
          // Accumulate into client-level perf counters
         parse_ns_total_.fetch_add(parse_ns);
         parse_count_.fetch_add(1);
@@ -222,7 +222,7 @@ LegacyStatus IpcJsonClient::sendRequest(const std::string& json_body, uint16_t t
             return LEGACY_ERR_TRANSPORT;
         }
     } catch (const std::exception& e) {
-        logInfo("[IpcJsonClient] Failed to encode CBOR: %s", e.what());
+        logError("[IpcJsonClient] Failed to encode CBOR: %s", e.what());
         return LEGACY_ERR_PARAM;
     }
     return LEGACY_OK;
@@ -243,10 +243,10 @@ void IpcJsonClient::receiveLoop() {
                 std::vector<uint8_t> cbor_data(buffer.begin(), buffer.begin() + bytes);
                 j = json::from_cbor(cbor_data);
                 json_payload = j.dump();
-                // Log only in debug, too verbose for normal operation
-                // logInfo(("[IpcJsonClient] RECV: " + json_payload).c_str());
+                
+                logDebug("[IpcJsonClient] RECV: %s", json_payload.c_str());
             } catch (const std::exception& e) {
-                logInfo("[IpcJsonClient] Failed to decode CBOR: %s", e.what());
+                logError("[IpcJsonClient] Failed to decode CBOR: %s", e.what());
                 continue;
             }
             
@@ -585,7 +585,7 @@ LegacyStatus IpcJsonClient::writeJson(const LegacyWriteJsonOptions* opt, uint32_
 #ifdef DEMO_PERF_INSTRUMENTATION
     auto t1 = std::chrono::steady_clock::now();
     auto parse_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
-    logInfo("[PERF] IpcJsonClient::parse data_json took %llu us", (unsigned long long)parse_us);
+    logDebug("[PERF] IpcJsonClient::parse data_json took %llu us", (unsigned long long)parse_us);
 #endif
 
     j["proto"] = 1;
@@ -607,7 +607,7 @@ LegacyStatus IpcJsonClient::writeJson(const LegacyWriteJsonOptions* opt, uint32_
     auto write_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(tw1 - tw0).count();
     write_ns_total_.fetch_add((uint64_t)write_ns);
     write_count_.fetch_add(1);
-    logInfo("[PERF] IpcJsonClient::writeJson total=%llu us", (unsigned long long)(write_ns/1000ULL));
+    logDebug("[PERF] IpcJsonClient::writeJson total=%llu us", (unsigned long long)(write_ns/1000ULL));
 #endif
     return st;
 }
@@ -718,6 +718,42 @@ void IpcJsonClient::logInfo(const char* fmt, ...) {
         void* guser = nullptr;
         legacy_agent_get_log_callback(&gcb, &guser);
         if (gcb) gcb(2, buf, guser);
+    }
+}
+
+void IpcJsonClient::logError(const char* fmt, ...) {
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    if (config_.log_cb) {
+        config_.log_cb(4, buf, config_.log_user); // level 4 = ERR
+    }
+    else {
+        LegacyLogCb gcb = nullptr;
+        void* guser = nullptr;
+        legacy_agent_get_log_callback(&gcb, &guser);
+        if (gcb) gcb(4, buf, guser);
+    }
+}
+
+void IpcJsonClient::logDebug(const char* fmt, ...) {
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    if (config_.log_cb) {
+        config_.log_cb(1, buf, config_.log_user); // level 1 = DEBUG
+    }
+    else {
+        LegacyLogCb gcb = nullptr;
+        void* guser = nullptr;
+        legacy_agent_get_log_callback(&gcb, &guser);
+        if (gcb) gcb(1, buf, guser);
     }
 }
 // If instance callback not set, try global callback registered via legacy_agent

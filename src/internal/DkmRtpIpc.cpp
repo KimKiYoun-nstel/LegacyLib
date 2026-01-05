@@ -121,16 +121,7 @@ bool DkmRtpIpc::init(const char* ip, uint16_t port) {
 
     initialized_ = true;
     // Log via global legacy agent callback if present
-    {
-        LegacyLogCb cb = nullptr;
-        void* user = nullptr;
-        legacy_agent_get_log_callback(&cb, &user);
-        if (cb) {
-            char buf[256];
-            snprintf(buf, sizeof(buf), "[DkmRtpIpc] Socket Initialized. Default Destination: %s:%u", ip, port);
-            cb(2, buf, user); // level=2 INFO
-        }
-    }
+    dap_log(2, "[DkmRtpIpc] Socket Initialized. Default Destination: %s:%u", ip, port);
     return true;
 }
 
@@ -190,14 +181,7 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
 #ifdef DEMO_PERF_INSTRUMENTATION
     auto t1 = std::chrono::steady_clock::now();
     auto send_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
-    {
-        LegacyLogCb cb = nullptr; void* user = nullptr; legacy_agent_get_log_callback(&cb, &user);
-        if (cb) {
-            char buf[128];
-            snprintf(buf, sizeof(buf), "[PERF] DkmRtpIpc::send() took %lld us (sent=%d)", (long long)send_us, sent);
-            cb(1, buf, user); // DEBUG
-        }
-    }
+    dap_log(1, "[PERF] DkmRtpIpc::send() took %lld us (sent=%d)", (long long)send_us, sent);
 #ifdef _WIN32
     // no-op
 #endif
@@ -215,14 +199,7 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
         return false;
     }
 /* timing/print previously duplicated and removed to avoid redefinition */
-    {
-        LegacyLogCb cb = nullptr; void* user = nullptr; legacy_agent_get_log_callback(&cb, &user);
-        if (cb) {
-            char buf[128];
-            snprintf(buf, sizeof(buf), "[DkmRtpIpc] Sent %d bytes (Header: %zu + Payload: %zu)", sent, sizeof(Header), len);
-            cb(2, buf, user);
-        }
-    }
+    dap_log(1, "[DkmRtpIpc] Sent %d bytes (Header: %zu + Payload: %zu)", sent, sizeof(Header), len);
     return true;
 }
 
@@ -278,14 +255,7 @@ int DkmRtpIpc::receive(void* buffer, size_t max_len, int timeout_ms) {
             size_t copy_len = (payload_len < max_len) ? payload_len : max_len;
             memcpy(buffer, recv_buf.data() + sizeof(Header), copy_len);
             
-            {
-                LegacyLogCb cb = nullptr; void* user = nullptr; legacy_agent_get_log_callback(&cb, &user);
-                if (cb) {
-                    char buf[128];
-                    snprintf(buf, sizeof(buf), "[DkmRtpIpc] Recv Valid Packet. Payload: %zu bytes", copy_len);
-                    cb(2, buf, user);
-                }
-            }
+            dap_log(1, "[DkmRtpIpc] Recv Valid Packet. Payload: %zu bytes", copy_len);
             return (int)copy_len;
 
         } else if (bytes == SOCKET_ERROR) {

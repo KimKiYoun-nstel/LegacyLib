@@ -217,7 +217,7 @@ void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
     const char* json = evt->data_json;
     if (!json) return;
     
-    printf("[DemoApp Msg] Received runBIT: %s\n", json);
+    LOG_RX("Received runBIT: %s\n", json);
     
     // Parse A_referenceNum
     uint32_t reference_num = 0;
@@ -236,11 +236,11 @@ void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
         }
     }
     
-    printf("[DemoApp Msg] runBIT parsed: A_referenceNum=%u, A_type=%d\n", reference_num, (int)type);
+    LOG_INFO("runBIT parsed: A_referenceNum=%u, A_type=%d\n", reference_num, (int)type);
     
     // Trigger IBIT
     if (demo_app_trigger_ibit(ctx, reference_num, type) != 0) {
-        printf("[DemoApp Msg] WARNING: Failed to trigger IBIT\n");
+        LOG_INFO("WARNING: Failed to trigger IBIT\n");
     }
 }
 
@@ -368,7 +368,7 @@ static void on_write_complete(LEGACY_HANDLE h, LegacyRequestId req_id,
 int demo_msg_publish_pbit(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
     
-    printf("[DemoApp Msg] Publishing PBIT...\n");
+    LOG_TX("Publishing PBIT...\n");
     
     // Build PBIT JSON payload (12 components from XML schema)
     // Field names use 'Gyro' spelling per XML canonicalization
@@ -794,20 +794,20 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
 int demo_msg_test_write_pbit(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
     
-    printf("[DemoApp Test] Sending PBIT test message...\n");
+    LOG_INFO("Sending PBIT test message...\n");
     return demo_msg_publish_pbit(ctx);
 }
 
 int demo_msg_test_write_cbit(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
     
-    printf("[DemoApp Test] Sending CBIT test message...\n");
+    LOG_INFO("Sending CBIT test message...\n");
     return demo_msg_publish_cbit(ctx);
 }
 
 int demo_msg_test_write_signal(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
-    printf("[DemoApp Test] Sending Actuator Signal test message...\n");
+    LOG_INFO("Sending Actuator Signal test message...\n");
     return demo_msg_publish_actuator_signal(ctx);
 }
 
@@ -817,6 +817,6 @@ int demo_msg_test_write_result_bit(DemoAppContext* ctx) {
     // Set dummy reference number for test
     ctx->bit_state.ibit_reference_num = 999;
 
-    printf("[DemoApp Test] Sending resultBIT test message (ref=999)...\n");
+    LOG_INFO("Sending resultBIT test message (ref=999)...\n");
     return demo_msg_publish_result_bit(ctx);
 }

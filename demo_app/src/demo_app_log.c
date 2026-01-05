@@ -31,6 +31,7 @@ static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
  * ======================================================================== */
 
 static LogOutputMode g_log_mode = LOG_MODE_CONSOLE;
+static LogLevel g_log_level = LOG_LEVEL_INFO;
 static int g_tcp_log_client = -1;
 static int g_log_enabled = 1; /* runtime enable/disable */
 
@@ -110,51 +111,91 @@ void demo_log_cleanup(void) {
 #endif
 }
 
-void demo_log(LogDirection dir, const char* fmt, ...) {
-    if (!g_log_enabled) return;
-    char buffer[1024];
-    char prefixed[1088];  // buffer + prefix
-    va_list args;
-    int len;
-    
-    // Format message
-    va_start(args, fmt);
-    len = vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-    
-    if (len < 0 || len >= (int)sizeof(buffer)) {
-        len = sizeof(buffer) - 1;
-        buffer[len] = '\0';
-    }
-    
-    // Add direction prefix
-    const char* prefix = "";
-    switch (dir) {
-        case LOG_DIR_TX:   prefix = "[TX] "; break;
-        case LOG_DIR_RX:   prefix = "[RX] "; break;
-        case LOG_DIR_INFO: prefix = "[INFO] "; break;
-        case LOG_DIR_NONE:
-        default:           prefix = ""; break;
-    }
-    
-    snprintf(prefixed, sizeof(prefixed), "%s%s", prefix, buffer);
-    
-    // Copy needed state under lock, then do IO without holding the log mutex
+static void internal_log_output(const char* message) {
     log_lock();
     LogOutputMode mode = g_log_mode;
     int tcp_sock = g_tcp_log_client;
     log_unlock();
 
-    // Output to console (do not hold log mutex while performing IO)
+    // Output to console
     if (mode == LOG_MODE_CONSOLE || mode == LOG_MODE_BOTH) {
-        printf("%s", prefixed);
+        printf("%s", message);
         fflush(stdout);
     }
 
-    // Output to TCP log client (pass the copied socket)
+    // Output to TCP log client
     if ((mode == LOG_MODE_REDIRECT || mode == LOG_MODE_BOTH) && tcp_sock >= 0) {
-        demo_log_send_to_tcp(prefixed, tcp_sock);
+        demo_log_send_to_tcp(message, tcp_sock);
     }
+}
+
+void demo_log(LogLevel level, const char* fmt, ...) {
+    if (!g_log_enabled) return;
+    
+    log_lock();
+    LogLevel current_level = g_log_level;
+    log_unlock();
+    
+    if (level > current_level) return;
+
+    char buffer[1024];
+    char prefixed[1100];
+    va_list args;
+    
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+    
+    // Format: [DemoApp] message
+    snprintf(prefixed, sizeof(prefixed), "[DemoApp]%s", buffer);
+    
+    internal_log_output(prefixed);
+}
+
+void demo_log_dir(LogDirection dir, const char* fmt, ...) {
+    LogLevel level = LOG_LEVEL_INFO;
+    const char* prefix = "";
+    
+    switch (dir) {
+        case LOG_DIR_TX:   level = LOG_LEVEL_DEBUG; prefix = "[TX] "; break;
+        case LOG_DIR_RX:   level = LOG_LEVEL_DEBUG; prefix = "[RX] "; break;
+        case LOG_DIR_INFO: level = LOG_LEVEL_INFO;  prefix = "[INFO] "; break;
+        default:           level = LOG_LEVEL_INFO;  prefix = ""; break;
+    }
+    
+    if (!g_log_enabled) return;
+    
+    log_lock();
+    LogLevel current_level = g_log_level;
+    log_unlock();
+    
+    if (level > current_level) return;
+
+    char buffer[1024];
+    char prefixed[1100];
+    va_list args;
+    
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+    
+    snprintf(prefixed, sizeof(prefixed), "[DemoApp]%s%s", prefix, buffer);
+    
+    internal_log_output(prefixed);
+}
+
+void demo_log_set_level(LogLevel level) {
+    log_lock();
+    g_log_level = level;
+    log_unlock();
+}
+
+LogLevel demo_log_get_level(void) {
+    LogLevel level;
+    log_lock();
+    level = g_log_level;
+    log_unlock();
+    return level;
 }
 
 void demo_log_set_mode(LogOutputMode mode) {

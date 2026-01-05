@@ -26,6 +26,12 @@ typedef enum {
 } LogOutputMode;
 
 typedef enum {
+    LOG_LEVEL_ERROR = 0,     // Functional errors only
+    LOG_LEVEL_INFO = 1,      // API calls, CLI I/O, High-level actions
+    LOG_LEVEL_DEBUG = 2      // Message TX/RX, detailed info
+} LogLevel;
+
+typedef enum {
     LOG_DIR_NONE = 0,        // No direction prefix
     LOG_DIR_TX = 1,          // [TX] prefix
     LOG_DIR_RX = 2,          // [RX] prefix
@@ -50,13 +56,19 @@ int demo_log_init(LogOutputMode initial_mode);
 void demo_log_cleanup(void);
 
 /**
- * Unified logging function
+ * Unified logging function with level control
  * 
- * @param dir      Direction (NONE/TX/RX/INFO)
+ * @param level    Log level (ERROR/INFO/DEBUG)
  * @param fmt      Printf-style format string
  * @param ...      Variable arguments
  */
-void demo_log(LogDirection dir, const char* fmt, ...);
+void demo_log(LogLevel level, const char* fmt, ...);
+
+/**
+ * Legacy logging function (maps to INFO or DEBUG based on direction)
+ * Kept for backward compatibility during refactoring
+ */
+void demo_log_dir(LogDirection dir, const char* fmt, ...);
 
 /**
  * Set log output mode
@@ -73,6 +85,20 @@ void demo_log_set_mode(LogOutputMode mode);
 LogOutputMode demo_log_get_mode(void);
 
 /**
+ * Set log level
+ * 
+ * @param level  New log level
+ */
+void demo_log_set_level(LogLevel level);
+
+/**
+ * Get current log level
+ * 
+ * @return Current log level
+ */
+LogLevel demo_log_get_level(void);
+
+/**
  * Get mode name string
  * 
  * @param mode  Mode enum value
@@ -85,6 +111,15 @@ const char* demo_log_mode_name(LogOutputMode mode);
  */
 void demo_log_set_enabled(int enabled);
 int  demo_log_get_enabled(void);
+
+/* Macros for convenient logging */
+#define LOG_ERROR(fmt, ...) demo_log(LOG_LEVEL_ERROR, "[ERROR] " fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...)  demo_log(LOG_LEVEL_INFO,  "[INFO] "  fmt, ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) demo_log(LOG_LEVEL_DEBUG, "[DEBUG] " fmt, ##__VA_ARGS__)
+
+/* TX/RX macros - mapped to DEBUG level */
+#define LOG_TX(fmt, ...)    demo_log(LOG_LEVEL_DEBUG, "[TX] " fmt, ##__VA_ARGS__)
+#define LOG_RX(fmt, ...)    demo_log(LOG_LEVEL_DEBUG, "[RX] " fmt, ##__VA_ARGS__)
 
 /* ========================================================================
  * TCP Log Redirection (Internal)
