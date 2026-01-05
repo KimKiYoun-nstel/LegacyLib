@@ -542,28 +542,65 @@ void demo_app_inject_fault(DemoAppContext* ctx, const char* component) {
     if (strcmp(component, "azimuth") == 0 || strcmp(component, "round") == 0) {
         ctx->bit_state.pbit_components.roundMotor = L_BITResultType_ABNORMAL;
         ctx->bit_state.pbit_components.roundAmp = L_BITResultType_ABNORMAL;
-        printf("[DemoApp Core] Fault injected: Round Motor/Amp\n");
+        
+        ctx->bit_state.cbit_components.base.roundMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.cbit_components.base.roundAmp = L_BITResultType_ABNORMAL;
+        
+        ctx->bit_state.result_components.roundMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.result_components.roundAmp = L_BITResultType_ABNORMAL;
+        
+        printf("[DemoApp Core] Fault injected: Round Motor/Amp (All BIT types)\n");
     }
     else if (strcmp(component, "updown") == 0) {
         ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_ABNORMAL;
         ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_ABNORMAL;
-        printf("[DemoApp Core] Fault injected: UpDown Motor/Amp\n");
+        
+        ctx->bit_state.cbit_components.base.upDownMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.cbit_components.base.upDownAmp = L_BITResultType_ABNORMAL;
+        
+        ctx->bit_state.result_components.upDownMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.result_components.upDownAmp = L_BITResultType_ABNORMAL;
+        
+        printf("[DemoApp Core] Fault injected: UpDown Motor/Amp (All BIT types)\n");
     }
     else if (strcmp(component, "sensor") == 0 || strcmp(component, "Gyro") == 0) {
         ctx->bit_state.pbit_components.baseGyro = L_BITResultType_ABNORMAL;
         ctx->bit_state.pbit_components.vehicleForwardGyro = L_BITResultType_ABNORMAL;
-        printf("[DemoApp Core] Fault injected: Base/Vehicle Gyro\n");
+        
+        ctx->bit_state.cbit_components.base.baseGyro = L_BITResultType_ABNORMAL;
+        ctx->bit_state.cbit_components.base.vehicleForwardGyro = L_BITResultType_ABNORMAL;
+        
+        ctx->bit_state.result_components.baseGyro = L_BITResultType_ABNORMAL;
+        ctx->bit_state.result_components.vehicleForwardGyro = L_BITResultType_ABNORMAL;
+        
+        printf("[DemoApp Core] Fault injected: Base/Vehicle Gyro (All BIT types)\n");
     }
     else if (strcmp(component, "power") == 0) {
         ctx->bit_state.pbit_components.powerController = L_BITResultType_ABNORMAL;
         ctx->bit_state.pbit_components.energyStorage = L_BITResultType_ABNORMAL;
         ctx->bit_state.pbit_components.directPower = L_BITResultType_ABNORMAL;
-        printf("[DemoApp Core] Fault injected: Power/Energy\n");
+        
+        ctx->bit_state.cbit_components.base.powerController = L_BITResultType_ABNORMAL;
+        ctx->bit_state.cbit_components.base.energyStorage = L_BITResultType_ABNORMAL;
+        ctx->bit_state.cbit_components.base.directPower = L_BITResultType_ABNORMAL;
+        
+        ctx->bit_state.result_components.powerController = L_BITResultType_ABNORMAL;
+        ctx->bit_state.result_components.energyStorage = L_BITResultType_ABNORMAL;
+        ctx->bit_state.result_components.directPower = L_BITResultType_ABNORMAL;
+        
+        printf("[DemoApp Core] Fault injected: Power/Energy (All BIT types)\n");
     }
     else if (strcmp(component, "motor") == 0) {
         ctx->bit_state.pbit_components.roundMotor = L_BITResultType_ABNORMAL;
         ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_ABNORMAL;
-        printf("[DemoApp Core] Fault injected: All Motors\n");
+        
+        ctx->bit_state.cbit_components.base.roundMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.cbit_components.base.upDownMotor = L_BITResultType_ABNORMAL;
+        
+        ctx->bit_state.result_components.roundMotor = L_BITResultType_ABNORMAL;
+        ctx->bit_state.result_components.upDownMotor = L_BITResultType_ABNORMAL;
+        
+        printf("[DemoApp Core] Fault injected: All Motors (All BIT types)\n");
     }
     else {
         printf("[DemoApp Core] Unknown component: %s\n", component);
@@ -578,23 +615,53 @@ void demo_app_clear_fault(DemoAppContext* ctx, const char* component) {
     if (strcmp(component, "azimuth") == 0 || strcmp(component, "round") == 0) {
         ctx->bit_state.pbit_components.roundMotor = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.roundAmp = L_BITResultType_NORMAL;
-        printf("[DemoApp Core] Fault cleared: Round Motor/Amp\n");
+        
+        ctx->bit_state.cbit_components.base.roundMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.cbit_components.base.roundAmp = L_BITResultType_NORMAL;
+        
+        ctx->bit_state.result_components.roundMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.result_components.roundAmp = L_BITResultType_NORMAL;
+        
+        printf("[DemoApp Core] Fault cleared: Round Motor/Amp (All BIT types)\n");
     }
     else if (strcmp(component, "updown") == 0) {
         ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.upDownAmp = L_BITResultType_NORMAL;
-        printf("[DemoApp Core] Fault cleared: UpDown Motor/Amp\n");
+        
+        ctx->bit_state.cbit_components.base.upDownMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.cbit_components.base.upDownAmp = L_BITResultType_NORMAL;
+        
+        ctx->bit_state.result_components.upDownMotor = L_BITResultType_NORMAL;
+        ctx->bit_state.result_components.upDownAmp = L_BITResultType_NORMAL;
+        
+        printf("[DemoApp Core] Fault cleared: UpDown Motor/Amp (All BIT types)\n");
     }
     else if (strcmp(component, "sensor") == 0 || strcmp(component, "Gyro") == 0) {
         ctx->bit_state.pbit_components.baseGyro = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.vehicleForwardGyro = L_BITResultType_NORMAL;
-        printf("[DemoApp Core] Fault cleared: Base/Vehicle Gyro\n");
+        
+        ctx->bit_state.cbit_components.base.baseGyro = L_BITResultType_NORMAL;
+        ctx->bit_state.cbit_components.base.vehicleForwardGyro = L_BITResultType_NORMAL;
+        
+        ctx->bit_state.result_components.baseGyro = L_BITResultType_NORMAL;
+        ctx->bit_state.result_components.vehicleForwardGyro = L_BITResultType_NORMAL;
+        
+        printf("[DemoApp Core] Fault cleared: Base/Vehicle Gyro (All BIT types)\n");
     }
     else if (strcmp(component, "power") == 0) {
         ctx->bit_state.pbit_components.powerController = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.energyStorage = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.directPower = L_BITResultType_NORMAL;
-        printf("[DemoApp Core] Fault cleared: Power/Energy\n");
+        
+        ctx->bit_state.cbit_components.base.powerController = L_BITResultType_NORMAL;
+        ctx->bit_state.cbit_components.base.energyStorage = L_BITResultType_NORMAL;
+        ctx->bit_state.cbit_components.base.directPower = L_BITResultType_NORMAL;
+        
+        ctx->bit_state.result_components.powerController = L_BITResultType_NORMAL;
+        ctx->bit_state.result_components.energyStorage = L_BITResultType_NORMAL;
+        ctx->bit_state.result_components.directPower = L_BITResultType_NORMAL;
+        
+        printf("[DemoApp Core] Fault cleared: Power/Energy (All BIT types)\n");
     }
     else if (strcmp(component, "all") == 0) {
         // Clear all PBIT components (12 fields)
@@ -610,7 +677,14 @@ void demo_app_clear_fault(DemoAppContext* ctx, const char* component) {
         ctx->bit_state.pbit_components.directPower = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.cableLoop = L_BITResultType_NORMAL;
         ctx->bit_state.pbit_components.bitRunning = L_BITResultType_NORMAL;
-        printf("[DemoApp Core] All faults cleared\n");
+        
+        // Clear all CBIT base components
+        ctx->bit_state.cbit_components.base = ctx->bit_state.pbit_components;
+        
+        // Clear all ResultBIT components
+        ctx->bit_state.result_components = ctx->bit_state.pbit_components;
+        
+        printf("[DemoApp Core] All faults cleared (All BIT types)\n");
     }
     else {
         printf("[DemoApp Core] Unknown component: %s\n", component);

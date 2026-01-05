@@ -110,10 +110,10 @@ void demo_app_print_status(int to_tcp) {
     }
 
     status_print(to_tcp, "\nStatistics:\n");
-    status_print(to_tcp, "  Signal Published: %u\n", g_demo_ctx->signal_pub_count);
-    status_print(to_tcp, "  CBIT Published: %u\n", g_demo_ctx->cbit_pub_count);
-    status_print(to_tcp, "  Control Received: %u\n", g_demo_ctx->control_rx_count);
-    status_print(to_tcp, "  Speed Received: %u\n", g_demo_ctx->speed_rx_count);
+    status_print(to_tcp, "  Signal Published: %u (%u Hz)\n", g_demo_ctx->signal_pub_count, g_demo_ctx->signal_pub_hz);
+    status_print(to_tcp, "  CBIT Published: %u (%u Hz)\n", g_demo_ctx->cbit_pub_count, g_demo_ctx->cbit_pub_hz);
+    status_print(to_tcp, "  Control Received: %u (%u Hz)\n", g_demo_ctx->control_rx_count, g_demo_ctx->control_rx_hz);
+    status_print(to_tcp, "  Speed Received: %u (%u Hz)\n", g_demo_ctx->speed_rx_count, g_demo_ctx->speed_rx_hz);
 
 #ifdef DEMO_PERF_INSTRUMENTATION
     if (g_demo_ctx->pub_signal_count || g_demo_ctx->json_dump_count || g_demo_ctx->legacy_write_count) {
