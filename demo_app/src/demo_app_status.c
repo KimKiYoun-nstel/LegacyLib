@@ -33,7 +33,7 @@ static void status_print(int to_tcp, const char* fmt, ...) {
         demo_tcp_cli_print("%s", buf);
     } else {
         /* Status should always print to console regardless of log enabled */
-        printf("%s", buf);
+        LOG_INFO("%s", buf);
     }
 }
 

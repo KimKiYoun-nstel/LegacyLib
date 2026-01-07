@@ -99,7 +99,7 @@ static void timerTask(void) {
         taskDelay(delay_ticks);
     }
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer task exiting\n");
+    demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Timer task exiting\n");
 }
 #else
 // Windows/Linux Timer Thread
@@ -113,7 +113,7 @@ static unsigned int __stdcall timerThreadFunc(void* arg) {
     UINT wTimerRes = min(max(tc.wPeriodMin, 1), tc.wPeriodMax);
     timeBeginPeriod(wTimerRes);
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread started (1ms interval, resolution=%ums)\n", wTimerRes);
+    demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Timer thread started (1ms interval, resolution=%ums)\n", wTimerRes);
     
     LARGE_INTEGER freq, start, now;
     QueryPerformanceFrequency(&freq);
@@ -139,13 +139,13 @@ static unsigned int __stdcall timerThreadFunc(void* arg) {
     }
     
     timeEndPeriod(wTimerRes);
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread exiting\n");
+    demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Timer thread exiting\n");
     return 0;
 }
 #else
 static void* timerThreadFunc(void* arg) {
     (void)arg;
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread started (1ms interval)\n");
+    demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Timer thread started (1ms interval)\n");
     
     while (g_timer_running) {
         if (g_demo_ctx) {
@@ -154,7 +154,7 @@ static void* timerThreadFunc(void* arg) {
         usleep(1000);  // 1ms = 1000us
     }
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer thread exiting\n");
+    demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Timer thread exiting\n");
     return NULL;
 }
 #endif
@@ -167,7 +167,7 @@ static void* timerThreadFunc(void* arg) {
 int demo_timer_init(DemoAppContext* ctx) {
     if (!ctx) return -1;
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Initializing timer subsystem...\n");
+    demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Initializing timer subsystem...\n");
     
     ctx->tick_count = 0;
     ctx->last_200hz_tick = 0;
@@ -187,12 +187,12 @@ int demo_timer_init(DemoAppContext* ctx) {
     );
     
     if (g_timer_task == TASK_ID_ERROR) {
-        demo_log(LOG_DIR_INFO, "[DemoApp Timer] ERROR: Failed to spawn timer task\n");
+        demo_log(LOG_LEVEL_ERROR, "[DemoApp Timer] ERROR: Failed to spawn timer task\n");
         g_timer_running = 0;
         return -1;
     }
     
-    demo_log(LOG_DIR_INFO, "[DemoApp Timer] Timer task spawned (taskId=%d)\n", g_timer_task);
+    demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Timer task spawned (taskId=%d)\n", g_timer_task);
 #else
     // Windows/Linux thread
     g_timer_running = 1;
@@ -304,7 +304,7 @@ void demo_timer_tick(DemoAppContext* ctx) {
         
         // IBIT duration: 3 seconds (3000ms)
         if (elapsed >= 3000) {
-            demo_log(LOG_DIR_INFO, "[DemoApp Timer] IBIT completed after %llu ms\n", elapsed);
+            demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] IBIT completed after %llu ms\n", elapsed);
             
             // Publish resultBIT
             demo_msg_publish_result_bit(ctx);
@@ -316,7 +316,7 @@ void demo_timer_tick(DemoAppContext* ctx) {
             extern void enter_state(DemoAppContext* ctx, DemoState new_state);
             enter_state(ctx, DEMO_STATE_RUN);
             
-            demo_log(LOG_DIR_INFO, "[DemoApp Timer] Returned to Run state\n");
+            demo_log(LOG_LEVEL_INFO, "[DemoApp Timer] Returned to Run state\n");
         }
         
         return;  // Don't publish periodic messages during IBIT
@@ -349,7 +349,7 @@ void demo_timer_tick(DemoAppContext* ctx) {
             // Enqueue publish to publisher task to avoid blocking timer
             if (demo_publisher_enqueue_signal(ctx) != 0) {
                 // If enqueue failed (queue full), optionally drop and log
-                demo_log(LOG_DIR_INFO, "[Timer] Publisher queue full, dropped signal event\n");
+                demo_log(LOG_LEVEL_INFO, "[Timer] Publisher queue full, dropped signal event\n");
             }
 #if defined(_VXWORKS_)
             {
@@ -364,7 +364,7 @@ void demo_timer_tick(DemoAppContext* ctx) {
             ctx->pub_signal_count++;
 #else
             if (demo_publisher_enqueue_signal(ctx) != 0) {
-                demo_log(LOG_DIR_INFO, "[Timer] Publisher queue full, dropped signal event\n");
+                demo_log(LOG_LEVEL_INFO, "[Timer] Publisher queue full, dropped signal event\n");
             }
 #endif
             ctx->last_200hz_tick = ctx->tick_count;

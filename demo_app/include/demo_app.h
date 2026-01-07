@@ -338,6 +338,9 @@ typedef struct {
     
     // DDS Configuration
     int domain_id;
+
+    // Connection state
+    bool agent_connected; // True if received hello reply
     
     // Internal state
     ActuatorControlState control_state;

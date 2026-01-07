@@ -152,38 +152,6 @@ void demo_log(LogLevel level, const char* fmt, ...) {
     internal_log_output(prefixed);
 }
 
-void demo_log_dir(LogDirection dir, const char* fmt, ...) {
-    LogLevel level = LOG_LEVEL_INFO;
-    const char* prefix = "";
-    
-    switch (dir) {
-        case LOG_DIR_TX:   level = LOG_LEVEL_DEBUG; prefix = "[TX] "; break;
-        case LOG_DIR_RX:   level = LOG_LEVEL_DEBUG; prefix = "[RX] "; break;
-        case LOG_DIR_INFO: level = LOG_LEVEL_INFO;  prefix = "[INFO] "; break;
-        default:           level = LOG_LEVEL_INFO;  prefix = ""; break;
-    }
-    
-    if (!g_log_enabled) return;
-    
-    log_lock();
-    LogLevel current_level = g_log_level;
-    log_unlock();
-    
-    if (level > current_level) return;
-
-    char buffer[1024];
-    char prefixed[1100];
-    va_list args;
-    
-    va_start(args, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-    
-    snprintf(prefixed, sizeof(prefixed), "[DemoApp]%s%s", prefix, buffer);
-    
-    internal_log_output(prefixed);
-}
-
 void demo_log_set_level(LogLevel level) {
     log_lock();
     g_log_level = level;

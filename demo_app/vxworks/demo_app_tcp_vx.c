@@ -61,7 +61,8 @@ void demo_tcp_cli_print(const char* fmt, ...) {
             }
         }
     } else {
-        printf("%s", buffer);
+        // Fallback to logging system
+        LOG_INFO("%s", buffer);
     }
     
     if (g_cli_mutex) semGive(g_cli_mutex);
@@ -80,25 +81,25 @@ void demo_tcp_cli_disconnect_client(void) {
 static void tcpCliServerTask(void) {
     struct sockaddr_in addr;
     
-    printf("[TCP CLI] Server task started on port %d\n", g_cli_port);
+    LOG_INFO("[TCP CLI] Server task started on port %d\n", g_cli_port);
     
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(g_cli_port);
     
     if (bind(g_cli_server_sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        printf("[TCP CLI] Bind failed\n");
+        LOG_ERROR("[TCP CLI] Bind failed\n");
         g_cli_running = 0;
         return;
     }
     
     if (listen(g_cli_server_sock, 1) < 0) {
-        printf("[TCP CLI] Listen failed\n");
+        LOG_ERROR("[TCP CLI] Listen failed\n");
         g_cli_running = 0;
         return;
     }
     
-    printf("[TCP CLI] Listening on port %d...\n", g_cli_port);
+    LOG_INFO("[TCP CLI] Listening on port %d...\n", g_cli_port);
     
     while (g_cli_running) {
         struct sockaddr_in client_addr;
@@ -110,12 +111,12 @@ static void tcpCliServerTask(void) {
         
         if (g_cli_client_sock < 0) {
             if (g_cli_running) {
-                printf("[TCP CLI] Accept failed\n");
+                LOG_ERROR("[TCP CLI] Accept failed\n");
             }
             break;
         }
         
-        printf("[TCP CLI] Client connected!\n");
+        LOG_INFO("[TCP CLI] Client connected!\n");
         
         // Welcome message
         demo_tcp_cli_print("DemoApp TCP CLI\nType 'help' for commands\n> ");
@@ -161,19 +162,19 @@ static void tcpCliServerTask(void) {
             }
         }
         
-        printf("[TCP CLI] Client disconnected\n");
+        LOG_INFO("[TCP CLI] Client disconnected\n");
         if (g_cli_client_sock >= 0) {
             close(g_cli_client_sock);
             g_cli_client_sock = -1;
         }
     }
     
-    printf("[TCP CLI] Server task exiting\n");
+    LOG_INFO("[TCP CLI] Server task exiting\n");
 }
 
 int demo_tcp_cli_start(int port) {
     if (g_cli_running) {
-        printf("[TCP CLI] Already running\n");
+        LOG_INFO("[TCP CLI] Already running\n");
         return -1;
     }
     
@@ -182,14 +183,14 @@ int demo_tcp_cli_start(int port) {
     if (!g_cli_mutex) {
         g_cli_mutex = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
         if (!g_cli_mutex) {
-            printf("[TCP CLI] Failed to create mutex\n");
+            LOG_ERROR("[TCP CLI] Failed to create mutex\n");
             return -1;
         }
     }
     
     g_cli_server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (g_cli_server_sock < 0) {
-        printf("[TCP CLI] Failed to create socket\n");
+        LOG_ERROR("[TCP CLI] Failed to create socket\n");
         return -1;
     }
     
@@ -211,7 +212,7 @@ int demo_tcp_cli_start(int port) {
     );
     
     if (g_cli_task == TASK_ID_ERROR) {
-        printf("[TCP CLI] Failed to spawn server task\n");
+        LOG_ERROR("[TCP CLI] Failed to spawn server task\n");
         close(g_cli_server_sock);
         g_cli_server_sock = -1;
         g_cli_running = 0;
@@ -224,7 +225,7 @@ int demo_tcp_cli_start(int port) {
 void demo_tcp_cli_stop(void) {
     if (!g_cli_running) return;
     
-    printf("[TCP CLI] Stopping...\n");
+    LOG_INFO("[TCP CLI] Stopping...\n");
     g_cli_running = 0;
     
     if (g_cli_client_sock >= 0) {
@@ -250,7 +251,7 @@ void demo_tcp_cli_stop(void) {
         g_cli_mutex = NULL;
     }
     
-    printf("[TCP CLI] Stopped\n");
+    LOG_INFO("[TCP CLI] Stopped\n");
 }
 
 int demo_tcp_cli_is_running(void) {
@@ -270,25 +271,25 @@ static int g_log_port = 24000;
 static void tcpLogServerTask(void) {
     struct sockaddr_in addr;
     
-    printf("[TCP Log] Server task started on port %d\n", g_log_port);
+    LOG_INFO("[TCP Log] Server task started on port %d\n", g_log_port);
     
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(g_log_port);
     
     if (bind(g_log_server_sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        printf("[TCP Log] Bind failed\n");
+        LOG_ERROR("[TCP Log] Bind failed\n");
         g_log_running = 0;
         return;
     }
     
     if (listen(g_log_server_sock, 1) < 0) {
-        printf("[TCP Log] Listen failed\n");
+        LOG_ERROR("[TCP Log] Listen failed\n");
         g_log_running = 0;
         return;
     }
     
-    printf("[TCP Log] Listening on port %d...\n", g_log_port);
+    LOG_INFO("[TCP Log] Listening on port %d...\n", g_log_port);
     
     while (g_log_running) {
         struct sockaddr_in client_addr;
@@ -300,12 +301,12 @@ static void tcpLogServerTask(void) {
         
         if (g_log_client_sock < 0) {
             if (g_log_running) {
-                printf("[TCP Log] Accept failed\n");
+                LOG_ERROR("[TCP Log] Accept failed\n");
             }
             break;
         }
         
-        printf("[TCP Log] Client connected!\n");
+        LOG_INFO("[TCP Log] Client connected!\n");
         
         // Register socket with log system
         demo_log_set_tcp_client(g_log_client_sock);
@@ -322,7 +323,7 @@ static void tcpLogServerTask(void) {
             // Ignore any data from client (log is output-only)
         }
         
-        printf("[TCP Log] Client disconnected\n");
+        LOG_INFO("[TCP Log] Client disconnected\n");
         
         // Unregister socket
         demo_log_set_tcp_client(-1);
@@ -333,12 +334,12 @@ static void tcpLogServerTask(void) {
         }
     }
     
-    printf("[TCP Log] Server task exiting\n");
+    LOG_INFO("[TCP Log] Server task exiting\n");
 }
 
 int demo_tcp_log_start(int port) {
     if (g_log_running) {
-        printf("[TCP Log] Already running\n");
+        LOG_INFO("[TCP Log] Already running\n");
         return -1;
     }
     
@@ -346,7 +347,7 @@ int demo_tcp_log_start(int port) {
     
     g_log_server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (g_log_server_sock < 0) {
-        printf("[TCP Log] Failed to create socket\n");
+        LOG_ERROR("[TCP Log] Failed to create socket\n");
         return -1;
     }
     
@@ -368,7 +369,7 @@ int demo_tcp_log_start(int port) {
     );
     
     if (g_log_task == TASK_ID_ERROR) {
-        printf("[TCP Log] Failed to spawn server task\n");
+        LOG_ERROR("[TCP Log] Failed to spawn server task\n");
         close(g_log_server_sock);
         g_log_server_sock = -1;
         g_log_running = 0;
@@ -381,7 +382,7 @@ int demo_tcp_log_start(int port) {
 void demo_tcp_log_stop(void) {
     if (!g_log_running) return;
     
-    printf("[TCP Log] Stopping...\n");
+    LOG_INFO("[TCP Log] Stopping...\n");
     g_log_running = 0;
     
     // Unregister from log system
@@ -405,7 +406,7 @@ void demo_tcp_log_stop(void) {
         g_log_task = TASK_ID_ERROR;
     }
     
-    printf("[TCP Log] Stopped\n");
+    LOG_INFO("[TCP Log] Stopped\n");
 }
 
 int demo_tcp_log_is_running(void) {

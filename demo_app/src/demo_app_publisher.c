@@ -144,7 +144,7 @@ static void* worker_thread_func(void* arg) {
             ev = g_queue.front(); g_queue.pop();
         }
         if (ev.type == PUB_EVT_SIGNAL && ev.ctx) {
-            demo_log(LOG_DIR_INFO, "[Publisher] Dequeued signal event\n");
+            demo_log(LOG_LEVEL_INFO, "[Publisher] Dequeued signal event\n");
             /* Measure worker dequeue->publish duration when instrumentation enabled */
 #ifdef DEMO_PERF_INSTRUMENTATION
             {
@@ -172,7 +172,7 @@ int demo_publisher_init(void) {
         g_worker_running = false;
         return -1;
     }
-    demo_log(LOG_DIR_INFO, "[Publisher] Worker started\n");
+    demo_log(LOG_LEVEL_INFO, "[Publisher] Worker started\n");
     return 0;
 }
 

@@ -65,12 +65,6 @@ void demo_log_cleanup(void);
 void demo_log(LogLevel level, const char* fmt, ...);
 
 /**
- * Legacy logging function (maps to INFO or DEBUG based on direction)
- * Kept for backward compatibility during refactoring
- */
-void demo_log_dir(LogDirection dir, const char* fmt, ...);
-
-/**
  * Set log output mode
  * 
  * @param mode  New mode (console/redirect/both)
@@ -147,16 +141,6 @@ void demo_log_set_tcp_client(int sock);
  * @return Client socket or -1 if not connected
  */
 int demo_log_get_tcp_client(void);
-
-/* ========================================================================
- * Convenience Macros
- * ======================================================================== */
-
-// TX/RX/INFO logging
-#define LOG_TX(fmt, ...)    demo_log(LOG_DIR_TX, fmt, ##__VA_ARGS__)
-#define LOG_RX(fmt, ...)    demo_log(LOG_DIR_RX, fmt, ##__VA_ARGS__)
-#define LOG_INFO(fmt, ...)  demo_log(LOG_DIR_INFO, fmt, ##__VA_ARGS__)
-#define LOG_PLAIN(fmt, ...) demo_log(LOG_DIR_NONE, fmt, ##__VA_ARGS__)
 
 #ifdef __cplusplus
 }

@@ -61,7 +61,7 @@ int demo_msg_init(DemoAppContext* ctx) {
         "pub1",
         TOPIC_PowerOnBIT,
         TYPE_PowerOnBIT,
-        "NstelCustomQosLib::InitialStateProfile"
+        "NstelQosLib::InitialStateProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &pbit_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_PowerOnBIT);
@@ -76,7 +76,7 @@ int demo_msg_init(DemoAppContext* ctx) {
         "pub1",
         TOPIC_PBIT,
         TYPE_PBIT,
-        "NstelCustomQosLib::LowFrequencyStatusProfile"
+        "NstelQosLib::LowFrequencyStatusProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &cbit_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_PBIT);
@@ -91,7 +91,7 @@ int demo_msg_init(DemoAppContext* ctx) {
         "pub1",
         TOPIC_IBIT,
         TYPE_IBIT,
-        "NstelCustomQosLib::NonPeriodicEventProfile"
+        "NstelQosLib::NonPeriodicEventProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &rbit_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_IBIT);
@@ -106,7 +106,7 @@ int demo_msg_init(DemoAppContext* ctx) {
         "pub1",
         TOPIC_Signal,
         TYPE_Signal,
-        "NstelCustomQosLib::HighFrequencyPeriodicProfile"
+        "NstelQosLib::HighFrequencyPeriodicProfile"
     };
     status = legacy_agent_create_writer(ctx->agent, &signal_wcfg, 2000,
                                        on_writer_created, (void*)TOPIC_Signal);
@@ -123,7 +123,7 @@ int demo_msg_init(DemoAppContext* ctx) {
         "sub1",
         TOPIC_runBIT,
         TYPE_runBIT,
-        "NstelCustomQosLib::NonPeriodicEventProfile"
+        "NstelQosLib::NonPeriodicEventProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &runbit_rcfg, 2000,
                                        on_reader_created, (void*)TOPIC_runBIT);
@@ -146,7 +146,7 @@ int demo_msg_init(DemoAppContext* ctx) {
         "sub1",
         TOPIC_commandDriving,
         TYPE_commandDriving,
-        "NstelCustomQosLib::HighFrequencyPeriodicProfile"
+        "NstelQosLib::HighFrequencyPeriodicProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &control_rcfg, 2000,
                                        on_reader_created, (void*)TOPIC_commandDriving);
@@ -170,7 +170,7 @@ int demo_msg_init(DemoAppContext* ctx) {
         "sub1",
         TOPIC_VehicleSpeed,
         TYPE_VehicleSpeed,
-        "NstelCustomQosLib::LowFrequencyVehicleProfile"
+        "NstelQosLib::LowFrequencyVehicleProfile"
     };
     status = legacy_agent_create_reader(ctx->agent, &speed_rcfg, 2000,
                                        on_reader_created, (void*)TOPIC_VehicleSpeed);
@@ -768,12 +768,12 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
     uint64_t t_publish_end = 0;
 #ifdef _VXWORKS_
     t_publish_end = ctx ? ctx->tick_count : 0;
-    demo_log(LOG_DIR_INFO, "[TIMING] publish_signal JSON+send approx %llu ms (ticks delta=%llu)\n",
+    demo_log(LOG_LEVEL_INFO, "[TIMING] publish_signal JSON+send approx %llu ms (ticks delta=%llu)\n",
              (unsigned long long)(t_publish_end - t_publish_start),
              (unsigned long long)(t_publish_end - t_publish_start));
 #else
     struct timespec tpe; clock_gettime(CLOCK_MONOTONIC, &tpe); t_publish_end = (uint64_t)tpe.tv_sec*1000ULL + (uint64_t)(tpe.tv_nsec/1000000ULL);
-    demo_log(LOG_DIR_INFO, "[TIMING] publish_signal JSON+send took %llu ms\n", (unsigned long long)(t_publish_end - t_publish_start));
+    demo_log(LOG_LEVEL_INFO, "[TIMING] publish_signal JSON+send took %llu ms\n", (unsigned long long)(t_publish_end - t_publish_start));
 #endif
 #endif
     if (status != LEGACY_OK) {

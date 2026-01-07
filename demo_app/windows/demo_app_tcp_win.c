@@ -62,7 +62,7 @@ void demo_tcp_cli_print(const char* fmt, ...) {
             }
         }
     } else {
-        printf("%s", buffer);
+        LOG_INFO("%s", buffer);
     }
     
     if (g_cli_mutex_init) LeaveCriticalSection(&g_cli_mutex);
@@ -83,25 +83,25 @@ void demo_tcp_cli_disconnect_client(void) {
 static DWORD WINAPI tcpCliServerThread(LPVOID param) {
     struct sockaddr_in addr;
     
-    printf("[TCP CLI] Server thread started on port %d\n", g_cli_port);
+    LOG_INFO("[TCP CLI] Server thread started on port %d\n", g_cli_port);
     
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons((u_short)g_cli_port);
     
     if (bind(g_cli_server_sock, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        printf("[TCP CLI] Bind failed: %d\n", WSAGetLastError());
+        LOG_ERROR("[TCP CLI] Bind failed: %d\n", WSAGetLastError());
         g_cli_running = 0;
         return 1;
     }
     
     if (listen(g_cli_server_sock, 1) == SOCKET_ERROR) {
-        printf("[TCP CLI] Listen failed: %d\n", WSAGetLastError());
+        LOG_ERROR("[TCP CLI] Listen failed: %d\n", WSAGetLastError());
         g_cli_running = 0;
         return 1;
     }
     
-    printf("[TCP CLI] Listening on port %d...\n", g_cli_port);
+    LOG_INFO("[TCP CLI] Listening on port %d...\n", g_cli_port);
     
     while (g_cli_running) {
         struct sockaddr_in client_addr;
@@ -111,12 +111,12 @@ static DWORD WINAPI tcpCliServerThread(LPVOID param) {
         
         if (g_cli_client_sock == INVALID_SOCKET) {
             if (g_cli_running) {
-                printf("[TCP CLI] Accept failed: %d\n", WSAGetLastError());
+                LOG_ERROR("[TCP CLI] Accept failed: %d\n", WSAGetLastError());
             }
             break;
         }
         
-        printf("[TCP CLI] Client connected!\n");
+        LOG_INFO("[TCP CLI] Client connected!\n");
         
         demo_tcp_cli_print("DemoApp TCP CLI\nType 'help' for commands\n> ");
         
@@ -161,20 +161,20 @@ static DWORD WINAPI tcpCliServerThread(LPVOID param) {
             }
         }
         
-        printf("[TCP CLI] Client disconnected\n");
+        LOG_INFO("[TCP CLI] Client disconnected\n");
         if (g_cli_client_sock != INVALID_SOCKET) {
             closesocket(g_cli_client_sock);
             g_cli_client_sock = INVALID_SOCKET;
         }
     }
     
-    printf("[TCP CLI] Server thread exiting\n");
+    LOG_INFO("[TCP CLI] Server thread exiting\n");
     return 0;
 }
 
 int demo_tcp_cli_start(int port) {
     if (g_cli_running) {
-        printf("[TCP CLI] Already running\n");
+        LOG_INFO("[TCP CLI] Already running\n");
         return -1;
     }
     
@@ -187,7 +187,7 @@ int demo_tcp_cli_start(int port) {
     
     g_cli_server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (g_cli_server_sock == INVALID_SOCKET) {
-        printf("[TCP CLI] Failed to create socket: %d\n", WSAGetLastError());
+        LOG_ERROR("[TCP CLI] Failed to create socket: %d\n", WSAGetLastError());
         return -1;
     }
     
@@ -201,7 +201,7 @@ int demo_tcp_cli_start(int port) {
     
     g_cli_thread = CreateThread(NULL, 0, tcpCliServerThread, NULL, 0, NULL);
     if (g_cli_thread == NULL) {
-        printf("[TCP CLI] Failed to create thread\n");
+        LOG_ERROR("[TCP CLI] Failed to create thread\n");
         closesocket(g_cli_server_sock);
         g_cli_server_sock = INVALID_SOCKET;
         g_cli_running = 0;
@@ -214,7 +214,7 @@ int demo_tcp_cli_start(int port) {
 void demo_tcp_cli_stop(void) {
     if (!g_cli_running) return;
     
-    printf("[TCP CLI] Stopping...\n");
+    LOG_INFO("[TCP CLI] Stopping...\n");
     g_cli_running = 0;
     
     if (g_cli_client_sock != INVALID_SOCKET) {
@@ -238,7 +238,7 @@ void demo_tcp_cli_stop(void) {
         g_cli_mutex_init = 0;
     }
     
-    printf("[TCP CLI] Stopped\n");
+    LOG_INFO("[TCP CLI] Stopped\n");
 }
 
 int demo_tcp_cli_is_running(void) {
@@ -258,25 +258,25 @@ static int g_log_port = 24000;
 static DWORD WINAPI tcpLogServerThread(LPVOID param) {
     struct sockaddr_in addr;
     
-    printf("[TCP Log] Server thread started on port %d\n", g_log_port);
+    LOG_INFO("[TCP Log] Server thread started on port %d\n", g_log_port);
     
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons((u_short)g_log_port);
     
     if (bind(g_log_server_sock, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        printf("[TCP Log] Bind failed: %d\n", WSAGetLastError());
+        LOG_ERROR("[TCP Log] Bind failed: %d\n", WSAGetLastError());
         g_log_running = 0;
         return 1;
     }
     
     if (listen(g_log_server_sock, 1) == SOCKET_ERROR) {
-        printf("[TCP Log] Listen failed: %d\n", WSAGetLastError());
+        LOG_ERROR("[TCP Log] Listen failed: %d\n", WSAGetLastError());
         g_log_running = 0;
         return 1;
     }
     
-    printf("[TCP Log] Listening on port %d...\n", g_log_port);
+    LOG_INFO("[TCP Log] Listening on port %d...\n", g_log_port);
     
     while (g_log_running) {
         struct sockaddr_in client_addr;
@@ -286,12 +286,12 @@ static DWORD WINAPI tcpLogServerThread(LPVOID param) {
         
         if (g_log_client_sock == INVALID_SOCKET) {
             if (g_log_running) {
-                printf("[TCP Log] Accept failed: %d\n", WSAGetLastError());
+                LOG_ERROR("[TCP Log] Accept failed: %d\n", WSAGetLastError());
             }
             break;
         }
         
-        printf("[TCP Log] Client connected!\n");
+        LOG_INFO("[TCP Log] Client connected!\n");
         
         // Register with log system
         demo_log_set_tcp_client((int)g_log_client_sock);
@@ -301,13 +301,14 @@ static DWORD WINAPI tcpLogServerThread(LPVOID param) {
             char buf[64];
             int len = recv(g_log_client_sock, buf, sizeof(buf), 0);
             
-            if (len <= 0) break;
-            // Ignore data from client
+            if (len <= 0) {
+                // Client disconnected
+                break;
+            }
+            // Ignore received data on log port
         }
         
-        printf("[TCP Log] Client disconnected\n");
-        
-        // Unregister
+        LOG_INFO("[TCP Log] Client disconnected\n");
         demo_log_set_tcp_client(-1);
         
         if (g_log_client_sock != INVALID_SOCKET) {
@@ -316,13 +317,13 @@ static DWORD WINAPI tcpLogServerThread(LPVOID param) {
         }
     }
     
-    printf("[TCP Log] Server thread exiting\n");
+    LOG_INFO("[TCP Log] Server thread exiting\n");
     return 0;
 }
 
 int demo_tcp_log_start(int port) {
     if (g_log_running) {
-        printf("[TCP Log] Already running\n");
+        LOG_INFO("[TCP Log] Already running\n");
         return -1;
     }
     
@@ -330,7 +331,7 @@ int demo_tcp_log_start(int port) {
     
     g_log_server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (g_log_server_sock == INVALID_SOCKET) {
-        printf("[TCP Log] Failed to create socket: %d\n", WSAGetLastError());
+        LOG_ERROR("[TCP Log] Failed to create socket: %d\n", WSAGetLastError());
         return -1;
     }
     
@@ -344,7 +345,7 @@ int demo_tcp_log_start(int port) {
     
     g_log_thread = CreateThread(NULL, 0, tcpLogServerThread, NULL, 0, NULL);
     if (g_log_thread == NULL) {
-        printf("[TCP Log] Failed to create thread\n");
+        LOG_ERROR("[TCP Log] Failed to create thread\n");
         closesocket(g_log_server_sock);
         g_log_server_sock = INVALID_SOCKET;
         g_log_running = 0;
@@ -357,7 +358,7 @@ int demo_tcp_log_start(int port) {
 void demo_tcp_log_stop(void) {
     if (!g_log_running) return;
     
-    printf("[TCP Log] Stopping...\n");
+    LOG_INFO("[TCP Log] Stopping...\n");
     g_log_running = 0;
     
     demo_log_set_tcp_client(-1);
@@ -378,11 +379,11 @@ void demo_tcp_log_stop(void) {
         g_log_thread = NULL;
     }
     
-    printf("[TCP Log] Stopped\n");
+    LOG_INFO("[TCP Log] Stopped\n");
 }
 
 int demo_tcp_log_is_running(void) {
     return g_log_running;
 }
 
-#endif /* _WIN32 */
+#endif // _WIN32

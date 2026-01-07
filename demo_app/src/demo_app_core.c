@@ -46,6 +46,7 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->current_state = DEMO_STATE_IDLE;
     ctx->domain_id = 0;  // Default domain
     ctx->agent = NULL;
+    ctx->agent_connected = false;
     
     // Initialize all BIT components to NORMAL (healthy)
     ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_NORMAL;
@@ -115,7 +116,7 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->cbit_period_ms = 1000;   // 1Hz
     ctx->pbit_period_ms = 0;      // 0 => only at start (no periodic PBIT)
     
-    printf("[DemoApp Core] Context initialized with default values\n");
+    LOG_INFO("[Core] Context initialized with default values\n");
 }
 
 /* ========================================================================
@@ -126,7 +127,7 @@ void enter_state(DemoAppContext* ctx, DemoState new_state) {
     DemoState old_state = ctx->current_state;
     ctx->current_state = new_state;
     
-    printf("[DemoApp Core] State transition: %s -> %s\n",
+    LOG_INFO("[Core] State transition: %s -> %s\n",
            demo_state_name(old_state), demo_state_name(new_state));
 }
 
@@ -138,11 +139,12 @@ static void on_hello(LEGACY_HANDLE h, LegacyRequestId req_id,
                      const LegacySimpleResult* res,
                      const LegacyHelloInfo* info, void* user) {
     DemoAppContext* ctx = (DemoAppContext*)user;
-    printf("[DemoApp Core] Hello response: ok=%d, proto=%d\n",
+    LOG_INFO("[Core] Hello response: ok=%d, proto=%d\n",
            res->ok, info ? info->proto : -1);
     
     if (res->ok) {
-        printf("[DemoApp Core] Agent connection established\n");
+        ctx->agent_connected = true;
+        LOG_INFO("[Core] Agent connection established (Async Callback)\n");
     }
 }
 
@@ -150,10 +152,10 @@ static void on_entity_created(LEGACY_HANDLE h, LegacyRequestId req_id,
                               const LegacySimpleResult* res, void* user) {
     const char* entity_name = (const char*)user;
     if (res->ok) {
-        printf("[DemoApp Core] Entity created: %s\n", 
+        LOG_INFO("[Core] Entity created: %s\n", 
                entity_name ? entity_name : "Unknown");
     } else {
-        printf("[DemoApp Core] ERROR: Failed to create %s: %s\n",
+        LOG_ERROR("[Core] Failed to create %s: %s\n",
                entity_name ? entity_name : "Unknown",
                res->msg ? res->msg : "Unknown error");
     }
@@ -165,9 +167,9 @@ static void on_entity_cleared(LEGACY_HANDLE h, LegacyRequestId req_id,
     (void)req_id;
     (void)user;
     if (res->ok) {
-        printf("[DemoApp Core] DDS entities cleared\n");
+        LOG_INFO("[Core] DDS entities cleared\n");
     } else {
-        printf("[DemoApp Core] WARNING: Failed to clear entities: %s\n",
+        LOG_INFO("[Core] WARNING: Failed to clear entities: %s\n",
                res->msg ? res->msg : "Unknown error");
     }
 }
@@ -179,34 +181,34 @@ static void on_entity_cleared(LEGACY_HANDLE h, LegacyRequestId req_id,
 static int create_dds_entities(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
     
-    printf("[DemoApp Core] Creating DDS entities...\n");
+    LOG_INFO("[Core] Creating DDS entities...\n");
     
     LegacyStatus status;
     
     // 1. Create Participant
-    LegacyParticipantConfig pcfg = { ctx->domain_id, "TriadQosLib::DefaultReliable" };
+    LegacyParticipantConfig pcfg = { ctx->domain_id, "NstelQosLib::Participant_UDPv4_Only" };
     status = legacy_agent_create_participant(ctx->agent, &pcfg, 2000,
                                             on_entity_created, (void*)"Participant");
     if (status != LEGACY_OK) {
-        printf("[DemoApp Core] ERROR: Failed to create participant\n");
+        LOG_ERROR("[Core] Failed to create participant\n");
         return -1;
     }
     
     // 2. Create Publisher
-    LegacyPublisherConfig pubcfg = { ctx->domain_id, "pub1", "TriadQosLib::DefaultReliable" };
+    LegacyPublisherConfig pubcfg = { ctx->domain_id, "pub1", "NstelQosLib::PubSub_Base" };
     status = legacy_agent_create_publisher(ctx->agent, &pubcfg, 2000,
                                           on_entity_created, (void*)"Publisher");
     if (status != LEGACY_OK) {
-        printf("[DemoApp Core] ERROR: Failed to create publisher\n");
+        LOG_ERROR("[Core] Failed to create publisher\n");
         return -1;
     }
     
     // 3. Create Subscriber
-    LegacySubscriberConfig subcfg = { ctx->domain_id, "sub1", "TriadQosLib::DefaultReliable" };
+    LegacySubscriberConfig subcfg = { ctx->domain_id, "sub1", "NstelQosLib::PubSub_Base" };
     status = legacy_agent_create_subscriber(ctx->agent, &subcfg, 2000,
                                            on_entity_created, (void*)"Subscriber");
     if (status != LEGACY_OK) {
-        printf("[DemoApp Core] ERROR: Failed to create subscriber\n");
+        LOG_ERROR("[Core] Failed to create subscriber\n");
         return -1;
     }
     
@@ -218,7 +220,7 @@ static int create_dds_entities(DemoAppContext* ctx) {
     // Linux: sleep not available in this context
     #endif
     
-    printf("[DemoApp Core] DDS entities created successfully\n");
+    LOG_INFO("[Core] DDS entities created successfully\n");
     return 0;
 }
 
@@ -276,7 +278,7 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     
     LOG_INFO("LegacyLib initialized\n");
     
-    // Send Hello
+    ctx->agent_connected = false;
     status = legacy_agent_hello(ctx->agent, 2000, on_hello, ctx);
     if (status != LEGACY_OK) {
         LOG_ERROR("Failed to send hello\n");
@@ -286,10 +288,24 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
         return -1;
     }
     
-    // Wait for hello response
-    #ifdef _VXWORKS_
-    taskDelay(sysClkRateGet() / 2);  // 500ms
-    #endif
+    // Wait for hello response (max 2 seconds)
+    int wait_count = 0;
+    while (!ctx->agent_connected && wait_count < 20) {
+        #ifdef _VXWORKS_
+        taskDelay(sysClkRateGet() / 10);  // 100ms
+        #else
+        // Sleep(100);
+        #endif
+        wait_count++;
+    }
+
+    if (!ctx->agent_connected) {
+        LOG_ERROR("Timeout waiting for Agent connection\n");
+        legacy_agent_close(ctx->agent);
+        ctx->agent = NULL;
+        enter_state(ctx, DEMO_STATE_IDLE);
+        return -1;
+    }
     
     // Clear existing DDS entities (clean slate)
     LOG_INFO("Clearing existing DDS entities...\n");
