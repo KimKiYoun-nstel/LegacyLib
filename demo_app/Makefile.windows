@@ -96,6 +96,10 @@ $(BUILD_DIR)/%.o: ../src/internal/%.cpp
 clean:
 	@echo "Cleaning..."
 	@if exist $(BUILD_DIR) rmdir /S /Q $(BUILD_DIR)
+	@if exist src\*.o del /Q src\*.o
+	@if exist windows\*.o del /Q windows\*.o
+	@if exist demo_app_cli.o del /Q demo_app_cli.o
+	@if exist demo_app_main.o del /Q demo_app_main.o
 	@echo "Clean complete"
 
 run: $(TARGET)

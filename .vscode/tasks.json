@@ -39,6 +39,32 @@
       "problemMatcher": [],
       "group": "build",
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
+    },
+    {
+      "label": "4) VxWorks Clean All (lib + demoApp)",
+      "type": "process",
+      "command": "D:\\WindRiver\\wrenv.exe",
+      "args": [
+        "cmd.exe", "/d", "/s", "/c",
+        "call BuildRef\\vx_set_env.cmd && make clean MODE=vxworks && make -C demo_app clean MODE=vxworks"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
+    },
+    {
+      "label": "5) Windows Clean (demoApp)",
+      "type": "process",
+      "command": "cmd.exe",
+      "args": [
+        "/d", "/s", "/c",
+        "mingw32-make -C demo_app -f Makefile.windows clean"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
     }
   ]
 }

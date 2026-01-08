@@ -141,6 +141,8 @@ $(TARGET): $(OBJS) $(LEGACY_OBJS)
 clean:
 	@echo "Cleaning..."
 	rm -f $(OBJS) $(TARGET)
+	rm -f src/*.o src/*.new vxworks/*.o windows/*.o
+	rm -f demo_app_cli.o demo_app_main.o
 	@echo "Clean complete"
 
 rebuild: clean all
