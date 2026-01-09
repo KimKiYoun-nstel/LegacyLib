@@ -74,7 +74,7 @@ void process_command(char* line) {
     char cmd[64];
     char arg1[64];
     int port = 25000;
-    LegacyConfig config = { "127.0.0.1", 25000, 100, 64*1024, 100, 64*1024 };
+    LegacyConfig config = { "127.0.0.1", 25000, LEGACY_CODEC_JSON, 100, 64*1024, 100, 64*1024 };
 
     // Parse
     cmd[0] = 0; arg1[0] = 0;

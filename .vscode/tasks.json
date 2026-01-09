@@ -1,70 +1,161 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "1) VxWorks lib (clean+build)",
-      "type": "process",
-      "command": "D:\\WindRiver\\wrenv.exe",
-      "args": [
-        "cmd.exe", "/d", "/s", "/c",
-        "call BuildRef\\vx_set_env.cmd && call BuildRef\\build_vx_lib.cmd"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
-    },
-    {
-      "label": "2) VxWorks demoApp (clean+build)",
-      "type": "process",
-      "command": "D:\\WindRiver\\wrenv.exe",
-      "args": [
-        "cmd.exe", "/d", "/s", "/c",
-        "call BuildRef\\vx_set_env.cmd && call BuildRef\\build_vx_demo.cmd"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
-    },
-    {
-      "label": "3) Windows demoApp (clean+build, lib 포함)",
-      "type": "process",
-      "command": "cmd.exe",
-      "args": [
-        "/d", "/s", "/c",
-        "call BuildRef\\build_win_demo.cmd"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
-    },
-    {
-      "label": "4) VxWorks Clean All (lib + demoApp)",
-      "type": "process",
-      "command": "D:\\WindRiver\\wrenv.exe",
-      "args": [
-        "cmd.exe", "/d", "/s", "/c",
-        "call BuildRef\\vx_set_env.cmd && make clean MODE=vxworks && make -C demo_app clean MODE=vxworks"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
-    },
-    {
-      "label": "5) Windows Clean (demoApp)",
-      "type": "process",
-      "command": "cmd.exe",
-      "args": [
-        "/d", "/s", "/c",
-        "mingw32-make -C demo_app -f Makefile.windows clean"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false }
-    }
-  ]
+"version": "2.0.0",
+"tasks": [
+{
+"label": "1-V) VxWorks lib (clean+build)",
+"type": "process",
+"command": "D:\\WindRiver\\wrenv.exe",
+"args": [
+"cmd.exe",
+"/d",
+"/s",
+"/c",
+"call BuildRef\\vx_set_env.cmd && call BuildRef\\build_vx_lib.cmd"
+],
+"options": {
+"cwd": "${workspaceFolder}"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": {
+"reveal": "always",
+"panel": "dedicated",
+"clear": true,
+"showReuseMessage": false
+}
+},
+{
+"label": "1-W) Windows lib (clean+build)",
+"type": "process",
+"command": "cmd.exe",
+"args": [
+"/d",
+"/s",
+"/c",
+"call BuildRef\\build_win_lib.cmd"
+],
+"options": {
+"cwd": "${workspaceFolder}"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": {
+"reveal": "always",
+"panel": "dedicated",
+"clear": true,
+"showReuseMessage": false
+}
+},
+{
+"label": "2-V) VxWorks demoApp (clean+build)",
+"type": "process",
+"command": "D:\\WindRiver\\wrenv.exe",
+"args": [
+"cmd.exe",
+"/d",
+"/s",
+"/c",
+"call BuildRef\\vx_set_env.cmd && call BuildRef\\build_vx_demo.cmd"
+],
+"options": {
+"cwd": "${workspaceFolder}"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": {
+"reveal": "always",
+"panel": "dedicated",
+"clear": true,
+"showReuseMessage": false
+}
+},
+{
+"label": "2-W) Windows demoApp (clean+build)",
+"type": "process",
+"command": "cmd.exe",
+"args": [
+"/d",
+"/s",
+"/c",
+"call BuildRef\\build_win_demo.cmd"
+],
+"options": {
+"cwd": "${workspaceFolder}"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": {
+"reveal": "always",
+"panel": "dedicated",
+"clear": true,
+"showReuseMessage": false
+}
+},
+{
+"label": "3-V) VxWorks Clean All (lib + demoApp)",
+"type": "process",
+"command": "D:\\WindRiver\\wrenv.exe",
+"args": [
+"cmd.exe",
+"/d",
+"/s",
+"/c",
+"call BuildRef\\vx_set_env.cmd && make -C legacy_lib clean MODE=vxworks && make -C demo_app clean MODE=vxworks"
+],
+"options": {
+"cwd": "${workspaceFolder}"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": {
+"reveal": "always",
+"panel": "dedicated",
+"clear": true,
+"showReuseMessage": false
+}
+},
+{
+"label": "3-W) Windows Clean All (lib + demoApp)",
+"type": "process",
+"command": "cmd.exe",
+"args": [
+"/d",
+"/s",
+"/c",
+"mingw32-make -C legacy_lib clean MODE=linux && mingw32-make -C demo_app -f Makefile.windows clean"
+],
+"options": {
+"cwd": "${workspaceFolder}"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": {
+"reveal": "always",
+"panel": "dedicated",
+"clear": true,
+"showReuseMessage": false
+}
+},
+{
+"label": "0) Generate API Only",
+"type": "process",
+"command": "python",
+"args": [
+"legacy_lib\\tools\\gen_api.py",
+"legacy_lib\\tools\\struct",
+"legacy_lib\\tools\\xml",
+"legacy_lib\\generated"
+],
+"options": {
+"cwd": "${workspaceFolder}"
+},
+"group": "none",
+"presentation": {
+"reveal": "always",
+"panel": "dedicated",
+"clear": true,
+"showReuseMessage": false
+}
+}
+]
 }

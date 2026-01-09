@@ -47,7 +47,10 @@ AR = wr-ar
 
 # Include Paths
 INCLUDES = -I./include \
-           -I../include \
+           -I../legacy_lib/include \
+           -I../legacy_lib/generated \
+           -I../legacy_lib/tools/struct \
+           -I.. \
            -I$(VSB_DIR)/krnl/h/published/UTILS_UNIX \
            -I$(VSB_DIR)/share/h \
            -I$(VSB_DIR)/krnl/h/public
@@ -74,6 +77,7 @@ SRCS = src/demo_app_core.c \
        src/demo_app_enums.c \
        src/demo_app_log.c \
        src/demo_app_cli.c \
+       ../legacy_lib/generated/legacy_api.c \
        vxworks/demo_app_tcp_vx.c \
        vxworks/demo_app_dkm.c
 
@@ -86,9 +90,9 @@ TARGET = demo_app_dkm.out
 
 # LegacyLib dependency
 # Link with LegacyLib object files directly for DKM
-LEGACY_OBJS = ../src/legacy_agent.o \
-              ../src/internal/IpcJsonClient.o \
-              ../src/internal/DkmRtpIpc.o
+LEGACY_OBJS = ../legacy_lib/src/legacy_agent.o \
+              ../legacy_lib/src/internal/IpcJsonClient.o \
+              ../legacy_lib/src/internal/DkmRtpIpc.o
 
 # Linker Flags for DKM
 # -r: Relocatable output (partial link)
@@ -120,7 +124,7 @@ check-env:
 # Build LegacyLib objects first if needed
 $(LEGACY_OBJS):
 	@echo "Building LegacyLib dependencies..."
-	$(MAKE) -C .. MODE=vxworks
+	$(MAKE) -C ../legacy_lib MODE=vxworks
 
 $(TARGET): $(OBJS) $(LEGACY_OBJS)
 	@echo "Linking DKM: $@"

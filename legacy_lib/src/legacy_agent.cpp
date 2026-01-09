@@ -95,9 +95,9 @@ LegacyStatus legacy_agent_write_json(LEGACY_HANDLE h, const LegacyWriteJsonOptio
     return h->client.writeJson(opt, timeout_ms, cb, user);
 }
 
-LegacyStatus legacy_agent_write_struct(LEGACY_HANDLE h, const char* topic, const char* type_name, const void* user_struct, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
+LegacyStatus legacy_agent_write_struct(LEGACY_HANDLE h, const char* topic, const char* type_name, const void* user_struct, size_t struct_size, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
     if (!h || !topic || !type_name || !user_struct) return LEGACY_ERR_PARAM;
-    return h->client.writeStruct(topic, type_name, user_struct, timeout_ms, cb, user);
+    return h->client.writeStruct(topic, type_name, user_struct, struct_size, timeout_ms, cb, user);
 }
 
 LegacyStatus legacy_agent_subscribe_event(LEGACY_HANDLE h, const char* topic, const char* type, LegacyEventCb cb, void* user) {
@@ -124,6 +124,21 @@ LegacyStatus legacy_agent_get_perf_stats(LEGACY_HANDLE h, LegacyPerfStats* out_s
 LegacyStatus legacy_agent_unregister_type_adapter(LEGACY_HANDLE h, const char* topic, const char* type_name) {
     if (!h || !topic || !type_name) return LEGACY_ERR_PARAM;
     return h->client.unregisterTypeAdapter(topic, type_name);
+}
+
+LegacyStatus legacy_agent_publish_json(LEGACY_HANDLE h, const char* topic, const char* json_str) {
+    if (!h || !topic || !json_str) return LEGACY_ERR_PARAM;
+    LegacyWriteJsonOptions opt;
+    memset(&opt, 0, sizeof(opt));
+    opt.topic = topic;
+    opt.data_json = json_str;
+    // 간편 전송이므로 비동기(timeout=0) 또는 기본 타임아웃 사용. 여기선 0 (Fire & Forget 느낌)
+    return h->client.writeJson(&opt, 0, nullptr, nullptr);
+}
+
+LegacyStatus legacy_agent_publish_struct(LEGACY_HANDLE h, const char* topic, const char* type_name, const void* data, size_t size) {
+    if (!h || !topic || !type_name || !data) return LEGACY_ERR_PARAM;
+    return h->client.writeStruct(topic, type_name, data, size, 0, nullptr, nullptr);
 }
 
 } // extern "C"

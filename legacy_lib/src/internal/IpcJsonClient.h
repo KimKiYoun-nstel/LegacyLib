@@ -65,7 +65,7 @@ public:
 
     // Data Plane
     LegacyStatus writeJson(const LegacyWriteJsonOptions* opt, uint32_t timeout_ms, LegacyWriteCb cb, void* user);
-    LegacyStatus writeStruct(const char* topic, const char* type_name, const void* user_struct, uint32_t timeout_ms, LegacyWriteCb cb, void* user);
+    LegacyStatus writeStruct(const char* topic, const char* type_name, const void* user_struct, size_t struct_size, uint32_t timeout_ms, LegacyWriteCb cb, void* user);
     
     // Events
     LegacyStatus subscribeEvent(const char* topic, const char* type, LegacyEventCb cb, void* user);
@@ -80,6 +80,9 @@ private:
     static void recvTaskEntry(uintptr_t arg);
 #endif
     void receiveLoop();
+    void handleJsonResponse(const LegacyFrameHeader& hdr, const uint8_t* payload, int len);
+    void handleStructResponse(const LegacyFrameHeader& hdr, const uint8_t* payload, int len);
+
     uint32_t generateRequestId();
     void registerRequest(uint32_t reqId, const PendingRequest& req);
     
@@ -89,9 +92,12 @@ private:
     void logDebug(const char* fmt, ...);
     
     // Helper to send raw JSON with header
-    LegacyStatus sendRequest(const std::string& json_body, uint16_t type = 0x1000, uint32_t req_id = 0);
+    LegacyStatus sendRequest(const std::string& json_body, uint16_t type = MSG_FRAME_REQ, uint32_t req_id = 0);
 
-    // Type Adapter Helper
+    // Helper to handle STRUCT data
+    LegacyStatus sendStructRequest(uint32_t topic_id, uint32_t abi_hash, const void* data, size_t len, uint32_t req_id = 0);
+
+private:
     const LegacyTypeAdapter* findTypeAdapter(const char* topic, const char* type_name);
 
 private:
@@ -126,6 +132,7 @@ private:
     std::mutex sub_mutex_;
 #endif
     std::map<std::string, std::vector<Subscription>> subscriptions_;
+    std::map<uint32_t, std::vector<Subscription>> id_subscriptions_;
 
     // Type Adapters
     // Key: "topic/type"

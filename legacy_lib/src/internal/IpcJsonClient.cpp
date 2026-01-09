@@ -648,30 +648,37 @@ LegacyStatus IpcJsonClient::writeJson(const LegacyWriteJsonOptions* opt, uint32_
     return sendRequest(json_str, frame_type, req_id);
 }
 
-LegacyStatus IpcJsonClient::writeStruct(const char* topic, const char* type_name, const void* user_struct, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
-    const LegacyTypeAdapter* adapter = findTypeAdapter(topic, type_name);
+LegacyStatus IpcJsonClient::writeStruct(const char* topic, const char* type_name, const void* user_struct, size_t struct_size, uint32_t timeout_ms, LegacyWriteCb cb, void* user) {
+    const LegacyTypeAdapter* adapter = nullptr;
+    if (struct_size == 0) {
+        adapter = findTypeAdapter(topic, type_name);
+    }
 
     if (config_.data_codec == LEGACY_CODEC_STRUCT) {
         // Data Plane STRUCT
-        if (!adapter || adapter->struct_size == 0) {
-            logError("[IpcJsonClient] writeStruct failed: No adapter or struct_size for %s", topic);
-            return LEGACY_ERR_PARAM;
+        size_t actual_size = struct_size;
+        if (actual_size == 0) {
+            if (!adapter || adapter->struct_size == 0) {
+                logError("[IpcJsonClient] writeStruct failed: No adapter or struct_size for %s", topic);
+                return LEGACY_ERR_PARAM;
+            }
+            actual_size = adapter->struct_size;
         }
 
         uint32_t req_id = generateRequestId();
         uint32_t topic_id = legacy_fnv1a_32(topic);
-        uint32_t abi_hash = legacy_fnv1a_32(type_name); // Simple ABI hash for now
+        uint32_t abi_hash = legacy_fnv1a_32(type_name);
         
         PendingRequest req;
         req.simple_cb = cb;
-        req.hello_cb = nullptr;
         req.user = user;
         registerRequest(req_id, req);
 
-        return sendStructRequest(topic_id, abi_hash, user_struct, adapter->struct_size, req_id);
+        return sendStructRequest(topic_id, abi_hash, user_struct, actual_size, req_id);
     }
 
     // Default: Fallback to adapter + JSON
+    if (!adapter) adapter = findTypeAdapter(topic, type_name);
     if (!adapter || !adapter->encode) return LEGACY_ERR_PARAM;
 
     const char* json_data = adapter->encode(user_struct, adapter->user_ctx);

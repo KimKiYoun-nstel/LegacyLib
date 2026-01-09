@@ -30,10 +30,17 @@ typedef enum {
 typedef void (*LegacyLogCb)(int level, const char* msg, void* user);
 // level: 0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERR
 
+typedef enum {
+    LEGACY_CODEC_JSON = 0,
+    LEGACY_CODEC_STRUCT = 1
+} LegacyDataCodec;
+
 typedef struct {
     const char* agent_ip;
     uint16_t    agent_port;
 
+    LegacyDataCodec data_codec; // default 0 (JSON)
+    
     uint32_t    recv_task_priority;
     uint32_t    recv_task_stack;
     uint32_t    send_task_priority;
@@ -67,6 +74,16 @@ typedef struct {
  * Counters are accumulated only when code is built with DEMO_PERF_INSTRUMENTATION.
  */
 LegacyStatus legacy_agent_get_perf_stats(LEGACY_HANDLE h, LegacyPerfStats* out_stats);
+
+/**
+ * @brief Topic에 JSON 데이터를 간편 전송합니다 (0x2000).
+ */
+LegacyStatus legacy_agent_publish_json(LEGACY_HANDLE h, const char* topic, const char* json_str);
+
+/**
+ * @brief Topic에 Struct 데이터를 간편 전송합니다 (0x2100).
+ */
+LegacyStatus legacy_agent_publish_struct(LEGACY_HANDLE h, const char* topic, const char* type_name, const void* data, size_t size);
 
 /* --- Common Response Structures --- */
 
@@ -259,6 +276,7 @@ LegacyStatus legacy_agent_write_struct(
     const char* topic,
     const char* type_name,
     const void* user_struct,
+    size_t struct_size,
     uint32_t timeout_ms,
     LegacyWriteCb cb,
     void* user);
@@ -310,6 +328,8 @@ typedef struct LegacyTypeAdapter {
     const char* (*encode)(const void* user_struct, void* user_ctx);
     bool        (*decode)(const char* data_json, void* out_user_struct, void* user_ctx);
     const char* (*make_default)(void* user_ctx);
+
+    size_t      struct_size; // Size of the binary structure (for Data Plane STRUCT)
 
     void* user_ctx;
 } LegacyTypeAdapter;

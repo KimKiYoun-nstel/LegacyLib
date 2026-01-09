@@ -19,8 +19,8 @@ CXX = g++
 BUILD_DIR = build_win
 
 # Compiler Flags
-CFLAGS = -Wall -Wextra -O2 -I./include -I../include -DWIN32 -D_WIN32
-CXXFLAGS = -Wall -Wextra -O2 -I./include -I../include -I../src/internal -DWIN32 -D_WIN32 -std=c++11
+CFLAGS = -Wall -Wextra -O2 -I./include -I../legacy_lib/include -I../legacy_lib/generated -I../legacy_lib/tools/struct -I.. -DWIN32 -D_WIN32
+CXXFLAGS = -Wall -Wextra -O2 -I./include -I../legacy_lib/include -I../legacy_lib/generated -I../legacy_lib/src/internal -I../legacy_lib/tools/struct -I.. -DWIN32 -D_WIN32 -std=c++11
 
 # Linker Flags
 LDFLAGS = -lws2_32 -lwinmm -lpthread
@@ -34,13 +34,14 @@ SRCS_C = src/demo_app_core.c \
 		 src/demo_app_enums.c \
 		 src/demo_app_log.c \
 		 src/demo_app_cli.c \
+		 ../legacy_lib/generated/legacy_api.c \
 		 windows/demo_app_tcp_win.c \
 		 windows/demo_app_main.c
 
 # LegacyLib C++ sources
-LEGACY_SRCS_CPP = ../src/legacy_agent.cpp \
-                  ../src/internal/IpcJsonClient.cpp \
-                  ../src/internal/DkmRtpIpc.cpp
+LEGACY_SRCS_CPP = ../legacy_lib/src/legacy_agent.cpp \
+                  ../legacy_lib/src/internal/IpcJsonClient.cpp \
+                  ../legacy_lib/src/internal/DkmRtpIpc.cpp
 
 # Object Files (in build directory)
 OBJS_C = $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(filter %.c,$(SRCS_C))))
@@ -85,13 +86,17 @@ $(BUILD_DIR)/%.o: windows/%.c
 	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: ../src/%.cpp
+$(BUILD_DIR)/%.o: ../legacy_lib/src/%.cpp
 	@echo "Compiling $<..."
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: ../src/internal/%.cpp
+$(BUILD_DIR)/%.o: ../legacy_lib/src/internal/%.cpp
 	@echo "Compiling $<..."
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: ../legacy_lib/generated/%.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	@echo "Cleaning..."

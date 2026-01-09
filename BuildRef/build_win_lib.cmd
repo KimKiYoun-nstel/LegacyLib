@@ -1,6 +1,8 @@
 @echo off
 setlocal
 python legacy_lib\tools\gen_api.py legacy_lib\tools\struct legacy_lib\tools\xml legacy_lib\generated || exit /b %ERRORLEVEL%
-mingw32-make -C demo_app -f Makefile.windows clean || exit /b %ERRORLEVEL%
-mingw32-make -C demo_app -f Makefile.windows || exit /b %ERRORLEVEL%
+cd legacy_lib
+mingw32-make clean MODE=linux || exit /b %ERRORLEVEL%
+mingw32-make MODE=linux || exit /b %ERRORLEVEL%
+cd ..
 endlocal

@@ -110,6 +110,15 @@ typedef struct {
     double           A_value;
 } C_VehicleSpeed;
 
+// P_Usage_And_Condition_Monitoring_PSM::C_Monitored_Entity_runBIT
+typedef struct {
+    T_IdentifierType A_sourceID;
+    T_IdentifierType A_recipientID;
+    T_DateTimeType   A_timeOfDataGeneration;
+    int32_t          A_referenceNum;
+    T_BITType        A_type;
+} C_Monitored_Entity_runBIT;
+
 // P_NSTEL::C_CannonDrivingDevice_PowerOnBIT
 typedef struct {
     T_IdentifierType A_sourceID;
@@ -341,6 +350,9 @@ typedef struct {
 
     // Connection state
     bool agent_connected; // True if received hello reply
+    
+    // Codec setting
+    LegacyDataCodec data_codec;
     
     // Internal state
     ActuatorControlState control_state;

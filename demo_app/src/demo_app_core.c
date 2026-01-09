@@ -47,6 +47,7 @@ void demo_app_context_init(DemoAppContext* ctx) {
     ctx->domain_id = 0;  // Default domain
     ctx->agent = NULL;
     ctx->agent_connected = false;
+    ctx->data_codec = LEGACY_CODEC_JSON; // Default to JSON
     
     // Initialize all BIT components to NORMAL (healthy)
     ctx->bit_state.pbit_components.upDownMotor = L_BITResultType_NORMAL;
@@ -261,6 +262,7 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     LegacyConfig cfg = {
         agent_ip,
         agent_port,
+        ctx->data_codec, // data_codec
         100,      // recv_task_priority
         64*1024,  // recv_task_stack
         100,      // send_task_priority

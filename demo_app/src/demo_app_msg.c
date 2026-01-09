@@ -5,6 +5,7 @@
 #include "../include/demo_app.h"
 #include "../include/demo_app_log.h"
 #include "../include/msg_fields.h"
+#include "../../legacy_lib/generated/legacy_api.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -22,6 +23,7 @@
 
 static void on_writer_created(LEGACY_HANDLE h, LegacyRequestId req_id,
                               const LegacySimpleResult* res, void* user) {
+    (void)h; (void)req_id;
     const char* topic = (const char*)user;
     if (res->ok) {
         LOG_INFO("Writer created: %s\n", topic);
@@ -33,6 +35,7 @@ static void on_writer_created(LEGACY_HANDLE h, LegacyRequestId req_id,
 
 static void on_reader_created(LEGACY_HANDLE h, LegacyRequestId req_id,
                               const LegacySimpleResult* res, void* user) {
+    (void)h; (void)req_id;
     const char* topic = (const char*)user;
     if (res->ok) {
         LOG_INFO("Reader created: %s\n", topic);
@@ -148,6 +151,21 @@ int demo_msg_init(DemoAppContext* ctx) {
         TYPE_commandDriving,
         "NstelQosLib::HighFrequencyPeriodicProfile"
     };
+
+    // Register Type Adapters for all 7 topics (4 Write, 3 Read)
+    LegacyTypeAdapter adapters[] = {
+        {{ TOPIC_PowerOnBIT, TYPE_PowerOnBIT }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_PowerOnBIT), NULL},
+        {{ TOPIC_PBIT, TYPE_PBIT }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_PBIT), NULL},
+        {{ TOPIC_IBIT, TYPE_IBIT }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_IBIT), NULL},
+        {{ TOPIC_Signal, TYPE_Signal }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_Signal), NULL},
+        {{ TOPIC_runBIT, TYPE_runBIT }, NULL, NULL, NULL, sizeof(C_Monitored_Entity_runBIT), NULL},
+        {{ TOPIC_commandDriving, TYPE_commandDriving }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_commandDriving), NULL},
+        {{ TOPIC_VehicleSpeed, TYPE_VehicleSpeed }, NULL, NULL, NULL, sizeof(C_VehicleSpeed), NULL}
+    };
+    for (int i = 0; i < 7; i++) {
+        legacy_agent_register_type_adapter(ctx->agent, &adapters[i]);
+    }
+
     status = legacy_agent_create_reader(ctx->agent, &control_rcfg, 2000,
                                        on_reader_created, (void*)TOPIC_commandDriving);
     if (status != LEGACY_OK) {
@@ -210,29 +228,39 @@ void demo_msg_cleanup(DemoAppContext* ctx) {
  * ======================================================================== */
 
 void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
+    (void)h;
     DemoAppContext* ctx = (DemoAppContext*)user;
     if (!ctx || !evt) return;
     ctx->runbit_rx_count++;
     
-    const char* json = evt->data_json;
-    if (!json) return;
-    
-    LOG_RX("Received runBIT: %s\n", json);
-    
-    // Parse A_referenceNum
     uint32_t reference_num = 0;
-    const char* ref_str = strstr(json, P_COLON(F_A_REFERENCE_NUM));
-    if (ref_str) {
-        sscanf(ref_str, P_FMT_UINT(F_A_REFERENCE_NUM), &reference_num);
-    }
-    
-    // Parse A_type (enum string)
     T_BITType type = L_BITType_I_BIT;  // Default to I_BIT
-    const char* type_str = strstr(json, P_COLON(F_A_TYPE));
-    if (type_str) {
-        char type_value[64];
-        if (sscanf(type_str, P_FMT_STR(F_A_TYPE), type_value) == 1) {
-            type = parse_bit_type(type_value);
+
+    if (evt->data_json == NULL && evt->raw_json != NULL) {
+        // Binary struct event
+        C_Monitored_Entity_runBIT* run = (C_Monitored_Entity_runBIT*)evt->raw_json;
+        reference_num = (uint32_t)run->A_referenceNum;
+        type = run->A_type;
+        LOG_RX("Received runBIT (BINARY): ref=%u, type=%d\n", reference_num, (int)type);
+    } else {
+        const char* json = evt->data_json;
+        if (!json) return;
+        
+        LOG_RX("Received runBIT (JSON): %s\n", json);
+        
+        // Parse A_referenceNum
+        const char* ref_str = strstr(json, P_COLON(F_A_REFERENCE_NUM));
+        if (ref_str) {
+            sscanf(ref_str, P_FMT_UINT(F_A_REFERENCE_NUM), &reference_num);
+        }
+        
+        // Parse A_type (enum string)
+        const char* type_str = strstr(json, P_COLON(F_A_TYPE));
+        if (type_str) {
+            char type_value[64];
+            if (sscanf(type_str, P_FMT_STR(F_A_TYPE), type_value) == 1) {
+                type = parse_bit_type(type_value);
+            }
         }
     }
     
@@ -245,13 +273,39 @@ void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
 }
 
 void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
+    (void)h;
     DemoAppContext* ctx = (DemoAppContext*)user;
     if (!ctx || !evt) return;
     
+    ActuatorControlState* ctrl = &ctx->control_state;
+
+    // Check if binary codec is being used
+    if (evt->data_json == NULL && evt->raw_json != NULL) {
+        // This is a binary struct event (passed via handleStructResponse)
+        Wire_P_NSTEL_C_CannonDrivingDevice_commandDriving* cmd = (Wire_P_NSTEL_C_CannonDrivingDevice_commandDriving*)evt->raw_json;
+        
+        ctrl->drivingPosition = (double)cmd->A_roundPosition;
+        ctrl->upDownPosition = (double)cmd->A_upDownPosition;
+        ctrl->roundAngleVelocity = (double)cmd->A_roundAngleVelocity;
+        ctrl->upDownAngleVelocity = (double)cmd->A_upDownAngleVelocity;
+        ctrl->cannonUpDownAngle = (double)cmd->A_cannonUpDownAngle;
+        ctrl->topRelativeAngle = (double)cmd->A_topRelativeAngle;
+        ctrl->operationMode = (T_OperationModeType)cmd->A_operationMode;
+        ctrl->parm = (T_OnOffType)cmd->A_parm;
+        ctrl->targetDesingation = (T_TargetAllotType)cmd->A_targetFix;
+        ctrl->autoArmPosition = (T_ArmPositionLockType)cmd->A_autoArmPosition;
+        ctrl->manualArmPosition = (T_ArmPositionLockType)cmd->A_manualArmPosition;
+        ctrl->mainCannonRestore = (T_MainCannonReturnType)cmd->A_mainCannonRestore;
+        ctrl->manCannonFix = (T_MainCannonFixType)cmd->A_mainCannonFix;
+        ctrl->closeEquipOpenStatus = (T_EquipOpenLockType)cmd->A_closureEquipOpenStatus;
+        
+        ctx->control_rx_count++;
+        ctrl->last_update_time = ctx->tick_count;
+        return;
+    }
+    
     const char* json = evt->data_json;
     if (!json) return;
-    
-    ActuatorControlState* ctrl = &ctx->control_state;
     
     // Extract float fields
     const char* ptr;
@@ -323,47 +377,43 @@ void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void*
 }
 
 void demo_msg_on_vehicle_speed(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
+    (void)h;
     DemoAppContext* ctx = (DemoAppContext*)user;
     if (!ctx || !evt) return;
     
-    // Parse JSON for vehicle speed
-    const char* json = evt->data_json;
-    if (!json) return;
-    
-    // Extract A_value (vehicle speed) using field macro
-    const char* speed_ptr = strstr(json, P_COLON(F_A_SPEED));
-    if (speed_ptr) {
-        sscanf(speed_ptr, P_FMT_FLOAT(F_A_SPEED), &ctx->speed_state.speed);
+    if (evt->data_json == NULL && evt->raw_json != NULL) {
+        // Binary struct event
+        C_VehicleSpeed* speed = (C_VehicleSpeed*)evt->raw_json;
+        ctx->speed_state.speed = speed->A_value;
+        LOG_RX("Received VehicleSpeed (BINARY): %.2f m/s\n", speed->A_value);
+    } else {
+        const char* json = evt->data_json;
+        if (!json) return;
+        
+        // Extract A_value (vehicle speed) using field macro
+        const char* speed_ptr = strstr(json, P_COLON(F_A_SPEED));
+        if (speed_ptr) {
+            sscanf(speed_ptr, P_FMT_FLOAT(F_A_SPEED), &ctx->speed_state.speed);
+        }
     }
     
     ctx->speed_state.last_update_time = ctx->tick_count;
     ctx->speed_rx_count++;
     
+    if ((ctx->speed_rx_count % 100) == 0) {
         LOG_RX("Vehicle Speed: A_value=%.2f m/s (rx=%u)\n",
             ctx->speed_state.speed, ctx->speed_rx_count);
-}
-
-/* ========================================================================
- * Publish Functions
- * ======================================================================== */
-
-/* ========================================================================
- * Write Callbacks
- * ======================================================================== */
-
-static void on_write_complete(LEGACY_HANDLE h, LegacyRequestId req_id,
-                              const LegacySimpleResult* res, void* user) {
-    const char* msg_type = (const char*)user;
-    if (!res->ok) {
-        LOG_INFO("ERROR: Failed to publish %s: %s\n",
-               msg_type, res->msg ? res->msg : "Unknown");
     }
-    // Success is silent - actual logs are in publish functions with LOG_TX
 }
 
 /* ========================================================================
  * Publish Functions
  * ======================================================================== */
+
+/* ========================================================================
+ * Publish Functions
+ * ======================================================================== */
+
 
 int demo_msg_publish_pbit(DemoAppContext* ctx) {
     if (!ctx || !ctx->agent) return -1;
@@ -396,17 +446,34 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
     ppos += snprintf(pbit_json + ppos, sizeof(pbit_json) - ppos, "}");
     
     // Write to DDS
-    LegacyWriteJsonOptions wopt = {
-        TOPIC_PowerOnBIT,
-        TYPE_PowerOnBIT,
-        pbit_json,
-        ctx->domain_id,
-        "pub1",
-        "NstelCustomQosLib::InitialStateProfile"
-    };
+    LegacyStatus status;
+    if (ctx->data_codec == LEGACY_CODEC_STRUCT) {
+        Wire_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT wire;
+        memset(&wire, 0, sizeof(wire));
+        wire.A_sourceID.A_resourceId = 1;
+        wire.A_sourceID.A_instanceId = 1;
+        wire.A_timeOfDataGeneration.A_second = (int64_t)(ctx->tick_count/1000);
+        wire.A_timeOfDataGeneration.A_nanoseconds = (int32_t)((ctx->tick_count%1000)*1000000);
+        wire.A_cannonDrivingDevice_sourceID.A_resourceId = 1;
+        wire.A_cannonDrivingDevice_sourceID.A_instanceId = 1;
+        wire.A_BITRunning = (comp->bitRunning == L_BITResultType_NORMAL);
+        wire.A_upDownMotor = (int32_t)comp->upDownMotor;
+        wire.A_roundMotor = (int32_t)comp->roundMotor;
+        wire.A_upDownAmp = (int32_t)comp->upDownAmp;
+        wire.A_roundAmp = (int32_t)comp->roundAmp;
+        wire.A_baseGyro = (int32_t)comp->baseGyro;
+        wire.A_topForwardGyro = (int32_t)comp->topForwardGyro;
+        wire.A_vehicleForwardGyro = (int32_t)comp->vehicleForwardGyro;
+        wire.A_powerController = (int32_t)comp->powerController;
+        wire.A_energyStorage = (int32_t)comp->energyStorage;
+        wire.A_directPower = (int32_t)comp->directPower;
+        wire.A_cableLoop = (int32_t)comp->cableLoop;
+
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT_struct(ctx->agent, &wire);
+    } else {
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT_json(ctx->agent, pbit_json);
+    }
     
-    LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 2000,
-                                                  on_write_complete, (void*)"PBIT");
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to send PBIT write request\n");
         return -1;
@@ -490,31 +557,37 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
         format_bit_result(cbit->commFault)
     );
     
-    LegacyWriteJsonOptions wopt = {
-        TOPIC_PBIT,
-        TYPE_PBIT,
-        cbit_json,
-        ctx->domain_id,
-        "pub1",
-        "NstelCustomQosLib::LowFrequencyStatusProfile"
-    };
-    
-    
-#ifdef DEMO_PERF_INSTRUMENTATION
-    uint64_t t_write0 = 0, t_write1 = 0;
-#if defined(_VXWORKS_)
-    {
-        unsigned long tk = tickGet();
-        int tr = sysClkRateGet();
-        t_write0 = (uint64_t)tk * (1000000000ULL / (tr > 0 ? tr : 1));
-    }
-#else
-    struct timespec tws; clock_gettime(CLOCK_MONOTONIC, &tws); t_write0 = (uint64_t)tws.tv_sec*1000000000ULL + tws.tv_nsec;
-#endif
-#endif
+    LegacyStatus status;
+    if (ctx->data_codec == LEGACY_CODEC_STRUCT) {
+        Wire_P_NSTEL_C_CannonDrivingDevice_PBIT wire;
+        memset(&wire, 0, sizeof(wire));
+        wire.A_sourceID.A_resourceId = 1;
+        wire.A_sourceID.A_instanceId = 1;
+        wire.A_timeOfDataGeneration.A_second = (int64_t)(ctx->tick_count/1000);
+        wire.A_timeOfDataGeneration.A_nanoseconds = (int32_t)((ctx->tick_count%1000)*1000000);
+        wire.A_cannonDrivingDevice_sourceID.A_resourceId = 1;
+        wire.A_cannonDrivingDevice_sourceID.A_instanceId = 1;
+        
+        wire.A_upDownMotor = (int32_t)cbit->base.upDownMotor;
+        wire.A_roundMotor = (int32_t)cbit->base.roundMotor;
+        wire.A_upDownAmp = (int32_t)cbit->base.upDownAmp;
+        wire.A_roundAmp = (int32_t)cbit->base.roundAmp;
+        wire.A_baseGyro = (int32_t)cbit->base.baseGyro;
+        wire.A_topForwardGyro = (int32_t)cbit->base.topForwardGyro;
+        wire.A_vehicleForwardGyro = (int32_t)cbit->base.vehicleForwardGyro;
+        wire.A_powerController = (int32_t)cbit->base.powerController;
+        wire.A_energyStorage = (int32_t)cbit->base.energyStorage;
+        wire.A_directPower = (int32_t)cbit->base.directPower;
+        wire.A_cableLoop = (int32_t)cbit->base.cableLoop;
+        wire.A_upDownPark = (int32_t)cbit->upDownPark;
+        wire.A_roundPark = (int32_t)cbit->round_Park;
+        wire.A_mainCannonLock = (int32_t)cbit->mainCannon_Lock;
+        wire.A_controllerNetwork = (int32_t)cbit->controllerNetwork;
 
-    LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 1000,
-                                                  on_write_complete, (void*)"CBIT");
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PBIT_struct(ctx->agent, &wire);
+    } else {
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PBIT_json(ctx->agent, cbit_json);
+    }
 
 #ifdef DEMO_PERF_INSTRUMENTATION
 #if defined(_VXWORKS_)
@@ -577,17 +650,35 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "\"%s\":\"%s\"", F_A_CABLELOOP, format_bit_result(result->cableLoop));
     rpos += snprintf(json + rpos, sizeof(json) - rpos, "}");
     
-    LegacyWriteJsonOptions wopt = {
-        TOPIC_IBIT,
-        TYPE_IBIT,
-        json,
-        ctx->domain_id,
-        "pub1",
-        "NstelCustomQosLib::NonPeriodicEventProfile"
-    };
-    
-    LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 2000,
-                                                  on_write_complete, (void*)"ResultBIT");
+    LegacyStatus status;
+    if (ctx->data_codec == LEGACY_CODEC_STRUCT) {
+        Wire_P_NSTEL_C_CannonDrivingDevice_IBIT wire;
+        memset(&wire, 0, sizeof(wire));
+        wire.A_sourceID.A_resourceId = 1;
+        wire.A_sourceID.A_instanceId = 1;
+        wire.A_timeOfDataGeneration.A_second = (int64_t)(ctx->tick_count/1000);
+        wire.A_timeOfDataGeneration.A_nanoseconds = (int32_t)((ctx->tick_count%1000)*1000000);
+        wire.A_cannonDrivingDevice_sourceID.A_resourceId = 1;
+        wire.A_cannonDrivingDevice_sourceID.A_instanceId = 1;
+        wire.A_referenceNum = (int32_t)ctx->bit_state.ibit_reference_num;
+        wire.A_BITRunning = (result->bitRunning == L_BITResultType_NORMAL);
+        
+        wire.A_upDownMotor = (int32_t)result->upDownMotor;
+        wire.A_roundMotor = (int32_t)result->roundMotor;
+        wire.A_upDownAmp = (int32_t)result->upDownAmp;
+        wire.A_roundAmp = (int32_t)result->roundAmp;
+        wire.A_baseGyro = (int32_t)result->baseGyro;
+        wire.A_topForwardGyro = (int32_t)result->topForwardGyro;
+        wire.A_vehicleForwardGyro = (int32_t)result->vehicleForwardGyro;
+        wire.A_powerController = (int32_t)result->powerController;
+        wire.A_energyStorage = (int32_t)result->energyStorage;
+        wire.A_directPower = (int32_t)result->directPower;
+        wire.A_cableLoop = (int32_t)result->cableLoop;
+
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_IBIT_struct(ctx->agent, &wire);
+    } else {
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_IBIT_json(ctx->agent, json);
+    }
     
     if (status != LEGACY_OK) {
         LOG_INFO("ERROR: Failed to publish resultBIT\n");
@@ -716,14 +807,6 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         updown_v
     );
     
-    LegacyWriteJsonOptions wopt = {
-        TOPIC_Signal,
-        TYPE_Signal,
-        signal_json,
-        ctx->domain_id,
-        "pub1",
-        "NstelCustomQosLib::HighFrequencyPeriodicProfile"
-    };
 #ifdef DEMO_PERF_INSTRUMENTATION
 #if defined(_VXWORKS_)
     {
@@ -747,8 +830,36 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
 #endif
 #endif
 
-    LegacyStatus status = legacy_agent_write_json(ctx->agent, &wopt, 500,
-                                                  on_write_complete, (void*)"Signal");
+    LegacyStatus status;
+    if (ctx->data_codec == LEGACY_CODEC_STRUCT) {
+        // Data Plane STRUCT
+        Wire_P_NSTEL_C_CannonDrivingDevice_Signal wire_sig;
+        memset(&wire_sig, 0, sizeof(wire_sig));
+        
+        wire_sig.A_sourceID.A_resourceId = 1;
+        wire_sig.A_sourceID.A_instanceId = 1;
+        wire_sig.A_recipientID.A_resourceId = 1;
+        wire_sig.A_recipientID.A_instanceId = 1;
+        wire_sig.A_timeOfDataGeneration.A_second = (int64_t)(ctx->tick_count / 1000);
+        wire_sig.A_timeOfDataGeneration.A_nanoseconds = (int32_t)((ctx->tick_count % 1000) * 1000000);
+
+        wire_sig.A_azAngleVelocity = (double)az_v;
+        wire_sig.A_e1AngleVelocity = (double)e1_v;
+        wire_sig.A_energyStorage = (int32_t)sig->energyStorage;
+        wire_sig.A_mainCannonFixStatus = (int32_t)sig->mainCannonFixStatus;
+        wire_sig.A_deckCleance = (int32_t)sig->deckClearance;
+        wire_sig.A_autoArmPositionComplement = (int32_t)sig->autoArmPositionComplement;
+        wire_sig.A_manualArmPositionComplement = (int32_t)sig->manualArmPositionComple;
+        wire_sig.A_mainCannonRestoreComplement = (int32_t)sig->mainCannonRestoreComplement;
+        wire_sig.A_armSafetyMainCannonLock = (int32_t)sig->armSafetyMainCannonLock;
+        wire_sig.A_shutdown = (int32_t)sig->shutdown;
+        wire_sig.A_roundGyro = (double)round_v;
+        wire_sig.A_upDownGyro = (double)updown_v;
+
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_Signal_struct(ctx->agent, &wire_sig);
+    } else {
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_Signal_json(ctx->agent, signal_json);
+    }
 
 #ifdef DEMO_PERF_INSTRUMENTATION
 #if defined(_VXWORKS_)

@@ -328,7 +328,7 @@ void print_help() {
 }
 
 void process_command(char* line) {
-    static LegacyConfig config = { "127.0.0.1", 25000, 100, 64*1024, 100, 64*1024, on_log, NULL };
+    static LegacyConfig config = { "127.0.0.1", 25000, LEGACY_CODEC_JSON, 100, 64*1024, 100, 64*1024, on_log, NULL };
     
     char* tokens[16];
     int token_count = tokenize_command(line, tokens, 16);

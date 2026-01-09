@@ -94,7 +94,7 @@
 #define P_QUOTE(name) "\"" name "\""
 #define P_COLON(name) "\"" name "\":"
 #define P_FMT_STR(name) "\"" name "\":\"%63[^\"]\""
-#define P_FMT_FLOAT(name) "\"" name "\":%f"
+#define P_FMT_FLOAT(name) "\"" name "\":%lf"
 #define P_FMT_UINT(name) "\"" name "\":%u"
 
 #endif /* MSG_FIELDS_H */

@@ -46,6 +46,7 @@ static void cmd_help(void) {
         "  connect [ip] [port]       : Connect to Agent (default: 127.0.0.1:25000)\n"
         "  reset                     : Full reset (cleanup entities, set Idle)\n"
         "  status                    : Show current status\n"
+        "  codec [json|struct]       : Set data codec (requires reconnect)\n"
         "\n[Entity Management]\n"
         "  create_entities           : Create DDS entities\n"
         "\n[Scenario Control]\n"
@@ -84,6 +85,22 @@ static void cmd_status(void) {
     }
     /* Delegate to shared status printer (prints to TCP client when to_tcp=1) */
     demo_app_print_status(1);
+}
+
+static void cmd_codec(int token_count, char** tokens) {
+    if (!g_demo_ctx) return;
+    if (token_count < 2) {
+        demo_tcp_cli_print("Current codec: %s\n", (g_demo_ctx->data_codec == LEGACY_CODEC_STRUCT) ? "struct" : "json");
+        return;
+    }
+    
+    if (strcmp(tokens[1], "struct") == 0) {
+        g_demo_ctx->data_codec = LEGACY_CODEC_STRUCT;
+        demo_tcp_cli_print("Codec set to struct (reconnect to apply)\n");
+    } else {
+        g_demo_ctx->data_codec = LEGACY_CODEC_JSON;
+        demo_tcp_cli_print("Codec set to json (reconnect to apply)\n");
+    }
 }
 
 /* ========================================================================
@@ -428,6 +445,9 @@ void demo_cli_process_command(char* line) {
     }
     else if (strcmp(cmd, "reset") == 0) {
         cmd_reset();
+    }
+    else if (strcmp(cmd, "codec") == 0) {
+        cmd_codec(token_count, tokens);
     }
     else if (strcmp(cmd, "create_entities") == 0) {
         cmd_create_entities();

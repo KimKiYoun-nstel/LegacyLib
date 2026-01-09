@@ -34,20 +34,7 @@
 #endif
 
 // --- Protocol Definitions ---
-#pragma pack(push, 1)
-struct Header {
-    uint32_t magic;   // 0x52495043 ('RIPC')
-    uint16_t version; // 0x0001
-    uint16_t type;    // Message Type
-    uint32_t corr_id; // Correlation ID
-    uint32_t length;  // Payload Length
-    uint64_t ts_ns;   // Timestamp
-};
-#pragma pack(pop)
-
-constexpr uint32_t MAGIC_VALUE = 0x52495043;
-constexpr uint16_t PROTO_VERSION = 0x0001;
-constexpr uint16_t MSG_FRAME_REQ = 0x1000; // Request frame (payload: CBOR/JSON)
+// Headers and Frame constants are in legacy_frames.h
 
 // Helper for 64-bit network byte order
 #ifndef htonll
@@ -142,9 +129,9 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
     if (!initialized_ || sock_ == INVALID_SOCKET) return false;
 
     // Prepare Header
-    Header h;
-    h.magic = htonl(MAGIC_VALUE);
-    h.version = htons(PROTO_VERSION);
+    LegacyFrameHeader h;
+    h.magic = htonl(RIPC_MAGIC);
+    h.version = htons(RIPC_VERSION);
     h.type = htons(type); 
     h.corr_id = htonl(corr_id);
     h.length = htonl((uint32_t)len);
@@ -161,16 +148,16 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
     int sent = 0;
 #if defined(_WIN32)
     // Fallback: keep existing simple send on Windows
-    std::vector<uint8_t> packet(sizeof(Header) + len);
-    memcpy(packet.data(), &h, sizeof(Header));
-    if (len > 0) memcpy(packet.data() + sizeof(Header), data, len);
+    std::vector<uint8_t> packet(sizeof(LegacyFrameHeader) + len);
+    memcpy(packet.data(), &h, sizeof(LegacyFrameHeader));
+    if (len > 0) memcpy(packet.data() + sizeof(LegacyFrameHeader), data, len);
     sent = ::send(sock_, (const char*)packet.data(), (int)packet.size(), 0);
 #else
     struct msghdr msg;
     struct iovec iov[2];
     memset(&msg, 0, sizeof(msg));
     iov[0].iov_base = (void*)&h;
-    iov[0].iov_len = sizeof(Header);
+    iov[0].iov_len = sizeof(LegacyFrameHeader);
     iov[1].iov_base = (void*)data;
     iov[1].iov_len = len;
     msg.msg_iov = iov;
@@ -199,7 +186,7 @@ bool DkmRtpIpc::send(const void* data, size_t len, uint16_t type, uint32_t corr_
         return false;
     }
 /* timing/print previously duplicated and removed to avoid redefinition */
-    dap_log(1, "[DkmRtpIpc] Sent %d bytes (Header: %zu + Payload: %zu)", sent, sizeof(Header), len);
+    dap_log(1, "[DkmRtpIpc] Sent %d bytes (Header: %zu + Payload: %zu)", sent, sizeof(LegacyFrameHeader), len);
     return true;
 }
 
@@ -212,7 +199,7 @@ void DkmRtpIpc::getPerfStats(uint64_t* out_send_us_total, uint32_t* out_send_cou
 #endif
 }
 
-int DkmRtpIpc::receive(void* buffer, size_t max_len, int timeout_ms) {
+int DkmRtpIpc::receive(void* buffer, size_t max_len, int timeout_ms, LegacyFrameHeader* out_hdr) {
     if (!initialized_ || sock_ == INVALID_SOCKET) return -1;
 
     fd_set readfds;
@@ -228,32 +215,43 @@ int DkmRtpIpc::receive(void* buffer, size_t max_len, int timeout_ms) {
         // We need to read the full packet (Header + Payload)
         // But the user buffer might be too small for both.
         // For simplicity, let's peek or read into a temp buffer.
-        std::vector<uint8_t> recv_buf(sizeof(Header) + max_len); 
+        std::vector<uint8_t> recv_buf(sizeof(LegacyFrameHeader) + max_len); 
 
         int bytes = ::recv(sock_, (char*)recv_buf.data(), (int)recv_buf.size(), 0);
         
         if (bytes > 0) {
-            if (bytes < sizeof(Header)) {
+            if (bytes < (int)sizeof(LegacyFrameHeader)) {
                     dap_log(4, "[DkmRtpIpc] Received packet too small for header: %d", bytes);
                     return 0; // Ignore invalid packet
                 }
 
-            Header* h = (Header*)recv_buf.data();
+            LegacyFrameHeader* h = (LegacyFrameHeader*)recv_buf.data();
             uint32_t magic = ntohl(h->magic);
-            if (magic != MAGIC_VALUE) {
+            if (magic != RIPC_MAGIC) {
                 dap_log(4, "[DkmRtpIpc] Invalid Magic: 0x%08x", magic);
                 return 0; // Ignore invalid packet
             }
 
             uint32_t payload_len = ntohl(h->length);
-              if (bytes - sizeof(Header) < payload_len) {
-                  dap_log(4, "[DkmRtpIpc] Incomplete payload. Expected: %u, Got: %d", payload_len, (bytes - (int)sizeof(Header)));
+              if (bytes - (int)sizeof(LegacyFrameHeader) < (int)payload_len) {
+                  dap_log(4, "[DkmRtpIpc] Incomplete payload. Expected: %u, Got: %d", payload_len, (bytes - (int)sizeof(LegacyFrameHeader)));
                   return 0;
               }
 
+            // Copy header if requested
+            if (out_hdr) {
+                *out_hdr = *h;
+                out_hdr->magic = magic;
+                out_hdr->version = ntohs(h->version);
+                out_hdr->type = ntohs(h->type);
+                out_hdr->corr_id = ntohl(h->corr_id);
+                out_hdr->length = payload_len;
+                out_hdr->ts_ns = ntohll(h->ts_ns);
+            }
+
             // Copy payload to user buffer
             size_t copy_len = (payload_len < max_len) ? payload_len : max_len;
-            memcpy(buffer, recv_buf.data() + sizeof(Header), copy_len);
+            memcpy(buffer, recv_buf.data() + sizeof(LegacyFrameHeader), copy_len);
             
             dap_log(1, "[DkmRtpIpc] Recv Valid Packet. Payload: %zu bytes", copy_len);
             return (int)copy_len;
