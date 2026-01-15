@@ -89,10 +89,10 @@ OBJS := $(patsubst %.cpp,%.o,$(OBJS))
 TARGET = demo_app_dkm.out
 
 # LegacyLib dependency
-# Link with LegacyLib object files directly for DKM
-LEGACY_OBJS = ../legacy_lib/src/legacy_agent.o \
-              ../legacy_lib/src/internal/IpcJsonClient.o \
-              ../legacy_lib/src/internal/DkmRtpIpc.o
+# Link with LegacyLib object files produced in legacy_lib build_vxworks
+LEGACY_OBJS = ../legacy_lib/build_vxworks/legacy_agent.o \
+			  ../legacy_lib/build_vxworks/internal/IpcJsonClient.o \
+			  ../legacy_lib/build_vxworks/internal/DkmRtpIpc.o
 
 # Linker Flags for DKM
 # -r: Relocatable output (partial link)
