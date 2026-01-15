@@ -110,12 +110,18 @@ Payload는 CBOR로 인코딩된 JSON object:
 ## 5.1 DataEnvelope
 `MSG_DATA_REQ_STRUCT / MSG_DATA_EVT_STRUCT` payload는 DataEnvelope로 시작한다.
 
+### Byte Order (Important)
+- DataEnvelope 및 struct payload(DataRsp 포함)는 **Big-Endian(Network Byte Order)**으로 고정한다.
+- `uint16/uint32/uint64`, `int16/int32/int64`, `float/double` 등 **모든 숫자 필드**는 Big-Endian으로 직렬화한다.
+- `bool`, `char[]`(string) 등 **1바이트 데이터**는 변환하지 않는다.
+- 부동소수점은 **IEEE 754 표현을 Big-Endian 바이트 순서**로 전송한다.
+
 ```c
 #pragma pack(push, 1)
 typedef struct {
   uint32_t magic;     // 'DIPC'
   uint16_t ver;       // 1
-  uint16_t kind;      // 1=WRITE, 2=EVT
+  uint16_t kind;      // 1=WRITE_REQ, 2=EVT
   uint32_t topic_id;  // hash(topic)
   uint32_t abi_hash;  // IDL 기반 wire struct 세트 식별
   uint32_t data_len;  // bytes length

@@ -25,7 +25,7 @@
 ```c
 /**
  * @file data_envelope.h
- * @brief DataEnvelope 구조체 정의 (C 호환)
+ * @brief DataEnvelope struct definition (C compatible)
  */
 #ifndef DATA_ENVELOPE_H
 #define DATA_ENVELOPE_H
@@ -39,32 +39,30 @@ extern "C" {
 #pragma pack(push, 1)
 
 /**
- * @brief Data Struct 프레임의 헤더 (20 bytes)
- * 
- * Wire Struct 페이로드 앞에 반드시 이 헤더를 붙여야 합니다.
+ * @brief Data Struct frame header (20 bytes)
+ *
+ * DataEnvelope and payload are serialized as Big-Endian (Network Byte Order).
  */
 typedef struct DataEnvelope {
-    uint32_t magic;      /**< 매직 넘버: 0x43504944 ("DIPC" little-endian) */
-    uint8_t  ver;        /**< 프로토콜 버전: 1 */
-    uint8_t  kind;       /**< PayloadKind: 2 = DataStruct */
-    uint32_t topic_id;   /**< topic_name의 FNV-1a 해시 */
-    uint32_t abi_hash;   /**< Wire struct ABI 해시 (버전 검증용) */
-    uint32_t data_len;   /**< Wire struct 페이로드 길이 (bytes) */
-    uint16_t reserved;   /**< 예약 (0으로 설정) */
+    uint32_t magic;      /**< magic: 0x44495043 ("DIPC" big-endian) */
+    uint16_t ver;        /**< protocol version: 1 */
+    uint16_t kind;       /**< 1=WRITE_REQ, 2=EVT */
+    uint32_t topic_id;   /**< FNV-1a hash of topic_name */
+    uint32_t abi_hash;   /**< wire struct ABI hash */
+    uint32_t data_len;   /**< wire struct payload length (bytes) */
 } DataEnvelope;
 
 #pragma pack(pop)
 
-/** DataEnvelope 매직 상수 */
-#define DATA_ENVELOPE_MAGIC  0x43504944
+/** DataEnvelope magic ('DIPC') */
+#define DATA_ENVELOPE_MAGIC  0x44495043
 
-/** DataEnvelope 버전 */
+/** DataEnvelope version */
 #define DATA_ENVELOPE_VER    1
 
-/** PayloadKind 열거 */
-#define PAYLOAD_KIND_CONTROL_JSON   0
-#define PAYLOAD_KIND_DATA_JSON      1
-#define PAYLOAD_KIND_DATA_STRUCT    2
+/** DataEnvelope kind values */
+#define DATA_KIND_WRITE_REQ  1
+#define DATA_KIND_EVT        2
 
 #ifdef __cplusplus
 }
@@ -143,27 +141,28 @@ static inline uint32_t compute_topic_id(const char* topic_name)
 ### 3.1 전체 구조
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│ IPC 프레임 (UDP 패킷)                                          │
-├────────────────────────────────────────────────────────────────┤
-│ [IPC Header: 12 bytes]                                         │
-│   ├─ magic (4B): "DIPC"                                        │
-│   ├─ frame_type (2B): 0x2100=REQ, 0x2101=RSP, 0x2102=EVT      │
-│   ├─ corr_id (4B): 요청-응답 매칭용 ID                          │
-│   └─ payload_len (2B): 아래 페이로드 전체 길이                   │
-├────────────────────────────────────────────────────────────────┤
-│ [DataEnvelope: 20 bytes]                                       │
-│   ├─ magic (4B): 0x43504944 ("DIPC")                           │
-│   ├─ ver (1B): 1                                               │
-│   ├─ kind (1B): 2 (DataStruct)                                 │
-│   ├─ topic_id (4B): fnv1a(topic_name)                          │
-│   ├─ abi_hash (4B): Wire struct 버전 해시                       │
-│   ├─ data_len (4B): sizeof(Wire_XXX)                           │
-│   └─ reserved (2B): 0                                          │
-├────────────────────────────────────────────────────────────────┤
-│ [Wire Struct Payload]                                          │
-│   예: Wire_P_NSTEL_C_VehicleSpeed (packed, 고정 크기)          │
-└────────────────────────────────────────────────────────────────┘
++--------------------------------------------------------------------+
+| IPC Frame (UDP packet)                                              |
++--------------------------------------------------------------------+
+| [RIPC Header: 24 bytes]                                             |
+|   magic (4B): "RIPC"                                                |
+|   version (2B)                                                      |
+|   type (2B): 0x2100=REQ, 0x2101=RSP, 0x2102=EVT                     |
+|   corr_id (4B): request/response correlation ID                     |
+|   length (4B): payload bytes length                                 |
+|   ts_ns (8B): timestamp (ns)                                        |
++--------------------------------------------------------------------+
+| [DataEnvelope: 20 bytes]                                            |
+|   magic (4B): 0x44495043 ("DIPC")                                   |
+|   ver (2B): 1                                                       |
+|   kind (2B): 1=WRITE_REQ, 2=EVT                                     |
+|   topic_id (4B): fnv1a(topic_name)                                  |
+|   abi_hash (4B): wire struct ABI hash                               |
+|   data_len (4B): sizeof(Wire_XXX)                                   |
++--------------------------------------------------------------------+
+| [Wire Struct Payload]                                               |
+|   Wire_P_NSTEL_C_VehicleSpeed (packed, fixed size)                  |
++--------------------------------------------------------------------+
 ```
 
 ### 3.2 Frame Type 값
@@ -187,40 +186,38 @@ static inline uint32_t compute_topic_id(const char* topic_name)
 #include <string.h>
 
 /**
- * @brief Wire Struct 데이터를 Gateway로 전송
- * @param topic_name DDS topic 이름 (create_writer에 사용된 것과 동일)
- * @param wire_data Wire Struct 포인터
+ * @brief Send Wire Struct to Gateway
+ * @param topic_name DDS topic name (must match create_writer name)
+ * @param wire_data Wire Struct data (already converted to big-endian)
  * @param wire_size sizeof(Wire_XXX)
- * @param abi_hash Wire struct ABI 해시 (idl_wire_abi.h 참조)
+ * @param abi_hash Wire struct ABI hash (see idl_wire_abi.h)
  */
-void send_wire_struct(const char* topic_name, 
-                      const void* wire_data, 
+void send_wire_struct(const char* topic_name,
+                      const void* wire_data,
                       uint32_t wire_size,
                       uint32_t abi_hash)
 {
-    // 1. topic_id 계산 (런타임)
+    // 1. Compute topic_id
     uint32_t topic_id = compute_topic_id(topic_name);
-    
-    // 2. DataEnvelope 생성
+
+    // 2. Build DataEnvelope (big-endian on the wire)
     DataEnvelope env;
-    env.magic = DATA_ENVELOPE_MAGIC;
-    env.ver = DATA_ENVELOPE_VER;
-    env.kind = PAYLOAD_KIND_DATA_STRUCT;
-    env.topic_id = topic_id;
-    env.abi_hash = abi_hash;
-    env.data_len = wire_size;
-    env.reserved = 0;
-    
-    // 3. 페이로드 조립 (Envelope + Wire Struct)
+    env.magic = htonl(DATA_ENVELOPE_MAGIC);
+    env.ver = htons(DATA_ENVELOPE_VER);
+    env.kind = htons(DATA_KIND_WRITE_REQ);
+    env.topic_id = htonl(topic_id);
+    env.abi_hash = htonl(abi_hash);
+    env.data_len = htonl(wire_size);
+
+    // 3. Build payload (Envelope + Wire Struct)
     uint8_t payload[sizeof(DataEnvelope) + wire_size];
     memcpy(payload, &env, sizeof(DataEnvelope));
     memcpy(payload + sizeof(DataEnvelope), wire_data, wire_size);
-    
-    // 4. IPC 프레임 전송
-    // (기존 IPC 전송 함수 사용)
-    send_ipc_frame(0x2100,  // MSG_DATA_REQ_STRUCT
+
+    // 4. Send IPC frame
+    send_ipc_frame(MSG_DATA_REQ_STRUCT,
                    next_corr_id(),
-                   payload, 
+                   payload,
                    sizeof(payload));
 }
 ```
@@ -269,39 +266,54 @@ void send_cannon_signal(void)
 
 ```c
 /**
- * @brief IPC 프레임 수신 콜백
- * @param frame_type 프레임 타입 (0x2102 = MSG_DATA_EVT_STRUCT)
- * @param payload 페이로드 데이터
- * @param len 페이로드 길이
+ * @brief IPC frame receive callback
+ * @param frame_type frame type (0x2102 = MSG_DATA_EVT_STRUCT)
+ * @param payload payload bytes
+ * @param len payload length
  */
-void on_ipc_frame_received(uint16_t frame_type, 
-                           const uint8_t* payload, 
+void on_ipc_frame_received(uint16_t frame_type,
+                           const uint8_t* payload,
                            uint32_t len)
 {
-    if (frame_type != 0x2102) {  // MSG_DATA_EVT_STRUCT
+    if (frame_type != MSG_DATA_EVT_STRUCT) {
         return;
     }
-    
-    // 1. DataEnvelope 파싱
+
+    // 1. Basic length check
     if (len < sizeof(DataEnvelope)) {
         printf("Error: payload too short\n");
         return;
     }
-    
-    const DataEnvelope* env = (const DataEnvelope*)payload;
-    
-    // 2. 매직 검증
-    if (env->magic != DATA_ENVELOPE_MAGIC) {
-        printf("Error: invalid magic\n");
+
+    // 2. Parse DataEnvelope (big-endian on the wire)
+    DataEnvelope env;
+    memcpy(&env, payload, sizeof(env));
+    env.magic = ntohl(env.magic);
+    env.ver = ntohs(env.ver);
+    env.kind = ntohs(env.kind);
+    env.topic_id = ntohl(env.topic_id);
+    env.abi_hash = ntohl(env.abi_hash);
+    env.data_len = ntohl(env.data_len);
+
+    // 3. Validate header
+    if (env.magic != DATA_ENVELOPE_MAGIC ||
+        env.ver != DATA_ENVELOPE_VER ||
+        env.kind != DATA_KIND_EVT) {
+        printf("Error: invalid DataEnvelope\n");
         return;
     }
-    
-    // 3. Wire Struct 데이터 추출
+
+    if (len < sizeof(DataEnvelope) + env.data_len) {
+        printf("Error: payload length mismatch\n");
+        return;
+    }
+
+    // 4. Extract Wire Struct
     const uint8_t* wire_data = payload + sizeof(DataEnvelope);
-    uint32_t wire_len = env->data_len;
-    
-    // 4. topic_id로 타입 판별 후 처리
-    handle_wire_struct(env->topic_id, wire_data, wire_len);
+    uint32_t wire_len = env.data_len;
+
+    // NOTE: Convert wire_data fields from big-endian before use.
+    handle_wire_struct(env.topic_id, wire_data, wire_len);
 }
 ```
 
@@ -404,42 +416,55 @@ void handle_wire_struct(uint32_t topic_id,
 Gateway가 `MSG_DATA_REQ_STRUCT` 요청에 대해 보내는 응답:
 
 ```
-┌─────────────────────────────────────┐
-│ RSP Payload (8 bytes)               │
-├─────────────────────────────────────┤
-│ status (1B): 결과 코드              │
-│ topic_id (4B): 요청의 topic_id      │
-│ reserved (3B): 0                    │
-└─────────────────────────────────────┘
++-------------------------------+
+| RSP Payload (12 bytes)        |
++-------------------------------+
+| magic  (4B): 0x44525350 "DRSP"|
+| ver    (2B): 1                |
+| status (2B): 0=OK, 1=ERR      |
+| err    (4B): error code       |
++-------------------------------+
 ```
+### 7.2 Status and error codes
 
-### 7.2 상태 코드
+- `status`: 0=OK, 1=ERR
+- `err`: detail code when status=ERR
 
-| 코드 | 이름 | 의미 |
-|------|------|------|
-| 0x00 | OK | 성공 |
-| 0x01 | PARSE_ERROR | DataEnvelope 파싱 실패 |
-| 0x02 | UNKNOWN_TOPIC | topic_id에 해당하는 topic 없음 |
-| 0x03 | ABI_MISMATCH | Wire struct 버전 불일치 |
-| 0x04 | CONVERT_FAIL | Wire → DDS 변환 실패 |
-| 0x05 | PUBLISH_FAIL | DDS publish 실패 |
+| err | name | meaning |
+|------|------|---------|
+| 0x00 | OK | success (only when status=OK) |
+| 0x01 | PARSE_ERROR | DataEnvelope parse failed |
+| 0x02 | UNKNOWN_TOPIC | topic_id not found |
+| 0x03 | ABI_MISMATCH | wire struct version mismatch |
+| 0x04 | CONVERT_FAIL | wire->DDS conversion failed |
+| 0x05 | PUBLISH_FAIL | DDS publish failed |
 
 ### 7.3 응답 처리 예시
 
 ```c
 void on_struct_response(uint32_t corr_id, const uint8_t* payload, uint32_t len)
 {
-    if (len < 5) return;
-    
-    uint8_t status = payload[0];
-    uint32_t topic_id;
-    memcpy(&topic_id, &payload[1], sizeof(topic_id));
-    
-    if (status == 0x00) {
-        printf("Request %u succeeded for topic_id 0x%08X\n", corr_id, topic_id);
+    if (len < sizeof(DataRspStruct)) {
+        return;
+    }
+
+    DataRspStruct rsp;
+    memcpy(&rsp, payload, sizeof(rsp));
+
+    rsp.magic = ntohl(rsp.magic);
+    rsp.ver = ntohs(rsp.ver);
+    rsp.status = ntohs(rsp.status);
+    rsp.err = ntohl(rsp.err);
+
+    if (rsp.magic != DATA_RSP_MAGIC || rsp.ver != DATA_ENVELOPE_VER) {
+        printf("Request %u failed: invalid response\n", corr_id);
+        return;
+    }
+
+    if (rsp.status == 0) {
+        printf("Request %u succeeded\n", corr_id);
     } else {
-        printf("Request %u failed: status=0x%02X topic_id=0x%08X\n", 
-               corr_id, status, topic_id);
+        printf("Request %u failed: err=0x%08X\n", corr_id, rsp.err);
     }
 }
 ```
@@ -466,7 +491,7 @@ typedef struct Wire_Example {
 
 | 항목 | 요구사항 |
 |------|---------|
-| 바이트 순서 | Little-endian (x86, ARM 기본값) |
+| 바이트 순서 | Big-endian (x86, ARM 기본값) |
 | 정렬 | 1-byte aligned (pack 필수) |
 | 컴파일러 | C99 이상, C++11 이상 |
 
@@ -509,5 +534,5 @@ Legacy/UI 연동 시 확인사항:
 - [ ] `data_envelope.h`, `topic_id_utils.h` 복사
 - [ ] 컴파일러 설정: `#pragma pack` 지원 확인
 - [ ] topic_name이 Gateway와 정확히 일치하는지 확인
-- [ ] 바이트 순서가 Little-endian인지 확인
+- [ ] 바이트 순서가 Big-endian인지 확인
 - [ ] Wire struct 크기가 `sizeof()`와 일치하는지 확인

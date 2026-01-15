@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>
 
 #ifdef _VXWORKS_
 #include <vxWorks.h>
@@ -20,6 +21,192 @@
 /* ========================================================================
  * Callbacks
  * ======================================================================== */
+
+static int demo_is_little_endian(void) {
+    const uint16_t v = 1;
+    return *((const uint8_t*)&v) == 1;
+}
+
+static uint32_t demo_bswap32(uint32_t v) {
+    return ((v & 0x000000FFU) << 24) |
+           ((v & 0x0000FF00U) << 8) |
+           ((v & 0x00FF0000U) >> 8) |
+           ((v & 0xFF000000U) >> 24);
+}
+
+static uint64_t demo_bswap64(uint64_t v) {
+    return ((v & 0x00000000000000FFULL) << 56) |
+           ((v & 0x000000000000FF00ULL) << 40) |
+           ((v & 0x0000000000FF0000ULL) << 24) |
+           ((v & 0x00000000FF000000ULL) << 8) |
+           ((v & 0x000000FF00000000ULL) >> 8) |
+           ((v & 0x0000FF0000000000ULL) >> 24) |
+           ((v & 0x00FF000000000000ULL) >> 40) |
+           ((v & 0xFF00000000000000ULL) >> 56);
+}
+
+static uint32_t demo_be32(uint32_t v) {
+    return demo_is_little_endian() ? demo_bswap32(v) : v;
+}
+
+static uint64_t demo_be64(uint64_t v) {
+    return demo_is_little_endian() ? demo_bswap64(v) : v;
+}
+
+static int32_t demo_be32s(int32_t v) {
+    return (int32_t)demo_be32((uint32_t)v);
+}
+
+static int64_t demo_be64s(int64_t v) {
+    return (int64_t)demo_be64((uint64_t)v);
+}
+
+static double demo_be_double(double v) {
+    union { double d; uint64_t u; } u;
+    u.d = v;
+    u.u = demo_be64(u.u);
+    return u.d;
+}
+
+static void demo_wire_id_be(Wire_P_LDM_Common_T_IdentifierType* v) {
+    v->A_resourceId = demo_be32s(v->A_resourceId);
+    v->A_instanceId = demo_be32s(v->A_instanceId);
+}
+
+static void demo_wire_time_be(Wire_P_LDM_Common_T_DateTimeType* v) {
+    v->A_second = demo_be64s(v->A_second);
+    v->A_nanoseconds = demo_be32s(v->A_nanoseconds);
+}
+
+static void demo_wire_runbit_be(Wire_P_Usage_And_Condition_Monitoring_PSM_C_Monitored_Entity_runBIT* v) {
+    demo_wire_id_be(&v->A_recipientID);
+    demo_wire_id_be(&v->A_sourceID);
+    v->A_referenceNum = demo_be32s(v->A_referenceNum);
+    demo_wire_time_be(&v->A_timeOfDataGeneration);
+    v->A_type = demo_be32s(v->A_type);
+}
+
+static void demo_wire_commanddriving_be(Wire_P_NSTEL_C_CannonDrivingDevice_commandDriving* v) {
+    demo_wire_id_be(&v->A_sourceID);
+    demo_wire_id_be(&v->A_recipientID);
+    demo_wire_time_be(&v->A_timeOfDataGeneration);
+    v->A_referenceNum = demo_be32s(v->A_referenceNum);
+    v->A_roundPosition = demo_be_double(v->A_roundPosition);
+    v->A_upDownPosition = demo_be_double(v->A_upDownPosition);
+    v->A_roundAngleVelocity = demo_be_double(v->A_roundAngleVelocity);
+    v->A_upDownAngleVelocity = demo_be_double(v->A_upDownAngleVelocity);
+    v->A_cannonUpDownAngle = demo_be_double(v->A_cannonUpDownAngle);
+    v->A_topRelativeAngle = demo_be_double(v->A_topRelativeAngle);
+    v->A_operationMode = demo_be32s(v->A_operationMode);
+    v->A_parm = demo_be32s(v->A_parm);
+    v->A_targetFix = demo_be32s(v->A_targetFix);
+    v->A_autoArmPosition = demo_be32s(v->A_autoArmPosition);
+    v->A_manualArmPosition = demo_be32s(v->A_manualArmPosition);
+    v->A_mainCannonRestore = demo_be32s(v->A_mainCannonRestore);
+    v->A_mainCannonFix = demo_be32s(v->A_mainCannonFix);
+    v->A_closureEquipOpenStatus = demo_be32s(v->A_closureEquipOpenStatus);
+}
+
+static void demo_wire_vehicle_speed_be(Wire_P_NSTEL_C_VehicleSpeed* v) {
+    demo_wire_id_be(&v->A_sourceID);
+    demo_wire_time_be(&v->A_timeOfDataGeneration);
+    v->A_value = demo_be_double(v->A_value);
+}
+
+static void demo_wire_poweronbit_be(Wire_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT* v) {
+    demo_wire_id_be(&v->A_sourceID);
+    demo_wire_time_be(&v->A_timeOfDataGeneration);
+    demo_wire_id_be(&v->A_cannonDrivingDevice_sourceID);
+    v->A_upDownMotor = demo_be32s(v->A_upDownMotor);
+    v->A_roundMotor = demo_be32s(v->A_roundMotor);
+    v->A_upDownAmp = demo_be32s(v->A_upDownAmp);
+    v->A_roundAmp = demo_be32s(v->A_roundAmp);
+    v->A_baseGyro = demo_be32s(v->A_baseGyro);
+    v->A_topForwardGyro = demo_be32s(v->A_topForwardGyro);
+    v->A_vehicleForwardGyro = demo_be32s(v->A_vehicleForwardGyro);
+    v->A_powerController = demo_be32s(v->A_powerController);
+    v->A_energyStorage = demo_be32s(v->A_energyStorage);
+    v->A_directPower = demo_be32s(v->A_directPower);
+    v->A_cableLoop = demo_be32s(v->A_cableLoop);
+}
+
+static void demo_wire_pbit_be(Wire_P_NSTEL_C_CannonDrivingDevice_PBIT* v) {
+    demo_wire_id_be(&v->A_sourceID);
+    demo_wire_time_be(&v->A_timeOfDataGeneration);
+    demo_wire_id_be(&v->A_cannonDrivingDevice_sourceID);
+    v->A_upDownMotor = demo_be32s(v->A_upDownMotor);
+    v->A_roundMotor = demo_be32s(v->A_roundMotor);
+    v->A_upDownAmp = demo_be32s(v->A_upDownAmp);
+    v->A_roundAmp = demo_be32s(v->A_roundAmp);
+    v->A_baseGyro = demo_be32s(v->A_baseGyro);
+    v->A_topForwardGyro = demo_be32s(v->A_topForwardGyro);
+    v->A_vehicleForwardGyro = demo_be32s(v->A_vehicleForwardGyro);
+    v->A_powerController = demo_be32s(v->A_powerController);
+    v->A_energyStorage = demo_be32s(v->A_energyStorage);
+    v->A_directPower = demo_be32s(v->A_directPower);
+    v->A_cableLoop = demo_be32s(v->A_cableLoop);
+    v->A_upDownPark = demo_be32s(v->A_upDownPark);
+    v->A_roundPark = demo_be32s(v->A_roundPark);
+    v->A_mainCannonLock = demo_be32s(v->A_mainCannonLock);
+    v->A_controllerNetwork = demo_be32s(v->A_controllerNetwork);
+}
+
+static void demo_wire_ibit_be(Wire_P_NSTEL_C_CannonDrivingDevice_IBIT* v) {
+    demo_wire_id_be(&v->A_sourceID);
+    demo_wire_time_be(&v->A_timeOfDataGeneration);
+    demo_wire_id_be(&v->A_cannonDrivingDevice_sourceID);
+    v->A_referenceNum = demo_be32s(v->A_referenceNum);
+    v->A_upDownMotor = demo_be32s(v->A_upDownMotor);
+    v->A_roundMotor = demo_be32s(v->A_roundMotor);
+    v->A_upDownAmp = demo_be32s(v->A_upDownAmp);
+    v->A_roundAmp = demo_be32s(v->A_roundAmp);
+    v->A_baseGyro = demo_be32s(v->A_baseGyro);
+    v->A_topForwardGyro = demo_be32s(v->A_topForwardGyro);
+    v->A_vehicleForwardGyro = demo_be32s(v->A_vehicleForwardGyro);
+    v->A_powerController = demo_be32s(v->A_powerController);
+    v->A_energyStorage = demo_be32s(v->A_energyStorage);
+    v->A_directPower = demo_be32s(v->A_directPower);
+    v->A_cableLoop = demo_be32s(v->A_cableLoop);
+}
+
+static void demo_wire_signal_be(Wire_P_NSTEL_C_CannonDrivingDevice_Signal* v) {
+    demo_wire_id_be(&v->A_sourceID);
+    demo_wire_id_be(&v->A_recipientID);
+    demo_wire_time_be(&v->A_timeOfDataGeneration);
+    v->A_azAngleVelocity = demo_be_double(v->A_azAngleVelocity);
+    v->A_e1AngleVelocity = demo_be_double(v->A_e1AngleVelocity);
+    v->A_energyStorage = demo_be32s(v->A_energyStorage);
+    v->A_mainCannonFixStatus = demo_be32s(v->A_mainCannonFixStatus);
+    v->A_deckCleance = demo_be32s(v->A_deckCleance);
+    v->A_autoArmPositionComplement = demo_be32s(v->A_autoArmPositionComplement);
+    v->A_manualArmPositionComplement = demo_be32s(v->A_manualArmPositionComplement);
+    v->A_mainCannonRestoreComplement = demo_be32s(v->A_mainCannonRestoreComplement);
+    v->A_armSafetyMainCannonLock = demo_be32s(v->A_armSafetyMainCannonLock);
+    v->A_shutdown = demo_be32s(v->A_shutdown);
+    v->A_roundGyro = demo_be_double(v->A_roundGyro);
+    v->A_upDownGyro = demo_be_double(v->A_upDownGyro);
+}
+
+static void demo_log_hex(const char* label, const void* data, size_t len) {
+    if (!data || len == 0) return;
+    if (demo_log_get_level() < LOG_LEVEL_DEBUG) return;
+
+    const uint8_t* bytes = (const uint8_t*)data;
+    LOG_DEBUG("[HEX] %s (len=%zu)\n", label, len);
+
+    for (size_t offset = 0; offset < len; offset += 16) {
+        char line[128];
+        size_t chunk = len - offset;
+        if (chunk > 16) chunk = 16;
+
+        int pos = snprintf(line, sizeof(line), "[HEX] +%04zu:", offset);
+        for (size_t i = 0; i < chunk && pos > 0 && (size_t)pos < sizeof(line); i++) {
+            pos += snprintf(line + pos, sizeof(line) - (size_t)pos, " %02X", bytes[offset + i]);
+        }
+        snprintf(line + pos, sizeof(line) - (size_t)pos, "\n");
+        LOG_DEBUG("%s", line);
+    }
+}
 
 static void on_writer_created(LEGACY_HANDLE h, LegacyRequestId req_id,
                               const LegacySimpleResult* res, void* user) {
@@ -154,13 +341,13 @@ int demo_msg_init(DemoAppContext* ctx) {
 
     // Register Type Adapters for all 7 topics (4 Write, 3 Read)
     LegacyTypeAdapter adapters[] = {
-        {{ TOPIC_PowerOnBIT, TYPE_PowerOnBIT }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_PowerOnBIT), NULL},
-        {{ TOPIC_PBIT, TYPE_PBIT }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_PBIT), NULL},
-        {{ TOPIC_IBIT, TYPE_IBIT }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_IBIT), NULL},
-        {{ TOPIC_Signal, TYPE_Signal }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_Signal), NULL},
-        {{ TOPIC_runBIT, TYPE_runBIT }, NULL, NULL, NULL, sizeof(C_Monitored_Entity_runBIT), NULL},
-        {{ TOPIC_commandDriving, TYPE_commandDriving }, NULL, NULL, NULL, sizeof(C_CannonDrivingDevice_commandDriving), NULL},
-        {{ TOPIC_VehicleSpeed, TYPE_VehicleSpeed }, NULL, NULL, NULL, sizeof(C_VehicleSpeed), NULL}
+        {{ TOPIC_PowerOnBIT, TYPE_PowerOnBIT }, NULL, NULL, NULL, sizeof(Wire_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT), NULL},
+        {{ TOPIC_PBIT, TYPE_PBIT }, NULL, NULL, NULL, sizeof(Wire_P_NSTEL_C_CannonDrivingDevice_PBIT), NULL},
+        {{ TOPIC_IBIT, TYPE_IBIT }, NULL, NULL, NULL, sizeof(Wire_P_NSTEL_C_CannonDrivingDevice_IBIT), NULL},
+        {{ TOPIC_Signal, TYPE_Signal }, NULL, NULL, NULL, sizeof(Wire_P_NSTEL_C_CannonDrivingDevice_Signal), NULL},
+        {{ TOPIC_runBIT, TYPE_runBIT }, NULL, NULL, NULL, sizeof(Wire_P_Usage_And_Condition_Monitoring_PSM_C_Monitored_Entity_runBIT), NULL},
+        {{ TOPIC_commandDriving, TYPE_commandDriving }, NULL, NULL, NULL, sizeof(Wire_P_NSTEL_C_CannonDrivingDevice_commandDriving), NULL},
+        {{ TOPIC_VehicleSpeed, TYPE_VehicleSpeed }, NULL, NULL, NULL, sizeof(Wire_P_NSTEL_C_VehicleSpeed), NULL}
     };
     for (int i = 0; i < 7; i++) {
         legacy_agent_register_type_adapter(ctx->agent, &adapters[i]);
@@ -238,9 +425,12 @@ void demo_msg_on_runbit(LEGACY_HANDLE h, const LegacyEvent* evt, void* user) {
 
     if (evt->data_json == NULL && evt->raw_json != NULL) {
         // Binary struct event
-        C_Monitored_Entity_runBIT* run = (C_Monitored_Entity_runBIT*)evt->raw_json;
-        reference_num = (uint32_t)run->A_referenceNum;
-        type = run->A_type;
+        Wire_P_Usage_And_Condition_Monitoring_PSM_C_Monitored_Entity_runBIT run;
+        memcpy(&run, evt->raw_json, sizeof(run));
+        demo_log_hex("runBIT RX", &run, sizeof(run));
+        demo_wire_runbit_be(&run);
+        reference_num = (uint32_t)run.A_referenceNum;
+        type = (T_BITType)run.A_type;
         LOG_RX("Received runBIT (BINARY): ref=%u, type=%d\n", reference_num, (int)type);
     } else {
         const char* json = evt->data_json;
@@ -282,22 +472,25 @@ void demo_msg_on_actuator_control(LEGACY_HANDLE h, const LegacyEvent* evt, void*
     // Check if binary codec is being used
     if (evt->data_json == NULL && evt->raw_json != NULL) {
         // This is a binary struct event (passed via handleStructResponse)
-        Wire_P_NSTEL_C_CannonDrivingDevice_commandDriving* cmd = (Wire_P_NSTEL_C_CannonDrivingDevice_commandDriving*)evt->raw_json;
+        Wire_P_NSTEL_C_CannonDrivingDevice_commandDriving cmd;
+        memcpy(&cmd, evt->raw_json, sizeof(cmd));
+        demo_log_hex("commandDriving RX", &cmd, sizeof(cmd));
+        demo_wire_commanddriving_be(&cmd);
         
-        ctrl->drivingPosition = (double)cmd->A_roundPosition;
-        ctrl->upDownPosition = (double)cmd->A_upDownPosition;
-        ctrl->roundAngleVelocity = (double)cmd->A_roundAngleVelocity;
-        ctrl->upDownAngleVelocity = (double)cmd->A_upDownAngleVelocity;
-        ctrl->cannonUpDownAngle = (double)cmd->A_cannonUpDownAngle;
-        ctrl->topRelativeAngle = (double)cmd->A_topRelativeAngle;
-        ctrl->operationMode = (T_OperationModeType)cmd->A_operationMode;
-        ctrl->parm = (T_OnOffType)cmd->A_parm;
-        ctrl->targetDesingation = (T_TargetAllotType)cmd->A_targetFix;
-        ctrl->autoArmPosition = (T_ArmPositionLockType)cmd->A_autoArmPosition;
-        ctrl->manualArmPosition = (T_ArmPositionLockType)cmd->A_manualArmPosition;
-        ctrl->mainCannonRestore = (T_MainCannonReturnType)cmd->A_mainCannonRestore;
-        ctrl->manCannonFix = (T_MainCannonFixType)cmd->A_mainCannonFix;
-        ctrl->closeEquipOpenStatus = (T_EquipOpenLockType)cmd->A_closureEquipOpenStatus;
+        ctrl->drivingPosition = (double)cmd.A_roundPosition;
+        ctrl->upDownPosition = (double)cmd.A_upDownPosition;
+        ctrl->roundAngleVelocity = (double)cmd.A_roundAngleVelocity;
+        ctrl->upDownAngleVelocity = (double)cmd.A_upDownAngleVelocity;
+        ctrl->cannonUpDownAngle = (double)cmd.A_cannonUpDownAngle;
+        ctrl->topRelativeAngle = (double)cmd.A_topRelativeAngle;
+        ctrl->operationMode = (T_OperationModeType)cmd.A_operationMode;
+        ctrl->parm = (T_OnOffType)cmd.A_parm;
+        ctrl->targetDesingation = (T_TargetAllotType)cmd.A_targetFix;
+        ctrl->autoArmPosition = (T_ArmPositionLockType)cmd.A_autoArmPosition;
+        ctrl->manualArmPosition = (T_ArmPositionLockType)cmd.A_manualArmPosition;
+        ctrl->mainCannonRestore = (T_MainCannonReturnType)cmd.A_mainCannonRestore;
+        ctrl->manCannonFix = (T_MainCannonFixType)cmd.A_mainCannonFix;
+        ctrl->closeEquipOpenStatus = (T_EquipOpenLockType)cmd.A_closureEquipOpenStatus;
         
         ctx->control_rx_count++;
         ctrl->last_update_time = ctx->tick_count;
@@ -383,9 +576,12 @@ void demo_msg_on_vehicle_speed(LEGACY_HANDLE h, const LegacyEvent* evt, void* us
     
     if (evt->data_json == NULL && evt->raw_json != NULL) {
         // Binary struct event
-        C_VehicleSpeed* speed = (C_VehicleSpeed*)evt->raw_json;
-        ctx->speed_state.speed = speed->A_value;
-        LOG_RX("Received VehicleSpeed (BINARY): %.2f m/s\n", speed->A_value);
+        Wire_P_NSTEL_C_VehicleSpeed speed;
+        memcpy(&speed, evt->raw_json, sizeof(speed));
+        demo_log_hex("VehicleSpeed RX", &speed, sizeof(speed));
+        demo_wire_vehicle_speed_be(&speed);
+        ctx->speed_state.speed = speed.A_value;
+        LOG_RX("Received VehicleSpeed (BINARY): %.2f m/s\n", speed.A_value);
     } else {
         const char* json = evt->data_json;
         if (!json) return;
@@ -469,7 +665,10 @@ int demo_msg_publish_pbit(DemoAppContext* ctx) {
         wire.A_directPower = (int32_t)comp->directPower;
         wire.A_cableLoop = (int32_t)comp->cableLoop;
 
-        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT_struct(ctx->agent, &wire);
+        Wire_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT wire_be = wire;
+        demo_wire_poweronbit_be(&wire_be);
+        demo_log_hex("PowerOnBIT TX", &wire_be, sizeof(wire_be));
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT_struct(ctx->agent, &wire_be);
     } else {
         status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PowerOnBIT_json(ctx->agent, pbit_json);
     }
@@ -584,7 +783,10 @@ int demo_msg_publish_cbit(DemoAppContext* ctx) {
         wire.A_mainCannonLock = (int32_t)cbit->mainCannon_Lock;
         wire.A_controllerNetwork = (int32_t)cbit->controllerNetwork;
 
-        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PBIT_struct(ctx->agent, &wire);
+        Wire_P_NSTEL_C_CannonDrivingDevice_PBIT wire_be = wire;
+        demo_wire_pbit_be(&wire_be);
+        demo_log_hex("PBIT TX", &wire_be, sizeof(wire_be));
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PBIT_struct(ctx->agent, &wire_be);
     } else {
         status = legacy_send_P_NSTEL_C_CannonDrivingDevice_PBIT_json(ctx->agent, cbit_json);
     }
@@ -675,7 +877,10 @@ int demo_msg_publish_result_bit(DemoAppContext* ctx) {
         wire.A_directPower = (int32_t)result->directPower;
         wire.A_cableLoop = (int32_t)result->cableLoop;
 
-        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_IBIT_struct(ctx->agent, &wire);
+        Wire_P_NSTEL_C_CannonDrivingDevice_IBIT wire_be = wire;
+        demo_wire_ibit_be(&wire_be);
+        demo_log_hex("IBIT TX", &wire_be, sizeof(wire_be));
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_IBIT_struct(ctx->agent, &wire_be);
     } else {
         status = legacy_send_P_NSTEL_C_CannonDrivingDevice_IBIT_json(ctx->agent, json);
     }
@@ -856,7 +1061,10 @@ int demo_msg_publish_actuator_signal(DemoAppContext* ctx) {
         wire_sig.A_roundGyro = (double)round_v;
         wire_sig.A_upDownGyro = (double)updown_v;
 
-        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_Signal_struct(ctx->agent, &wire_sig);
+        Wire_P_NSTEL_C_CannonDrivingDevice_Signal wire_sig_be = wire_sig;
+        demo_wire_signal_be(&wire_sig_be);
+        demo_log_hex("Signal TX", &wire_sig_be, sizeof(wire_sig_be));
+        status = legacy_send_P_NSTEL_C_CannonDrivingDevice_Signal_struct(ctx->agent, &wire_sig_be);
     } else {
         status = legacy_send_P_NSTEL_C_CannonDrivingDevice_Signal_json(ctx->agent, signal_json);
     }

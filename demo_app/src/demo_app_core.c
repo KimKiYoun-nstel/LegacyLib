@@ -11,6 +11,8 @@
 #include <time.h>
 #if !defined(_WIN32) && !defined(_WIN64)
 #include <sys/time.h>
+#else
+#include <windows.h>
 #endif
 
 #ifdef _VXWORKS_
@@ -296,7 +298,7 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
         #ifdef _VXWORKS_
         taskDelay(sysClkRateGet() / 10);  // 100ms
         #else
-        // Sleep(100);
+        Sleep(100);
         #endif
         wait_count++;
     }

@@ -2,7 +2,7 @@
 #
 # Usage:
 #   make                # Build for VxWorks DKM (Default)
-#   make MODE=linux     # Build for Linux (Executable + Static Lib)
+#   make MODE=native    # Build for Native/Host (Windows MinGW or Linux)
 #   make config         # Show build configuration
 #
 # Prerequisites for VxWorks:
@@ -19,22 +19,27 @@ MODE ?= vxworks
 
 # --- Configuration ---
 
+# Build directories (platform-specific to avoid cross-compilation conflicts)
+BUILD_DIR_VXWORKS = build_vxworks
+BUILD_DIR_NATIVE  = build_native
+
 # Library Sources (C++)
 LIB_SRC_CPP = src/internal/DkmRtpIpc.cpp \
               src/internal/IpcJsonClient.cpp \
               src/legacy_agent.cpp
 
 # Demo Sources (relative to project root)
-DEMO_SRC_C_LINUX = ../examples/main.c
-DEMO_SRC_C_DKM   = ../examples/demo_dkm.c
-
-# Objects
-LIB_OBJ_CPP = $(LIB_SRC_CPP:.cpp=.o)
-DEMO_OBJ_LINUX = $(DEMO_SRC_C_LINUX:.c=.o)
-DEMO_OBJ_DKM = $(DEMO_SRC_C_DKM:.c=.o)
+DEMO_SRC_C_NATIVE = ../examples/main.c
+DEMO_SRC_C_DKM    = ../examples/demo_dkm.c
 
 # --- VxWorks DKM Settings ---
 ifeq ($(MODE),vxworks)
+    BUILD_DIR = $(BUILD_DIR_VXWORKS)
+    
+    # Objects in build directory
+    LIB_OBJ_CPP = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(LIB_SRC_CPP))
+    DEMO_OBJ_DKM = $(patsubst ../examples/%.c,$(BUILD_DIR)/%.o,$(DEMO_SRC_C_DKM))
+    
     # Check required environment variables
     ifndef WIND_BASE
         $(error WIND_BASE not set. Run vx_env.bat first)
@@ -80,14 +85,20 @@ ifeq ($(MODE),vxworks)
     TARGETS = $(TARGET_LIB) $(TARGET_DEMO)
 endif
 
-# --- Linux/Generic Settings ---
-ifeq ($(MODE),linux)
+# --- Native/Host Settings (Windows MinGW / Linux) ---
+ifeq ($(MODE),native)
+    BUILD_DIR = $(BUILD_DIR_NATIVE)
+    
+    # Objects in build directory
+    LIB_OBJ_CPP = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(LIB_SRC_CPP))
+    DEMO_OBJ_NATIVE = $(patsubst ../examples/%.c,$(BUILD_DIR)/%.o,$(DEMO_SRC_C_NATIVE))
+    
     CC        = gcc
     CXX       = g++
     AR        = ar
     
-    CFLAGS    = -Iinclude -Isrc/internal -Igenerated -Wall -Wextra
-    CXXFLAGS  = -Iinclude -Isrc/internal -Igenerated -Wall -Wextra -std=c++11
+    CFLAGS    = -Iinclude -Isrc/internal -Igenerated -Itools/struct -Wall -Wextra
+    CXXFLAGS  = -Iinclude -Isrc/internal -Igenerated -Itools/struct -Wall -Wextra -std=c++11
     
     TARGET_APP = example_app
     TARGET_LIB = liblegacy_agent.a
@@ -99,7 +110,21 @@ endif
 
 .PHONY: all clean config
 
-all: check-env $(TARGETS)
+all: check-env $(BUILD_DIR) $(TARGETS)
+
+# Create build directory
+$(BUILD_DIR):
+	@echo "Creating build directory: $(BUILD_DIR)"
+ifeq ($(MODE),vxworks)
+	@mkdir -p $(BUILD_DIR)/internal
+else
+  ifeq ($(OS),Windows_NT)
+	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR) 2>nul
+	@if not exist $(BUILD_DIR)\internal mkdir $(BUILD_DIR)\internal 2>nul
+  else
+	@mkdir -p $(BUILD_DIR)/internal
+  endif
+endif
 
 # Check environment (VxWorks mode only)
 check-env:
@@ -132,21 +157,45 @@ $(TARGET_LIB): $(LIB_OBJ_CPP)
 	$(AR) rcs $@ $^
 
 # Linux Application
-$(TARGET_APP): $(DEMO_OBJ_LINUX) $(TARGET_LIB)
-	@echo "Building Linux App: $@"
+$(TARGET_APP): $(DEMO_OBJ_NATIVE) $(TARGET_LIB)
+	@echo "Building Native App: $@"
+ifeq ($(OS),Windows_NT)
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lpthread -lws2_32
+else
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lpthread
 endif
+endif
 
-%.o: %.cpp
+# Compilation rules with build directory
+$(BUILD_DIR)/%.o: src/%.cpp | $(BUILD_DIR)
+	@echo "Compiling $<..."
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-%.o: %.c
+$(BUILD_DIR)/internal/%.o: src/internal/%.cpp | $(BUILD_DIR)
+	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: ../examples/%.c | $(BUILD_DIR)
+	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@echo "Cleaning LegacyLib..."
-	rm -f $(LIB_OBJ_CPP) $(DEMO_OBJ_LINUX) $(DEMO_OBJ_DKM)
-	rm -f $(TARGET_APP) $(TARGET_LIB) liblegacy_agent_dkm.out demo_tcp_cli_dkm.out legacy_agent_dkm.out
+	@echo "Cleaning LegacyLib (MODE=$(MODE))..."
+ifeq ($(MODE),vxworks)
+	rm -rf $(BUILD_DIR)
+	rm -f liblegacy_agent_dkm.out demo_tcp_cli_dkm.out
+else
+  ifeq ($(OS),Windows_NT)
+	-@if exist $(BUILD_DIR) rd /S /Q $(BUILD_DIR) 2>nul
+	-@if exist example_app del /Q example_app 2>nul
+	-@if exist liblegacy_agent.a del /Q liblegacy_agent.a 2>nul
+	-@if exist liblegacy_agent_dkm.out del /Q liblegacy_agent_dkm.out 2>nul
+	-@if exist demo_tcp_cli_dkm.out del /Q demo_tcp_cli_dkm.out 2>nul
+  else
+	rm -rf $(BUILD_DIR)
+	rm -f example_app liblegacy_agent.a liblegacy_agent_dkm.out demo_tcp_cli_dkm.out
+  endif
+endif
 	@echo "Clean complete"
 
 # Show build configuration

@@ -149,6 +149,7 @@ private:
     std::atomic<uint32_t> cbor_count_{0};
     std::atomic<uint64_t> write_ns_total_{0};
     std::atomic<uint32_t> write_count_{0};
+    std::atomic<uint32_t> hello_abi_hash_{0};
 
     // Per-instance reusable CBOR buffer to avoid per-call allocations
     std::vector<uint8_t> cbor_buf_;

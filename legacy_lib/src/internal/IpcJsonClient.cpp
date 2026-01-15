@@ -22,6 +22,7 @@
 #endif
 
 #include "json.hpp"
+#include "idl_wire_abi.hpp"
 
 using json = nlohmann::json;
 #include <chrono>
@@ -197,12 +198,11 @@ LegacyStatus IpcJsonClient::sendStructRequest(uint32_t topic_id, uint32_t abi_ha
     std::vector<uint8_t> buf(sizeof(DataEnvelope) + len);
     DataEnvelope* env = (DataEnvelope*)buf.data();
     env->magic = htonl(DATA_ENVELOPE_MAGIC);
-    env->ver = (uint8_t)DATA_ENVELOPE_VER;
-    env->kind = (uint8_t)PAYLOAD_KIND_DATA_STRUCT;
+    env->ver = htons(DATA_ENVELOPE_VER);
+    env->kind = htons(DATA_KIND_WRITE_REQ);
     env->topic_id = htonl(topic_id);
     env->abi_hash = htonl(abi_hash);
     env->data_len = htonl((uint32_t)len);
-    env->reserved = 0;
     
     if (len > 0) {
         memcpy(buf.data() + sizeof(DataEnvelope), data, len);
@@ -328,6 +328,22 @@ void IpcJsonClient::handleJsonResponse(const LegacyFrameHeader& hdr, const uint8
         res.raw_json = json_payload.c_str();
         
         if (req.hello_cb) {
+            uint32_t abi_hash = 0;
+            if (j.contains("result") && j["result"].contains("abi_hash")) {
+                const auto& abi = j["result"]["abi_hash"];
+                if (abi.is_number_unsigned() || abi.is_number_integer()) {
+                    abi_hash = abi.get<uint32_t>();
+                }
+            } else if (j.contains("abi_hash")) {
+                const auto& abi = j["abi_hash"];
+                if (abi.is_number_unsigned() || abi.is_number_integer()) {
+                    abi_hash = abi.get<uint32_t>();
+                }
+            }
+            if (abi_hash != 0) {
+                hello_abi_hash_.store(abi_hash);
+            }
+
             LegacyHelloInfo info;
             info.proto = j.value("proto", -1);
             if (j.contains("result") && j["result"].contains("proto")) {
@@ -345,6 +361,10 @@ void IpcJsonClient::handleStructResponse(const LegacyFrameHeader& hdr, const uin
     if (hdr.type == MSG_DATA_RSP_STRUCT) {
         if (len < (int)sizeof(DataRspStruct)) return;
         DataRspStruct* dr = (DataRspStruct*)payload;
+        uint32_t magic = ntohl(dr->magic);
+        uint16_t ver = ntohs(dr->ver);
+        uint16_t status = ntohs(dr->status);
+        uint32_t err = ntohl(dr->err);
         
         uint32_t req_id = hdr.corr_id;
         PendingRequest req;
@@ -366,8 +386,8 @@ void IpcJsonClient::handleStructResponse(const LegacyFrameHeader& hdr, const uin
 
         if (found && req.simple_cb) {
             LegacySimpleResult res;
-            res.ok = (dr->status == 0);
-            res.err = (uint32_t)dr->status;
+            res.ok = (status == 0) && (magic == DATA_RSP_MAGIC) && (ver == DATA_ENVELOPE_VER);
+            res.err = res.ok ? 0 : (int)err;
             res.msg = (res.ok) ? "OK" : "Error Code from Agent";
             res.raw_json = nullptr;
             req.simple_cb(nullptr, req_id, &res, req.user);
@@ -375,9 +395,15 @@ void IpcJsonClient::handleStructResponse(const LegacyFrameHeader& hdr, const uin
     } else if (hdr.type == MSG_DATA_EVT_STRUCT) {
         if (len < (int)sizeof(DataEnvelope)) return;
         DataEnvelope* env = (DataEnvelope*)payload;
+        uint32_t magic = ntohl(env->magic);
+        uint16_t ver = ntohs(env->ver);
+        uint16_t kind = ntohs(env->kind);
         uint32_t topic_id = ntohl(env->topic_id);
         const uint8_t* data = payload + sizeof(DataEnvelope);
         uint32_t data_len = ntohl(env->data_len);
+        if (magic != DATA_ENVELOPE_MAGIC || ver != DATA_ENVELOPE_VER || kind != DATA_KIND_EVT) {
+            return;
+        }
 
 #ifdef _VXWORKS_
         SemLockGuard lock(sub_sem_);
@@ -667,7 +693,11 @@ LegacyStatus IpcJsonClient::writeStruct(const char* topic, const char* type_name
 
         uint32_t req_id = generateRequestId();
         uint32_t topic_id = legacy_fnv1a_32(topic);
-        uint32_t abi_hash = legacy_fnv1a_32(type_name);
+        uint32_t abi_hash = hello_abi_hash_.load();
+        if (abi_hash == 0) {
+            abi_hash = rtpdds::WIRE_ABI_HASH;
+            logDebug("[IpcJsonClient] ABI hash not set from hello; using default 0x%08X", abi_hash);
+        }
         
         PendingRequest req;
         req.simple_cb = cb;

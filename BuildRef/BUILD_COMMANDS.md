@@ -79,7 +79,7 @@ REM demo_app 클린
 mingw32-make -f Makefile.windows clean
 ```
 
-설명: `demo_app/Makefile.windows`는 내부에서 `../src`의 legacy 소스들을 직접 컴파일하도록 작성되어 있으므로, Windows(MinGW)에서는 별도의 루트 `Makefile`의 `MODE=linux` 빌드를 실행할 필요가 없습니다. 루트에서 `-C demo_app` 또는 `cd demo_app` 후 빌드하세요.
+설명: `demo_app/Makefile.windows`는 내부에서 `../src`의 legacy 소스들을 직접 컴파일하도록 작성되어 있으므로, Windows(MinGW)에서는 별도의 루트 `Makefile`의 `MODE=native` 빌드를 실행할 필요가 없습니다. 루트에서 `-C demo_app` 또는 `cd demo_app` 후 빌드하세요.
 
 ---
 

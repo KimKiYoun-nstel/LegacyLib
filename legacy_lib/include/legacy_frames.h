@@ -43,33 +43,35 @@ typedef struct {
 #pragma pack(push, 1)
 typedef struct {
     uint32_t magic;      ///< 매직 넘버: 0x44495043 ("DIPC" network byte order via htonl)
-    uint8_t  ver;        ///< 프로토콜 버전: 1
-    uint8_t  kind;       ///< PayloadKind: 2 = DataStruct
+    uint16_t ver;        ///< 프로토콜 버전: 1
+    uint16_t kind;       ///< 1=WRITE_REQ, 2=EVT
     uint32_t topic_id;   ///< topic_name의 FNV-1a 해시
     uint32_t abi_hash;   ///< Wire struct ABI 해시 (버전 검증용)
     uint32_t data_len;   ///< Wire struct 페이로드 길이 (bytes)
-    uint16_t reserved;   ///< 예약 (0으로 설정)
 } DataEnvelope;
 
 /** DataEnvelope 매직 상수 ('DIPC') */
 #define DATA_ENVELOPE_MAGIC  0x44495043
 #define DATA_ENVELOPE_VER    1
 
-/** PayloadKind 열거 */
-#define PAYLOAD_KIND_CONTROL_JSON   0
-#define PAYLOAD_KIND_DATA_JSON      1
-#define PAYLOAD_KIND_DATA_STRUCT    2
+/** DataEnvelope kind 값 */
+#define DATA_KIND_WRITE_REQ  1
+#define DATA_KIND_EVT        2
 
 /**
- * @brief Data STRUCT 응답 구조체 (8 bytes) - v3.0 Spec
+ * @brief Data STRUCT 응답 구조체 (12 bytes) - v3.0 Spec
  */
 typedef struct {
-    uint8_t  status;     ///< 0=OK, 1=PARSE_ERROR, 2=UNKNOWN_TOPIC, 3=ABI_MISMATCH, 4=CONVERT_FAIL, 5=PUBLISH_FAIL
-    uint32_t topic_id;   ///< 요청한 topic_id
-    uint8_t  reserved[3];
+    uint32_t magic;      ///< 'DRSP'
+    uint16_t ver;        ///< 1
+    uint16_t status;     ///< 0=OK, 1=ERR
+    uint32_t err;        ///< 에러 코드
 } DataRspStruct;
 
 #pragma pack(pop)
+
+/** DataRsp 매직 상수 ('DRSP') */
+#define DATA_RSP_MAGIC 0x44525350
 
 /**
  * @brief FNV-1a 32-bit 해시 계산 (topic_id 생성용)
