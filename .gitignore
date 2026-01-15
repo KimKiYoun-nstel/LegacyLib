@@ -40,3 +40,13 @@ __pycache__/
 *.orig
 
 RefDoc/
+legacy_lib/build_vxworks/
+legacy_lib/generated/
+
+# by VxWorks Workbench
+.settings/
+.cproject
+.project
+.wrproject
+
+
