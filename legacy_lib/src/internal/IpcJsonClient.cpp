@@ -65,6 +65,58 @@ static std::string extract_string_field(const std::string& json, const std::stri
     return json.substr(start, end - start);
 }
 
+static uint16_t read_be_u16(const uint8_t* p) {
+    return (uint16_t)((uint16_t)(p[0] << 8) | (uint16_t)p[1]);
+}
+
+static uint32_t read_be_u32(const uint8_t* p) {
+    return ((uint32_t)p[0] << 24) |
+           ((uint32_t)p[1] << 16) |
+           ((uint32_t)p[2] << 8)  |
+           (uint32_t)p[3];
+}
+
+struct ParsedDataEnvelope {
+    uint16_t ver;
+    uint16_t kind;
+    uint32_t topic_id;
+    uint32_t abi_hash;
+    uint32_t data_len;
+};
+
+static bool parse_data_envelope(const uint8_t* payload, size_t len, ParsedDataEnvelope* out) {
+    if (!payload || !out || len < sizeof(DataEnvelope)) return false;
+
+    uint32_t magic = read_be_u32(payload);
+    if (magic != DATA_ENVELOPE_MAGIC) return false;
+
+    uint16_t ver = read_be_u16(payload + 4);
+    uint16_t kind = read_be_u16(payload + 6);
+    if (ver != DATA_ENVELOPE_VER ||
+        (kind != DATA_KIND_WRITE_REQ && kind != DATA_KIND_EVT)) {
+        return false;
+    }
+
+    out->ver = ver;
+    out->kind = kind;
+    out->topic_id = read_be_u32(payload + 8);
+    out->abi_hash = read_be_u32(payload + 12);
+    out->data_len = read_be_u32(payload + 16);
+    return true;
+}
+
+static const char* data_rsp_status_text(uint8_t status) {
+    switch (status) {
+    case 0x00: return "OK";
+    case 0x01: return "PARSE_ERROR";
+    case 0x02: return "UNKNOWN_TOPIC";
+    case 0x03: return "ABI_MISMATCH";
+    case 0x04: return "CONVERT_FAIL";
+    case 0x05: return "PUBLISH_FAIL";
+    default: return "UNKNOWN_STATUS";
+    }
+}
+
 IpcJsonClient::IpcJsonClient() 
 #ifdef _VXWORKS_
     : recv_task_(TASK_ID_ERROR)
@@ -263,9 +315,16 @@ void IpcJsonClient::handleJsonResponse(const LegacyFrameHeader& hdr, const uint8
     if (is_event) {
         std::string topic = j.value("topic", "");
         // Data plane JSON might have topic_id instead of topic name
-        // but here we support topic name based matching if present.
+        // so try both topic/type and topic_id subscriptions.
         std::string type = j.value("type", "");
         std::string data_json;
+        uint32_t topic_id = 0;
+        if (j.contains("topic_id")) {
+            const auto& tid = j["topic_id"];
+            if (tid.is_number_unsigned() || tid.is_number_integer()) {
+                topic_id = tid.get<uint32_t>();
+            }
+        }
         
         if (j.contains("data")) {
             if (j["data"].is_string()) data_json = j["data"];
@@ -279,7 +338,7 @@ void IpcJsonClient::handleJsonResponse(const LegacyFrameHeader& hdr, const uint8
 #else
         std::lock_guard<std::mutex> lock(sub_mutex_);
 #endif
-        auto it = subscriptions_.find(key);
+        auto it = (!topic.empty() && !type.empty()) ? subscriptions_.find(key) : subscriptions_.end();
         if (it != subscriptions_.end()) {
             LegacyEvent evt;
             evt.topic = topic.c_str();
@@ -290,6 +349,23 @@ void IpcJsonClient::handleJsonResponse(const LegacyFrameHeader& hdr, const uint8
             for (const auto& sub : it->second) {
                 if (sub.event_cb) {
                     sub.event_cb(nullptr, &evt, sub.user);
+                }
+            }
+            return;
+        }
+
+        if (topic_id != 0) {
+            auto id_it = id_subscriptions_.find(topic_id);
+            if (id_it != id_subscriptions_.end()) {
+                for (const auto& sub : id_it->second) {
+                    if (sub.event_cb) {
+                        LegacyEvent evt;
+                        evt.topic = (!topic.empty()) ? topic.c_str() : sub.topic.c_str();
+                        evt.type = (!type.empty()) ? type.c_str() : sub.type.c_str();
+                        evt.data_json = data_json.c_str();
+                        evt.raw_json = json_payload.c_str();
+                        sub.event_cb(nullptr, &evt, sub.user);
+                    }
                 }
             }
         }
@@ -360,11 +436,8 @@ void IpcJsonClient::handleJsonResponse(const LegacyFrameHeader& hdr, const uint8
 void IpcJsonClient::handleStructResponse(const LegacyFrameHeader& hdr, const uint8_t* payload, int len) {
     if (hdr.type == MSG_DATA_RSP_STRUCT) {
         if (len < (int)sizeof(DataRspStruct)) return;
-        DataRspStruct* dr = (DataRspStruct*)payload;
-        uint32_t magic = ntohl(dr->magic);
-        uint16_t ver = ntohs(dr->ver);
-        uint16_t status = ntohs(dr->status);
-        uint32_t err = ntohl(dr->err);
+        uint8_t status = payload[0];
+        uint32_t err = status;
         
         uint32_t req_id = hdr.corr_id;
         PendingRequest req;
@@ -386,22 +459,20 @@ void IpcJsonClient::handleStructResponse(const LegacyFrameHeader& hdr, const uin
 
         if (found && req.simple_cb) {
             LegacySimpleResult res;
-            res.ok = (status == 0) && (magic == DATA_RSP_MAGIC) && (ver == DATA_ENVELOPE_VER);
+            res.ok = (status == 0);
             res.err = res.ok ? 0 : (int)err;
-            res.msg = (res.ok) ? "OK" : "Error Code from Agent";
+            res.msg = data_rsp_status_text(status);
             res.raw_json = nullptr;
             req.simple_cb(nullptr, req_id, &res, req.user);
         }
     } else if (hdr.type == MSG_DATA_EVT_STRUCT) {
-        if (len < (int)sizeof(DataEnvelope)) return;
-        DataEnvelope* env = (DataEnvelope*)payload;
-        uint32_t magic = ntohl(env->magic);
-        uint16_t ver = ntohs(env->ver);
-        uint16_t kind = ntohs(env->kind);
-        uint32_t topic_id = ntohl(env->topic_id);
+        ParsedDataEnvelope env;
+        if (!parse_data_envelope(payload, (size_t)len, &env)) return;
+        if (env.ver != DATA_ENVELOPE_VER || env.kind != DATA_KIND_EVT) {
+            return;
+        }
         const uint8_t* data = payload + sizeof(DataEnvelope);
-        uint32_t data_len = ntohl(env->data_len);
-        if (magic != DATA_ENVELOPE_MAGIC || ver != DATA_ENVELOPE_VER || kind != DATA_KIND_EVT) {
+        if (env.data_len > (uint32_t)(len - (int)sizeof(DataEnvelope))) {
             return;
         }
 
@@ -410,15 +481,14 @@ void IpcJsonClient::handleStructResponse(const LegacyFrameHeader& hdr, const uin
 #else
         std::lock_guard<std::mutex> lock(sub_mutex_);
 #endif
-        auto it = id_subscriptions_.find(topic_id);
+        auto it = id_subscriptions_.find(env.topic_id);
         if (it != id_subscriptions_.end()) {
-            LegacyEvent evt;
-            evt.topic = "struct_topic"; // placeholder
-            evt.type = "struct_type";
-            evt.data_json = nullptr;
-            evt.raw_json = (const char*)data; // Passing raw pointer for direct casting
-
             for (const auto& sub : it->second) {
+                LegacyEvent evt;
+                evt.topic = sub.topic.c_str();
+                evt.type = sub.type.c_str();
+                evt.data_json = nullptr;
+                evt.raw_json = (const char*)data; // Passing raw pointer for direct casting
                 if (sub.typed_cb) {
                     sub.typed_cb(nullptr, &evt, (void*)data, sub.user);
                 } else if (sub.event_cb) {
@@ -738,6 +808,8 @@ LegacyStatus IpcJsonClient::subscribeEvent(const char* topic, const char* type, 
     sub.event_cb = cb;
     sub.typed_cb = nullptr;
     sub.user = user;
+    sub.topic = topic;
+    sub.type = type;
     subscriptions_[key].push_back(sub);
     id_subscriptions_[topic_id].push_back(sub);
     
@@ -757,6 +829,8 @@ LegacyStatus IpcJsonClient::subscribeTyped(const char* topic, const char* type_n
     sub.event_cb = nullptr;
     sub.typed_cb = cb;
     sub.user = user;
+    sub.topic = topic;
+    sub.type = type_name;
     subscriptions_[key].push_back(sub);
     id_subscriptions_[topic_id].push_back(sub);
     

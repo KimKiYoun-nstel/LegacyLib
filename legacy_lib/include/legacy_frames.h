@@ -59,19 +59,16 @@ typedef struct {
 #define DATA_KIND_EVT        2
 
 /**
- * @brief Data STRUCT 응답 구조체 (12 bytes) - v3.0 Spec
+ * @brief Data STRUCT 응답 구조체 (8 bytes) - v3.0 Spec
  */
 typedef struct {
-    uint32_t magic;      ///< 'DRSP'
-    uint16_t ver;        ///< 1
-    uint16_t status;     ///< 0=OK, 1=ERR
-    uint32_t err;        ///< 에러 코드
+    uint8_t  status;     ///< 0=OK, 1=PARSE_ERROR, 2=UNKNOWN_TOPIC, 3=ABI_MISMATCH, 4=CONVERT_FAIL, 5=PUBLISH_FAIL
+    uint32_t topic_id;   ///< 요청 topic_id (big-endian)
+    uint8_t  reserved[3];
 } DataRspStruct;
 
 #pragma pack(pop)
 
-/** DataRsp 매직 상수 ('DRSP') */
-#define DATA_RSP_MAGIC 0x44525350
 
 /**
  * @brief FNV-1a 32-bit 해시 계산 (topic_id 생성용)

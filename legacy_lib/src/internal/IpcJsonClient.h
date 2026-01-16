@@ -124,6 +124,8 @@ private:
         LegacyEventCb event_cb;
         LegacyTypedEventCb typed_cb;
         void* user;
+        std::string topic;
+        std::string type;
     };
     // Key: "topic/type"
 #ifdef _VXWORKS_
