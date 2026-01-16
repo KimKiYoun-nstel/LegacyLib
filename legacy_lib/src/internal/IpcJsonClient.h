@@ -1,11 +1,13 @@
 #pragma once
 #include "DkmRtpIpc.h"
 #include "legacy_agent.h"
+#include "data_transport/data_transport_iface.hpp"
 #include <string>
 #include <vector>
 #include <map>
 #include <atomic>
 #include <functional>
+#include <memory>
 
 #ifdef _VXWORKS_
 extern "C" {
@@ -67,6 +69,10 @@ public:
     LegacyStatus writeJson(const LegacyWriteJsonOptions* opt, uint32_t timeout_ms, LegacyWriteCb cb, void* user);
     LegacyStatus writeStruct(const char* topic, const char* type_name, const void* user_struct, size_t struct_size, uint32_t timeout_ms, LegacyWriteCb cb, void* user);
     
+    // SHM Transport 제어
+    LegacyStatus enableShm(const LegacyHelloInfo* info);
+    bool isShmActive() const;
+
     // Events
     LegacyStatus subscribeEvent(const char* topic, const char* type, LegacyEventCb cb, void* user);
     LegacyStatus subscribeTyped(const char* topic, const char* type_name, LegacyTypedEventCb cb, void* user);
@@ -100,10 +106,20 @@ private:
 private:
     const LegacyTypeAdapter* findTypeAdapter(const char* topic, const char* type_name);
 
+    // Data Transport 프레임 수신 콜백 (SHM 사용 시)
+    static void onDataFrame(const LegacyFrameHeader* hdr,
+                            const uint8_t* payload,
+                            uint32_t len,
+                            void* user) noexcept;
+
 private:
-    DkmRtpIpc transport_;
+    DkmRtpIpc transport_;           ///< Control Plane용 UDP transport
     LegacyConfig config_;
     
+    // Data Plane Transport (SHM 또는 nullptr)
+    legacy::transport::IDataTransport* data_transport_;
+    bool data_transport_owned_;     ///< data_transport_ 소유권 여부
+
 #ifdef _VXWORKS_
     TASK_ID recv_task_;
 #else

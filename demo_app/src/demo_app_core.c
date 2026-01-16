@@ -262,15 +262,17 @@ int demo_app_start(DemoAppContext* ctx, const char* agent_ip, uint16_t agent_por
     
     // Initialize LegacyLib
     LegacyConfig cfg = {
-        agent_ip,
-        agent_port,
-        ctx->data_codec, // data_codec
-        100,      // recv_task_priority
-        64*1024,  // recv_task_stack
-        100,      // send_task_priority
-        64*1024,  // send_task_stack
-        on_legacy_log, // log_cb
-        NULL      // log_user
+        .agent_ip = agent_ip,
+        .agent_port = agent_port,
+        .data_codec = ctx->data_codec,
+        .data_transport = LEGACY_DATA_TRANSPORT_UDP,
+        .shm_config = {0},
+        .recv_task_priority = 100,
+        .recv_task_stack = 64*1024,
+        .send_task_priority = 100,
+        .send_task_stack = 64*1024,
+        .log_cb = on_legacy_log,
+        .log_user = NULL
     };
     
     LegacyStatus status = legacy_agent_init(&cfg, &ctx->agent);

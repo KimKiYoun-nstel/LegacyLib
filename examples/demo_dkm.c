@@ -328,7 +328,19 @@ void print_help() {
 }
 
 void process_command(char* line) {
-    static LegacyConfig config = { "127.0.0.1", 25000, LEGACY_CODEC_JSON, 100, 64*1024, 100, 64*1024, on_log, NULL };
+    static LegacyConfig config = {
+        .agent_ip = "127.0.0.1",
+        .agent_port = 25000,
+        .data_codec = LEGACY_CODEC_JSON,
+        .data_transport = LEGACY_DATA_TRANSPORT_UDP,
+        .shm_config = {0},
+        .recv_task_priority = 100,
+        .recv_task_stack = 64*1024,
+        .send_task_priority = 100,
+        .send_task_stack = 64*1024,
+        .log_cb = on_log,
+        .log_user = NULL
+    };
     
     char* tokens[16];
     int token_count = tokenize_command(line, tokens, 16);

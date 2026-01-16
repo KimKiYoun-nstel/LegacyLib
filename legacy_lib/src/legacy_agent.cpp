@@ -50,6 +50,16 @@ LegacyStatus legacy_agent_hello(LEGACY_HANDLE h, uint32_t timeout_ms, LegacyHell
     return h->client.sendHello(timeout_ms, cb, user);
 }
 
+LegacyStatus legacy_agent_enable_shm(LEGACY_HANDLE h, const LegacyHelloInfo* info) {
+    if (!h) return LEGACY_ERR_PARAM;
+    return h->client.enableShm(info);
+}
+
+bool legacy_agent_is_shm_active(LEGACY_HANDLE h) {
+    if (!h) return false;
+    return h->client.isShmActive();
+}
+
 LegacyStatus legacy_agent_create_participant(LEGACY_HANDLE h, const LegacyParticipantConfig* cfg, uint32_t timeout_ms, LegacySimpleCb cb, void* user) {
     if (!h || !cfg) return LEGACY_ERR_PARAM;
     return h->client.createParticipant(cfg, timeout_ms, cb, user);

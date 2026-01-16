@@ -28,6 +28,29 @@ LIB_SRC_CPP = src/internal/DkmRtpIpc.cpp \
               src/internal/IpcJsonClient.cpp \
               src/legacy_agent.cpp
 
+# -----------------------------------------------------------------------------
+# Data Transport 어댑터 (Control=UDP, Data=UDP 또는 SHM)
+# -----------------------------------------------------------------------------
+# 설계 문서: DevGuide/03_LegacyLib_SHM_Integration_Design.md
+DATA_TRANSPORT_DIR = src/internal/data_transport
+DATA_TRANSPORT_SRC_CPP = $(DATA_TRANSPORT_DIR)/data_transport_udp.cpp \
+                         $(DATA_TRANSPORT_DIR)/data_transport_factory.cpp
+
+# SHM 어댑터는 VxWorks에서만 추가 (아래 VxWorks 섹션에서 처리)
+
+# -----------------------------------------------------------------------------
+# TransportSHM 공용모듈 (VxWorks 전용)
+# -----------------------------------------------------------------------------
+# 설계 문서: DevGuide/01_TransportSHM_Design.md
+#            DevGuide/03_LegacyLib_SHM_Integration_Design.md
+#
+# VxWorks에서만 활성화되며, 타 플랫폼에서는 제외된다.
+SHM_DIR = common/transport_shm
+SHM_SRC_CPP = $(SHM_DIR)/src/shm_transport.cpp \
+              $(SHM_DIR)/src/shm_region_posix.cpp \
+              $(SHM_DIR)/src/shm_notify_posix_sem.cpp \
+              $(SHM_DIR)/src/shm_ring_spsc.cpp
+
 # Demo Sources (relative to project root)
 DEMO_SRC_C_NATIVE = ../examples/main.c
 DEMO_SRC_C_DKM    = ../examples/demo_dkm.c
@@ -36,8 +59,16 @@ DEMO_SRC_C_DKM    = ../examples/demo_dkm.c
 ifeq ($(MODE),vxworks)
     BUILD_DIR = $(BUILD_DIR_VXWORKS)
     
+    # Data Transport 어댑터 추가 (UDP + SHM)
+    LIB_SRC_CPP += $(DATA_TRANSPORT_SRC_CPP)
+    LIB_SRC_CPP += $(DATA_TRANSPORT_DIR)/data_transport_shm.cpp
+    
+    # TransportSHM 공용모듈 소스 추가 (VxWorks 전용)
+    LIB_SRC_CPP += $(SHM_SRC_CPP)
+    
     # Objects in build directory
-    LIB_OBJ_CPP = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(LIB_SRC_CPP))
+    LIB_OBJ_CPP = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(filter src/%.cpp,$(LIB_SRC_CPP))) \
+                  $(patsubst $(SHM_DIR)/src/%.cpp,$(BUILD_DIR)/shm/%.o,$(filter $(SHM_DIR)/src/%.cpp,$(LIB_SRC_CPP)))
     DEMO_OBJ_DKM = $(patsubst ../examples/%.c,$(BUILD_DIR)/%.o,$(DEMO_SRC_C_DKM))
     
     # Check required environment variables
@@ -63,15 +94,19 @@ ifeq ($(MODE),vxworks)
                    -D_VX_CPU=_VX_PPCE6500 \
                    -D_WRS_KERNEL \
                    -D_VXWORKS_ \
+                   -DDDSFW_ENABLE_SHM=1 \
+                   -DDDSFW_TRANSPORT_SHM_VXWORKS=1 \
                    -Iinclude \
                    -Isrc/internal \
                    -Igenerated \
-                   -Wall -O2 
+                   -I$(SHM_DIR)/include \
+                   -I$(SHM_DIR)/src \
+                   -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter -O2 
 				   
 #				   -DDEMO_PERF_INSTRUMENTATION
     
     CFLAGS    = $(COMMON_FLAGS)
-    CXXFLAGS  = $(COMMON_FLAGS) -std=c++11
+    CXXFLAGS  = $(COMMON_FLAGS) -std=c++17
     
     # Discovery of generated headers
     # Ensure generated code can find original structs
@@ -89,6 +124,9 @@ endif
 ifeq ($(MODE),native)
     BUILD_DIR = $(BUILD_DIR_NATIVE)
     
+    # Data Transport 어댑터 추가 (UDP만, SHM 제외)
+    LIB_SRC_CPP += $(DATA_TRANSPORT_SRC_CPP)
+    
     # Objects in build directory
     LIB_OBJ_CPP = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(LIB_SRC_CPP))
     DEMO_OBJ_NATIVE = $(patsubst ../examples/%.c,$(BUILD_DIR)/%.o,$(DEMO_SRC_C_NATIVE))
@@ -97,8 +135,8 @@ ifeq ($(MODE),native)
     CXX       = g++
     AR        = ar
     
-    CFLAGS    = -Iinclude -Isrc/internal -Igenerated -Itools/struct -Wall -Wextra
-    CXXFLAGS  = -Iinclude -Isrc/internal -Igenerated -Itools/struct -Wall -Wextra -std=c++11
+    CFLAGS    = -Iinclude -Isrc/internal -Igenerated -Itools/struct -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter -DDDSFW_ENABLE_SHM=0
+    CXXFLAGS  = -Iinclude -Isrc/internal -Igenerated -Itools/struct -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter -std=c++11 -DDDSFW_ENABLE_SHM=0
     
     TARGET_APP = example_app
     TARGET_LIB = liblegacy_agent.a
@@ -117,12 +155,16 @@ $(BUILD_DIR):
 	@echo "Creating build directory: $(BUILD_DIR)"
 ifeq ($(MODE),vxworks)
 	@mkdir -p $(BUILD_DIR)/internal
+	@mkdir -p $(BUILD_DIR)/internal/data_transport
+	@mkdir -p $(BUILD_DIR)/shm
 else
   ifeq ($(OS),Windows_NT)
 	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR) 2>nul
 	@if not exist $(BUILD_DIR)\internal mkdir $(BUILD_DIR)\internal 2>nul
+	@if not exist $(BUILD_DIR)\internal\data_transport mkdir $(BUILD_DIR)\internal\data_transport 2>nul
   else
 	@mkdir -p $(BUILD_DIR)/internal
+	@mkdir -p $(BUILD_DIR)/internal/data_transport
   endif
 endif
 
@@ -173,6 +215,16 @@ $(BUILD_DIR)/%.o: src/%.cpp | $(BUILD_DIR)
 
 $(BUILD_DIR)/internal/%.o: src/internal/%.cpp | $(BUILD_DIR)
 	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Data Transport 어댑터 컴파일 규칙
+$(BUILD_DIR)/internal/data_transport/%.o: src/internal/data_transport/%.cpp | $(BUILD_DIR)
+	@echo "Compiling DataTransport: $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# TransportSHM 소스 컴파일 규칙 (VxWorks 전용)
+$(BUILD_DIR)/shm/%.o: $(SHM_DIR)/src/%.cpp | $(BUILD_DIR)
+	@echo "Compiling SHM: $<..."
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: ../examples/%.c | $(BUILD_DIR)

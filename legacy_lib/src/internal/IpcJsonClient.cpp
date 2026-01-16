@@ -125,6 +125,8 @@ IpcJsonClient::IpcJsonClient()
     : running_(false)
 #endif
     , next_req_id_(1)
+    , data_transport_(nullptr)
+    , data_transport_owned_(false)
 {
 #ifdef _VXWORKS_
     req_sem_ = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
@@ -146,9 +148,63 @@ LegacyStatus IpcJsonClient::init(const LegacyConfig* cfg) {
     if (!cfg) return LEGACY_ERR_PARAM;
     config_ = *cfg;
     
+    // Control Plane용 UDP transport 초기화 (항상 필요)
     if (!transport_.init(cfg->agent_ip, cfg->agent_port)) {
         return LEGACY_ERR_TRANSPORT;
     }
+    
+    // Data Plane Transport 초기화 (SHM 또는 UDP)
+#if DDSFW_ENABLE_SHM
+    if (cfg->data_transport == LEGACY_DATA_TRANSPORT_SHM) {
+        legacy::transport::DataTransportConfig dt_cfg{};
+        dt_cfg.kind = legacy::transport::DataTransportKind::SHM;
+        dt_cfg.shm_name = cfg->shm_config.shm_name;
+        dt_cfg.notify_la = cfg->shm_config.notify_la;
+        dt_cfg.notify_al = cfg->shm_config.notify_al;
+        dt_cfg.ring_bytes = cfg->shm_config.ring_bytes;
+        dt_cfg.max_frame = cfg->shm_config.max_frame;
+        dt_cfg.wait_ms = cfg->shm_config.wait_ms;
+
+        data_transport_ = legacy::transport::create_data_transport(
+            legacy::transport::DataTransportKind::SHM);
+        
+        if (!data_transport_) {
+            logError("[IpcJsonClient] Failed to create SHM transport");
+            transport_.close();
+            return LEGACY_ERR_TRANSPORT;
+        }
+        data_transport_owned_ = true;
+
+        // 로그 콜백 래핑
+        legacy::transport::LogFn dt_log = nullptr;
+        // TODO: 로그 콜백 연결 (현재는 nullptr)
+
+        if (!data_transport_->open(dt_cfg, dt_log)) {
+            logError("[IpcJsonClient] Failed to open SHM transport");
+            delete data_transport_;
+            data_transport_ = nullptr;
+            data_transport_owned_ = false;
+            transport_.close();
+            return LEGACY_ERR_TRANSPORT;
+        }
+
+        // 수신 콜백 설정
+        data_transport_->set_on_frame(&IpcJsonClient::onDataFrame, this);
+
+        // SHM rx thread 시작
+        if (!data_transport_->start()) {
+            logError("[IpcJsonClient] Failed to start SHM transport");
+            data_transport_->close();
+            delete data_transport_;
+            data_transport_ = nullptr;
+            data_transport_owned_ = false;
+            transport_.close();
+            return LEGACY_ERR_TRANSPORT;
+        }
+
+        logInfo("[IpcJsonClient] SHM Data Transport initialized");
+    }
+#endif
     
     running_ = true;
     
@@ -169,6 +225,12 @@ LegacyStatus IpcJsonClient::init(const LegacyConfig* cfg) {
     
     if (recv_task_ == TASK_ID_ERROR) {
         running_ = false;
+        if (data_transport_) {
+            data_transport_->stop();
+            data_transport_->close();
+            if (data_transport_owned_) delete data_transport_;
+            data_transport_ = nullptr;
+        }
         transport_.close();
         logError("[IpcJsonClient] Failed to spawn receive task");
         return LEGACY_ERR_TRANSPORT;
@@ -213,6 +275,17 @@ void IpcJsonClient::close() {
     }
 #endif
     
+    // Data Transport 정리
+    if (data_transport_) {
+        data_transport_->stop();
+        data_transport_->close();
+        if (data_transport_owned_) {
+            delete data_transport_;
+        }
+        data_transport_ = nullptr;
+        data_transport_owned_ = false;
+    }
+
     transport_.close();
     logInfo("[IpcJsonClient] Closed");
 }
@@ -228,6 +301,85 @@ void IpcJsonClient::registerRequest(uint32_t reqId, const PendingRequest& req) {
     std::lock_guard<std::mutex> lock(req_mutex_);
 #endif
     pending_requests_[reqId] = req;
+}
+
+//------------------------------------------------------------------------------
+// SHM Transport 제어
+//------------------------------------------------------------------------------
+
+LegacyStatus IpcJsonClient::enableShm(const LegacyHelloInfo* info) {
+#if DDSFW_ENABLE_SHM
+    if (!info || !info->shm_available) {
+        logError("[IpcJsonClient] SHM not available from Agent");
+        return LEGACY_ERR_PARAM;
+    }
+
+    // 이미 활성화되어 있으면 성공 반환
+    if (data_transport_ && data_transport_->is_running()) {
+        logInfo("[IpcJsonClient] SHM already active");
+        return LEGACY_OK;
+    }
+
+    // 기존 data_transport 정리
+    if (data_transport_) {
+        data_transport_->stop();
+        data_transport_->close();
+        if (data_transport_owned_) {
+            delete data_transport_;
+        }
+        data_transport_ = nullptr;
+        data_transport_owned_ = false;
+    }
+
+    // Hello 응답에서 받은 정보로 SHM Config 구성
+    legacy::transport::DataTransportConfig dt_cfg{};
+    dt_cfg.kind = legacy::transport::DataTransportKind::SHM;
+    dt_cfg.shm_name = info->shm_name;
+    dt_cfg.notify_la = info->notify_la;
+    dt_cfg.notify_al = info->notify_al;
+    dt_cfg.ring_bytes = info->shm_ring_bytes;
+    dt_cfg.max_frame = info->shm_max_frame;
+    dt_cfg.wait_ms = 100;  // 기본값
+
+    data_transport_ = legacy::transport::create_data_transport(
+        legacy::transport::DataTransportKind::SHM);
+
+    if (!data_transport_) {
+        logError("[IpcJsonClient] Failed to create SHM transport");
+        return LEGACY_ERR_TRANSPORT;
+    }
+    data_transport_owned_ = true;
+
+    if (!data_transport_->open(dt_cfg, nullptr)) {
+        logError("[IpcJsonClient] Failed to open SHM transport");
+        delete data_transport_;
+        data_transport_ = nullptr;
+        data_transport_owned_ = false;
+        return LEGACY_ERR_TRANSPORT;
+    }
+
+    data_transport_->set_on_frame(&IpcJsonClient::onDataFrame, this);
+
+    if (!data_transport_->start()) {
+        logError("[IpcJsonClient] Failed to start SHM transport");
+        data_transport_->close();
+        delete data_transport_;
+        data_transport_ = nullptr;
+        data_transport_owned_ = false;
+        return LEGACY_ERR_TRANSPORT;
+    }
+
+    logInfo("[IpcJsonClient] SHM Data Transport enabled via Hello response");
+    return LEGACY_OK;
+#else
+    (void)info;
+    logError("[IpcJsonClient] SHM not supported on this platform");
+    return LEGACY_ERR_PARAM;
+#endif
+}
+
+bool IpcJsonClient::isShmActive() const {
+    return data_transport_ && data_transport_->is_running();
 }
 
 LegacyStatus IpcJsonClient::sendRequest(const std::string& json_body, uint16_t type, uint32_t req_id) {
@@ -260,6 +412,24 @@ LegacyStatus IpcJsonClient::sendStructRequest(uint32_t topic_id, uint32_t abi_ha
         memcpy(buf.data() + sizeof(DataEnvelope), data, len);
     }
 
+    // SHM Transport가 활성화된 경우 SHM으로 전송
+    if (data_transport_ && data_transport_->is_running()) {
+        LegacyFrameHeader hdr;
+        hdr.magic = htonl(RIPC_MAGIC);
+        hdr.version = htons(RIPC_VERSION);
+        hdr.type = htons(MSG_DATA_REQ_STRUCT);
+        hdr.corr_id = htonl(req_id);
+        hdr.length = htonl((uint32_t)buf.size());
+        hdr.ts_ns = 0;  // TODO: 타임스탬프 설정
+
+        if (!data_transport_->send_frame(hdr, buf.data(), (uint32_t)buf.size())) {
+            logError("[IpcJsonClient] SHM send_frame failed");
+            return LEGACY_ERR_TRANSPORT;
+        }
+        return LEGACY_OK;
+    }
+
+    // 기본 UDP 전송
     if (!transport_.send(buf.data(), buf.size(), MSG_DATA_REQ_STRUCT, req_id)) {
         return LEGACY_ERR_TRANSPORT;
     }
@@ -421,11 +591,51 @@ void IpcJsonClient::handleJsonResponse(const LegacyFrameHeader& hdr, const uint8
             }
 
             LegacyHelloInfo info;
+            memset(&info, 0, sizeof(info));
             info.proto = j.value("proto", -1);
             if (j.contains("result") && j["result"].contains("proto")) {
                 info.proto = j["result"]["proto"];
             }
-            info.caps_raw_json = "{}"; 
+            info.caps_raw_json = "{}";
+
+            // SHM Transport 정보 파싱
+            // Agent 응답 예: { "result": { "shm": { "available": true, "shm_name": "/dds_fw_data", ... } } }
+            static std::string shm_name_buf;
+            static std::string notify_la_buf;
+            static std::string notify_al_buf;
+
+            info.shm_available = false;
+            info.shm_name = nullptr;
+            info.notify_la = nullptr;
+            info.notify_al = nullptr;
+            info.shm_ring_bytes = 0;
+            info.shm_max_frame = 0;
+
+            json* result_ptr = nullptr;
+            if (j.contains("result") && j["result"].is_object()) {
+                result_ptr = &j["result"];
+            }
+
+            if (result_ptr && result_ptr->contains("shm") && (*result_ptr)["shm"].is_object()) {
+                const auto& shm = (*result_ptr)["shm"];
+                info.shm_available = shm.value("available", false);
+
+                if (info.shm_available) {
+                    shm_name_buf = shm.value("shm_name", "/dds_fw_data");
+                    notify_la_buf = shm.value("notify_la", "/dds_fw_sem_la");
+                    notify_al_buf = shm.value("notify_al", "/dds_fw_sem_al");
+
+                    info.shm_name = shm_name_buf.c_str();
+                    info.notify_la = notify_la_buf.c_str();
+                    info.notify_al = notify_al_buf.c_str();
+                    info.shm_ring_bytes = shm.value("ring_bytes", 4u * 1024 * 1024);
+                    info.shm_max_frame = shm.value("max_frame", 65536u);
+
+                    logInfo("[IpcJsonClient] Hello: SHM available - name=%s, ring=%u, max_frame=%u",
+                            info.shm_name, info.shm_ring_bytes, info.shm_max_frame);
+                }
+            }
+
             req.hello_cb(nullptr, req_id, &res, &info, req.user);
         } else if (req.simple_cb) {
             req.simple_cb(nullptr, req_id, &res, req.user);
@@ -955,4 +1165,48 @@ void IpcJsonClient::getPerfStats(LegacyPerfStats* out_stats) {
     out_stats->transport_send_us_total = 0;
     out_stats->transport_send_count = 0;
 #endif
+}
+
+//------------------------------------------------------------------------------
+// Data Transport 콜백 (SHM 수신)
+//------------------------------------------------------------------------------
+
+void IpcJsonClient::onDataFrame(const LegacyFrameHeader* hdr,
+                                 const uint8_t* payload,
+                                 uint32_t len,
+                                 void* user) noexcept {
+    auto* self = static_cast<IpcJsonClient*>(user);
+    if (!self || !hdr) return;
+
+    // 네트워크 바이트 오더 변환
+    uint16_t type = ntohs(hdr->type);
+
+    // Data Plane 프레임만 처리 (Control Plane은 UDP에서 처리)
+    if (type == MSG_DATA_RSP_STRUCT || type == MSG_DATA_EVT_STRUCT) {
+        // handleStructResponse 호출을 위해 호스트 바이트 오더로 변환된 헤더 생성
+        LegacyFrameHeader host_hdr;
+        host_hdr.magic = ntohl(hdr->magic);
+        host_hdr.version = ntohs(hdr->version);
+        host_hdr.type = type;
+        host_hdr.corr_id = ntohl(hdr->corr_id);
+        host_hdr.length = ntohl(hdr->length);
+        host_hdr.ts_ns = hdr->ts_ns;  // TODO: 64비트 변환
+
+        self->handleStructResponse(host_hdr, payload, static_cast<int>(len));
+    }
+    else if (type == MSG_DATA_RSP_JSON || type == MSG_DATA_EVT_JSON) {
+        LegacyFrameHeader host_hdr;
+        host_hdr.magic = ntohl(hdr->magic);
+        host_hdr.version = ntohs(hdr->version);
+        host_hdr.type = type;
+        host_hdr.corr_id = ntohl(hdr->corr_id);
+        host_hdr.length = ntohl(hdr->length);
+        host_hdr.ts_ns = hdr->ts_ns;
+
+        self->handleJsonResponse(host_hdr, payload, static_cast<int>(len));
+    }
+    else {
+        // Control Plane 프레임은 SHM에서 오면 무시 (설계상 UDP로만 와야 함)
+        // 로그만 남기고 drop
+    }
 }

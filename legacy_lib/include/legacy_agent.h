@@ -35,12 +35,38 @@ typedef enum {
     LEGACY_CODEC_STRUCT = 1
 } LegacyDataCodec;
 
+/**
+ * @brief Data Plane Transport 종류
+ *
+ * Control Plane은 항상 UDP를 사용한다.
+ * Data Plane은 설정에 따라 UDP 또는 SHM을 선택할 수 있다.
+ */
+typedef enum {
+    LEGACY_DATA_TRANSPORT_UDP = 0,  ///< UDP 기반 (기본값, 모든 플랫폼)
+    LEGACY_DATA_TRANSPORT_SHM = 1   ///< SHM 기반 (VxWorks 전용)
+} LegacyDataTransport;
+
+/**
+ * @brief SHM Data Transport 설정 (VxWorks 전용)
+ */
+typedef struct {
+    const char* shm_name;      ///< SHM 객체 이름 (예: "/dds_fw_data")
+    const char* notify_la;     ///< LA ring notify 이름 (예: "/dds_fw_sem_la")
+    const char* notify_al;     ///< AL ring notify 이름 (예: "/dds_fw_sem_al")
+    uint32_t    ring_bytes;    ///< 링 버퍼 크기 (per ring, 0이면 기본값 4MB)
+    uint32_t    max_frame;     ///< 단일 프레임 최대 크기 (0이면 기본값 64KB)
+    uint32_t    wait_ms;       ///< consumer wait timeout (0이면 기본값 100ms)
+} LegacyShmConfig;
+
 typedef struct {
     const char* agent_ip;
     uint16_t    agent_port;
 
     LegacyDataCodec data_codec; // default 0 (JSON)
     
+    LegacyDataTransport data_transport;  ///< Data Plane transport (기본값: UDP)
+    LegacyShmConfig     shm_config;      ///< SHM 설정 (data_transport=SHM일 때만 사용)
+
     uint32_t    recv_task_priority;
     uint32_t    recv_task_stack;
     uint32_t    send_task_priority;
@@ -105,9 +131,20 @@ typedef void (*LegacySimpleCb)(LEGACY_HANDLE h,
 /* --- Control Plane API --- */
 
 // Hello
+/**
+ * @brief Hello 응답에서 받은 Agent 정보
+ */
 typedef struct {
-    int         proto;          // Hello response proto version (-1 if missing)
-    const char* caps_raw_json;  // Capability JSON
+    int         proto;          ///< Hello response proto version (-1 if missing)
+    const char* caps_raw_json;  ///< Capability JSON
+
+    // SHM Transport 정보 (Agent에서 제공, data_transport=SHM일 때 사용)
+    bool        shm_available;  ///< Agent가 SHM을 지원하는지 여부
+    const char* shm_name;       ///< SHM 객체 이름 (예: "/dds_fw_data")
+    const char* notify_la;      ///< LA ring notify 이름
+    const char* notify_al;      ///< AL ring notify 이름
+    uint32_t    shm_ring_bytes; ///< 링 버퍼 크기 (per ring)
+    uint32_t    shm_max_frame;  ///< 단일 프레임 최대 크기
 } LegacyHelloInfo;
 
 typedef void (*LegacyHelloCb)(
@@ -122,6 +159,28 @@ LegacyStatus legacy_agent_hello(
     uint32_t timeout_ms,
     LegacyHelloCb cb,
     void* user);
+
+/**
+ * @brief Hello 응답에서 받은 SHM 정보로 Data Transport를 SHM으로 활성화
+ *
+ * Hello 응답의 LegacyHelloInfo에서 shm_available=true인 경우,
+ * 이 함수를 호출하여 SHM Data Transport를 늦게 초기화할 수 있다.
+ *
+ * @param h LegacyLib 핸들
+ * @param info Hello 응답에서 받은 정보
+ * @return LEGACY_OK: 성공, LEGACY_ERR_PARAM: SHM 미지원, LEGACY_ERR_TRANSPORT: 초기화 실패
+ *
+ * @note VxWorks에서만 사용 가능. 타 플랫폼에서는 LEGACY_ERR_PARAM 반환.
+ */
+LegacyStatus legacy_agent_enable_shm(LEGACY_HANDLE h, const LegacyHelloInfo* info);
+
+/**
+ * @brief 현재 Data Transport가 SHM인지 확인
+ *
+ * @param h LegacyLib 핸들
+ * @return true: SHM 활성화됨, false: UDP 사용 중
+ */
+bool legacy_agent_is_shm_active(LEGACY_HANDLE h);
 
 // Create Entities
 typedef struct {

@@ -64,7 +64,7 @@ CFLAGS = -dkm \
          -D_VX_CPU=_VX_PPCE6500 \
          -D_WRS_KERNEL \
          -D_VXWORKS_ \
-         -Wall -O2
+         -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter -O2
 		 
 #		 -DDEMO_PERF_INSTRUMENTATION
 

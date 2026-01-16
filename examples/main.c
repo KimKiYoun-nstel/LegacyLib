@@ -74,7 +74,19 @@ void process_command(char* line) {
     char cmd[64];
     char arg1[64];
     int port = 25000;
-    LegacyConfig config = { "127.0.0.1", 25000, LEGACY_CODEC_JSON, 100, 64*1024, 100, 64*1024 };
+    LegacyConfig config = {
+        .agent_ip = "127.0.0.1",
+        .agent_port = 25000,
+        .data_codec = LEGACY_CODEC_JSON,
+        .data_transport = LEGACY_DATA_TRANSPORT_UDP,
+        .shm_config = {0},
+        .recv_task_priority = 100,
+        .recv_task_stack = 64*1024,
+        .send_task_priority = 100,
+        .send_task_stack = 64*1024,
+        .log_cb = NULL,
+        .log_user = NULL
+    };
 
     // Parse
     cmd[0] = 0; arg1[0] = 0;
