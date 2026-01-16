@@ -44,6 +44,7 @@
 | 페이로드 포맷 | CBOR 인코딩 JSON | DataEnvelope + Wire Struct |
 
 **⚠️ 경고**: Legacy/UI는 **반드시 Agent와 동일한 모드**를 사용해야 합니다.
+
 - Hello 응답의 `data_codec` 필드를 확인하세요.
 - 모드가 불일치하면 Agent가 요청을 거부합니다.
 
@@ -119,6 +120,7 @@ enum FrameType : uint16_t {
 ### 4.1 Hello 요청/응답
 
 #### 요청
+
 ```json
 {
     "op": "hello"
@@ -126,6 +128,7 @@ enum FrameType : uint16_t {
 ```
 
 #### 응답
+
 ```json
 {
     "ok": true,
@@ -143,6 +146,7 @@ enum FrameType : uint16_t {
 ### 4.2 엔티티 생성 요청/응답
 
 #### Writer 생성
+
 ```json
 // 요청
 {
@@ -169,6 +173,7 @@ enum FrameType : uint16_t {
 ```
 
 #### Reader 생성
+
 ```json
 // 요청
 {
@@ -228,6 +233,7 @@ uint32_t compute_topic_id(const char* topic, size_t len) {
 **⚠️ 주의**: topic_id는 런타임에 계산됩니다. 상수가 아닙니다.
 
 #### 테스트 벡터
+
 | topic_name | topic_id (hex) |
 |------------|----------------|
 | "AlarmTopic" | 0xA1B2C3D4 (예시) |
@@ -248,11 +254,13 @@ uint32_t compute_topic_id(const char* topic, size_t len) {
 ### 5.3 Data Write 응답 (MSG_DATA_RSP_JSON)
 
 #### 성공
+
 ```json
 { "ok": true }
 ```
 
 #### 실패
+
 ```json
 {
     "ok": false,
@@ -288,13 +296,19 @@ Agent가 DDS에서 샘플을 수신하면 전송:
 typedef struct DataEnvelope {
     uint32_t magic;      // 'DIPC' = 0x44495043
     uint16_t ver;        // 버전: 1
-    uint16_t kind;       // 1=WRITE, 2=EVT
+    uint16_t kind;       // 1=WRITE_REQ, 2=EVT
     uint32_t topic_id;   // FNV-1a hash(topic_name)
     uint32_t abi_hash;   // Wire Struct ABI 해시
     uint32_t data_len;   // Wire Struct 데이터 길이
 } DataEnvelope;
 #pragma pack(pop)
 ```
+
+### 6.1.1 Byte Order (Important)
+- DataEnvelope 및 Wire Struct payload(DataRspStruct 포함)는 **Big-Endian(Network Byte Order)**으로 고정한다.
+- `uint16/uint32/uint64`, `int16/int32/int64`, `float/double` 등 **모든 숫자 필드**는 Big-Endian으로 직렬화한다.
+- `bool`, `char[]`(string) 등 **1바이트 데이터**는 변환하지 않는다.
+- 부동소수점은 **IEEE 754 표현을 Big-Endian 바이트 순서**로 전송한다.
 
 ### 6.2 ABI Hash 검증
 
@@ -326,7 +340,7 @@ IpcHeader:
 DataEnvelope:
   magic    = 0x44495043 ('DIPC')
   ver      = 1
-  kind     = 1 (WRITE)
+  kind     = 1 (WRITE_REQ)
   topic_id = 0xA1B2C3D4
   abi_hash = 0xB5A245CB
   data_len = 260
@@ -393,6 +407,7 @@ Wire Struct는 IDL에서 자동 생성되며, 다음 규칙을 따릅니다:
 ### 7.2 예시: C_AlarmMsg
 
 IDL:
+
 ```idl
 struct C_AlarmMsg {
     int32 level;
@@ -401,6 +416,7 @@ struct C_AlarmMsg {
 ```
 
 Wire Struct:
+
 ```c
 #pragma pack(push, 1)
 typedef struct Wire_C_AlarmMsg {
@@ -610,7 +626,7 @@ extern "C" {
 typedef struct DataEnvelope {
     uint32_t magic;
     uint16_t ver;
-    uint16_t kind;       /* 1=WRITE, 2=EVT */
+    uint16_t kind;       /* 1=WRITE_REQ, 2=EVT */
     uint32_t topic_id;
     uint32_t abi_hash;
     uint32_t data_len;

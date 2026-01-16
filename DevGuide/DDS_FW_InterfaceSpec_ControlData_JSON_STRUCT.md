@@ -29,6 +29,20 @@ Header는 고정 크기이며, Payload 길이는 `Header.length`로 정의된다
 - `length` : payload bytes length
 - `ts_ns` : timestamp (옵션/디버깅)
 
+### Header 구조 (24 bytes, packed)
+```c
+#pragma pack(push, 1)
+typedef struct IpcHeader {
+  uint32_t magic;      // 'RIPC' = 0x52495043
+  uint16_t version;    // 0x0001
+  uint16_t type;       // Frame Type
+  uint32_t corr_id;    // Correlation ID (요청/응답 매칭)
+  uint32_t length;     // Payload 길이 (bytes)
+  uint64_t ts_ns;      // 송신 타임스탬프(ns)
+} IpcHeader;
+#pragma pack(pop)
+```
+
 ### corr_id 규칙
 - 요청(Request) 전송 측이 corr_id를 채운다.
 - 응답(Response)은 반드시 **동일 corr_id를 유지**한다.
@@ -133,18 +147,27 @@ typedef struct {
 - `abi_hash`가 mismatch이면 수신측은 에러로 응답하고 처리하지 않는다(fail-fast 권장).
 
 ## 5.2 Data Write Response (MSG_DATA_RSP_STRUCT)
-binary 고정 구조(예시):
+Binary 응답 (8 bytes):
 
 ```c
 #pragma pack(push, 1)
 typedef struct {
-  uint32_t magic;   // 'DRSP'
-  uint16_t ver;     // 1
-  uint16_t status;  // 0=OK, 1=ERR
-  uint32_t err;     // 상세 코드
-} DataRsp;
+  uint8_t  status;     // 0=OK, 1=PARSE_ERROR, 2=UNKNOWN_TOPIC, 3=ABI_MISMATCH, 4=CONVERT_FAIL, 5=PUBLISH_FAIL
+  uint32_t topic_id;   // 요청 topic_id
+  uint8_t  reserved[3];
+} DataRspStruct;
 #pragma pack(pop)
 ```
+
+### status codes
+| 코드 | 이름 | 설명 |
+|------|------|------|
+| 0x00 | OK | 성공 |
+| 0x01 | PARSE_ERROR | DataEnvelope 파싱 실패 |
+| 0x02 | UNKNOWN_TOPIC | topic_id 미등록 |
+| 0x03 | ABI_MISMATCH | abi_hash 불일치 |
+| 0x04 | CONVERT_FAIL | Wire → DDS 변환 실패 |
+| 0x05 | PUBLISH_FAIL | DDS publish 실패 |
 
 ---
 
